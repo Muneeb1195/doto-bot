@@ -14,6 +14,7 @@ dashboard_state.json
 data/dashboard_state.json
 data/bot_state.json
 data/news_sentiment.json
+.dashboard_public/
 wine/
 .venv/
 .venv_news/
