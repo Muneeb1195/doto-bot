@@ -1,0 +1,2 @@
+type,entry,exit,sl,tp,pnl,entry_bar,exit_bar,exit_reason,regime,entry_type
+sell,98.661,101.776,101.776,90.872,-31.149999999999952,616,624,SL,strong_trend,pullback

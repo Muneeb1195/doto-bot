@@ -1,0 +1,2 @@
+symbol,type,entry,exit,sl,tp,pnl,exit_reason,regime,entry_type
+XAUUSD.raw,buy,5011.59,4976.703,4976.703,5116.253,-9744.379025069922,SL,strong_trend,pullback

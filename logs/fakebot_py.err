@@ -1,0 +1,20 @@
+2026-07-21 01:12:26 [WATCHDOG] killing previous child pid=2044
+2026-07-21 01:12:26 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:12:26 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:12:26 [INFO] fakebot exited (code -1), restarting in 5s...
+2026-07-21 01:12:31 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:12:31 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:12:31 [INFO] fakebot exited (code -1), restarting in 5s...
+2026-07-21 01:13:02 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:13:02 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:13:02 [INFO] fakebot exited (code -1), restarting in 5s...
+2026-07-21 01:13:31 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:13:31 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:13:31 [INFO] fakebot exited (code -1), restarting in 5s...
+2026-07-21 01:15:46 [WATCHDOG] killing previous child pid=12048
+2026-07-21 01:15:46 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:15:46 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:15:46 [INFO] fakebot exited (code -1), restarting in 5s...
+2026-07-21 01:15:51 [INFO] Starting fakebot ({0} fakebot_sleep.py)
+2026-07-21 01:15:51 [FATAL] fakebot launcher error: FileNotFoundError(2, 'The system cannot find the file specified', None, 2, None)
+2026-07-21 01:15:51 [INFO] fakebot exited (code -1), restarting in 5s...

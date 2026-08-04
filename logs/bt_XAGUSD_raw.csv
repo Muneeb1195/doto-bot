@@ -1,0 +1,5 @@
+symbol,type,entry,exit,sl,tp,pnl,exit_reason,regime,entry_type
+XAGUSD.raw,partial,85.698,77.69378201622152,91.03399999999999,72.35799999999999,111783.95080290516,SCALE_OUT,strong_trend,
+XAGUSD.raw,sell,85.698,72.35799999999999,80.9566159660987,72.35799999999999,0.0,TP,strong_trend,crossover
+XAGUSD.raw,buy,84.502,86.942,83.526,86.942,34076.13841999997,TP,strong_trend,crossover
+XAGUSD.raw,buy,88.448,87.297,87.297,91.327,-16074.440705499945,SL,strong_trend,pullback

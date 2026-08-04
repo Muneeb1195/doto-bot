@@ -1,0 +1,5 @@
+# Secrets in this repo live ONLY in config/credentials.ini, which is
+# git-ignored and excluded from backups (see bot/backup.py H3). It is the
+# legitimate secret store, not a leaked credential, so the secret scanner
+# ignores it. Any secret committed elsewhere in source must still fail CI.
+config/credentials.ini

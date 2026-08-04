@@ -1,0 +1,21 @@
+02d4:fixme:ole:CoInitializeSecurity 0000000000000000, -1, 0000000000000000, 0000000000000000, 0, 3, 0000000000000000, 0, 0000000000000000 stub
+02d4:fixme:wbemprox:client_security_SetBlanket 00006FFFFADA4030, 00007FD3672057B0, 10, 0, (null), 3, 3, 0000000000000000, 0
+02d4:fixme:wbemprox:client_security_Release 00006FFFFADA4030
+02d4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+02d4:fixme:wbemprox:get_system_propval returning empty array for __DERIVATION
+02c0:fixme:ole:CoInitializeSecurity 0000000000000000, -1, 0000000000000000, 0000000000000000, 0, 3, 0000000000000000, 0, 0000000000000000 stub
+02c0:fixme:wbemprox:client_security_SetBlanket 00006FFFFADA4030, 00007FD3672057B0, 10, 0, (null), 3, 3, 0000000000000000, 0
+02c0:fixme:wbemprox:client_security_Release 00006FFFFADA4030
+02c0:fixme:wbemprox:get_system_propval returning empty array for __DERIVATION
+Traceback (most recent call last):
+  File "Z:\home\muneeb\doto-mt5-bot\bot\optimize_params.py", line 377, in <module>
+    main()
+  File "Z:\home\muneeb\doto-mt5-bot\bot\optimize_params.py", line 360, in main
+    best = optimize_symbol(symbol, df_is, df_oos, info)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "Z:\home\muneeb\doto-mt5-bot\bot\optimize_params.py", line 271, in optimize_symbol
+    print(f"    \u26a0 HIGH DEGRADATION — likely overfit")
+  File "Z:\home\muneeb\doto-mt5-bot\wine\drive_c\Program Files\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u26a0' in position 4: character maps to <undefined>

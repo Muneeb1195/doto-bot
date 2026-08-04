@@ -1,0 +1,1325 @@
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 07:36:42 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (23 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 08:33:10 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (19 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (28 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (36 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (44 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 11:52:35 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 12:41:29 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 13:57:21 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 14:01:24 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: 500 Server Error: Internal Server Error for url: https://api.marketaux.com/v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-14T03%3A01%3A25&language=en
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-14 14:21:10 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (20 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (23 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (26 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (29 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (32 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (35 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (38 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (41 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (44 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (47 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (50 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (53 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (56 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-15 00:19:21 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (19 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (23 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (25 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (27 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (29 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (30 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (31 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (33 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (36 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (39 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (48 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (57 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (66 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (72 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-15 09:46:38 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (25 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (32 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (39 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (39 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (48 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (55 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (63 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (79 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (87 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (94 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (101 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (108 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (116 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (123 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (130 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (140 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (151 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-15 16:57:37 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-15 19:35:01 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+2026-07-15 19:35:18 [INFO] news exited (code 1073807364), restarting in 5s...
+2026-07-15 19:38:11 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-15 21:03:32 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (24 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (27 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (30 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-16 00:13:28 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-17 22:49:37 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (19 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (23 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (25 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (27 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (32 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (37 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (41 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T15%3A23%3A18&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+INFO:root:Wrote 8 symbols (44 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (49 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (52 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T16%3A23%3A11&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (56 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (59 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (64 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T17%3A21%3A15&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (67 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+INFO:root:Wrote 8 symbols (69 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T18%3A16%3A22&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T19%3A29%3A51&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T20%3A43%3A08&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T21%3A58%3A31&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-17T23%3A18%3A00&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — ('Connection aborted.', ConnectionAbortedError(10053, 'An established connection was aborted by the software in your host machine', None, 10053, None))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (77 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (82 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (89 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (97 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (103 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (108 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (113 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (118 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (123 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (128 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.content.dowjones.io', port=443): Read timed out. (read timeout=15)
+INFO:root:Wrote 8 symbols (133 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (139 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (145 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (151 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Read timed out. (read timeout=15)
+INFO:root:Wrote 8 symbols (156 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (161 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (166 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (171 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (176 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (184 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (190 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (196 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (203 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (209 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (214 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (219 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (226 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (233 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (239 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (247 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (255 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (263 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (272 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (281 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-18T08%3A59%3A54&language=en (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (291 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (301 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (310 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (318 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (326 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (334 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (342 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (350 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (360 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (369 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-18 22:22:57 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-18T11%3A23%3A02&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (0 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (24 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (31 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (38 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (45 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-18 23:59:21 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-19 00:17:19 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-19 00:18:40 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-19 00:19:35 [INFO] news exited (code 4294967295), restarting in 5s...
+2026-07-19 00:52:06 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-19 01:26:15 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-18T14%3A26%3A20&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (0 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-20 13:07:20 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (20 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (25 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (28 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (31 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (34 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (37 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (40 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (43 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (46 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (49 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (52 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (55 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (58 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (61 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (64 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (67 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (70 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (71 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (72 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (73 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (74 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (75 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (76 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (77 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (78 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-20 21:43:18 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (24 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (27 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (30 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (33 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (36 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (39 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (42 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (45 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (48 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (51 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (54 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (57 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (60 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (63 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (66 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (69 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (72 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (75 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (78 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (81 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (82 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (83 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (84 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (85 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (86 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (87 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (88 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (89 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (90 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (91 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (93 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (95 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (97 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (98 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (99 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (100 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (101 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (102 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (106 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (110 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (114 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (118 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (122 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (126 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (130 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (134 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (139 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (144 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-21 17:47:28 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-21 18:33:34 [WATCHDOG] killing previous child pid=1912
+2026-07-21 18:33:35 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-21T07%3A33%3A40&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (0 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-21 23:38:27 [WATCHDOG] killing previous child pid=5760
+2026-07-21 23:38:27 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-22 00:10:20 [WATCHDOG] killing previous child pid=7268
+2026-07-22 00:10:20 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-22T01%3A13%3A06&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-22T02%3A43%3A44&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS parse error: not well-formed (invalid token): line 75, column 0
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-22 21:26:34 [WATCHDOG] killing previous child pid=4424
+2026-07-22 21:26:34 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (10 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (20 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (21 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (22 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (23 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (19 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (18 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (20 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (20 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (19 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (17 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (16 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (15 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (14 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (13 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-24 12:27:00 [WATCHDOG] killing previous child pid=5192
+2026-07-24 12:27:00 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Max retries exceeded with url: /v1/news/all?api_token=ABQTjGzJq90gCGHSz7gnfV2S31ceOA97KOky3ItP&symbols=XAUUSD%2CCC%3ABTC%2CNZDUSD%2CDJIA%2CGBPJPY%2CCC%3ASOL%2CCC%3AXRP%2CCC%3ADOGE&filter_entities=true&limit=50&published_after=2026-07-24T01%3A27%3A06&language=en (Caused by NameResolutionError("HTTPSConnection(host='api.marketaux.com', port=443): Failed to resolve 'api.marketaux.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by NameResolutionError("HTTPSConnection(host='finance.yahoo.com', port=443): Failed to resolve 'finance.yahoo.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_1.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_14.rss (Caused by NameResolutionError("HTTPSConnection(host='www.investing.com', port=443): Failed to resolve 'www.investing.com' ([Errno 11001] getaddrinfo failed)"))
+WARNING:root:RSS fetch failed: https://feeds.marketwatch.com/marketwatch/topstories/ — HTTPSConnectionPool(host='feeds.marketwatch.com', port=443): Max retries exceeded with url: /marketwatch/topstories/ (Caused by NameResolutionError("HTTPSConnection(host='feeds.marketwatch.com', port=443): Failed to resolve 'feeds.marketwatch.com' ([Errno 11001] getaddrinfo failed)"))
+INFO:root:Wrote 8 symbols (0 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+WARNING:root:RSS fetch failed: https://finance.yahoo.com/news/rssindex — HTTPSConnectionPool(host='finance.yahoo.com', port=443): Max retries exceeded with url: /news/rssindex (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — HTTPSConnectionPool(host='www.investing.com', port=443): Max retries exceeded with url: /rss/news_11.rss (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:root:Wrote 8 symbols (0 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-25 01:46:01 [WATCHDOG] killing previous child pid=3932
+2026-07-25 01:46:01 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 2 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (2 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-25 10:47:21 [WATCHDOG] killing previous child pid=9164
+2026-07-25 10:47:21 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-25 14:56:50 [WATCHDOG] killing previous child pid=8212
+2026-07-25 14:56:51 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (9 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (11 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (12 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-25 18:09:23 [WATCHDOG] killing previous child pid=4032
+2026-07-25 18:09:23 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (4 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_1.rss — 502 Server Error: Bad Gateway for url: https://www.investing.com/rss/news_1.rss
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_11.rss — 502 Server Error: Bad Gateway for url: https://www.investing.com/rss/news_11.rss
+WARNING:root:RSS fetch failed: https://www.investing.com/rss/news_14.rss — 502 Server Error: Bad Gateway for url: https://www.investing.com/rss/news_14.rss
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-25 19:43:03 [WATCHDOG] killing previous child pid=1660
+2026-07-25 19:43:04 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (5 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 0 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (6 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-07-28 13:17:18 [WATCHDOG] killing previous child pid=952
+2026-07-28 13:17:18 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json

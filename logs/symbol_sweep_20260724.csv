@@ -1,0 +1,4 @@
+symbol,wf_score,pf,n_trades,ret,ema,sl,rr,adx
+ADAUSD,12313.7,inf,0,0.0,EMA12/36,1.0,3.0,25
+AVXUSD,-249.6,inf,0,0.0,EMA12/36,1.5,3.0,25
+BTCUSD,88.6,11.4,61,43266.5,EMA10/30,1.5,3.0,25

@@ -1,0 +1,687 @@
+{
+  "symbol": "XAGUSD.raw",
+  "top10": [
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    }
+  ],
+  "all": [
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.0,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 87,
+      "return": 166976.5,
+      "max_dd": 16548.45,
+      "win_rate": 39.1,
+      "profit_factor": 4.1,
+      "sharpe": 0.511,
+      "calmar": 10.09,
+      "scale_out": 30,
+      "chandelier": 0
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        2.5
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.5,
+        3.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 74,
+      "return": 218108.83,
+      "max_dd": 26350.67,
+      "win_rate": 32.4,
+      "profit_factor": 4.06,
+      "sharpe": 0.46,
+      "calmar": 8.277,
+      "scale_out": 17,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        2.0,
+        3.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 64,
+      "return": 229841.07,
+      "max_dd": 32168.92,
+      "win_rate": 34.4,
+      "profit_factor": 3.61,
+      "sharpe": 0.529,
+      "calmar": 7.145,
+      "scale_out": 7,
+      "chandelier": 3
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 1.5,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 2.5,
+      "ch_mult_partial": 2.0,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 1.5,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 3.0,
+      "ch_mult_partial": 2.0,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 1.5,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    },
+    {
+      "tp_targets_atr": [
+        1.2,
+        2.0
+      ],
+      "ch_mult": 3.5,
+      "ch_mult_partial": 2.0,
+      "trades": 78,
+      "return": 175756.78,
+      "max_dd": 28340.68,
+      "win_rate": 33.3,
+      "profit_factor": 3.55,
+      "sharpe": 0.455,
+      "calmar": 6.202,
+      "scale_out": 21,
+      "chandelier": 2
+    }
+  ]
+}

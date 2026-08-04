@@ -1,0 +1,2 @@
+type,entry,exit,sl,tp,pnl,entry_bar,exit_bar,exit_reason,regime,entry_type
+sell,1.43798,1.43967,1.43967,1.43544,-332.8294402432254,307,308,SL,ranging,mean_reversion

@@ -1,0 +1,5 @@
+type,entry,exit,sl,tp,pnl,entry_bar,exit_bar,exit_reason,regime,entry_type
+sell,49016.0,49084.0,49084.0,48880.0,-189.96868279999998,320,322,SL,uncertain,crossover
+sell,49353.0,49447.0,49525.0,49095.0,-264.00059595,396,406,REVERSAL,ranging,mean_reversion
+buy,49447.0,49326.0,49326.0,49689.0,-338.03250909999997,406,418,SL,weak_trend,crossover
+sell,49370.0,49463.0,49463.0,49230.0,-259.81011029999996,436,438,SL,ranging,mean_reversion

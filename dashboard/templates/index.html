@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doto MT5 Bot Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+h1 { color: #00d4aa; font-size: 1.5em; margin-bottom: 16px; }
+h2 { color: #8888bb; font-size: 1.1em; margin: 24px 0 8px; border-bottom: 1px solid #2a2a3a; padding-bottom: 4px; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.metric { background: #1a1a2e; border-radius: 8px; padding: 12px; text-align: center; }
+.metric .label { color: #8888bb; font-size: 0.75em; text-transform: uppercase; }
+.metric .value { font-size: 1.4em; font-weight: 700; margin-top: 4px; }
+.metric .value.green { color: #00d4aa; }
+.metric .value.red { color: #ff4466; }
+.metric .value.blue { color: #4488ff; }
+.chart-container { background: #1a1a2e; border-radius: 8px; padding: 12px; }
+.chart-container.full { grid-column: 1 / -1; }
+.chart-container canvas { max-height: 300px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+th { background: #2a2a3a; color: #8888bb; padding: 6px 8px; text-align: left; font-weight: 600; }
+td { padding: 4px 8px; border-bottom: 1px solid #1a1a2e; }
+tr:hover td { background: #1f1f35; }
+.positive { color: #00d4aa; }
+.negative { color: #ff4466; }
+.status-ok { color: #00d4aa; }
+.status-err { color: #ff4466; }
+pre.log { background: #0a0a15; padding: 8px; border-radius: 4px; font-size: 0.75em; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+@media (max-width: 768px) { }
+</style>
+</head>
+<body>
+<h1>Doto MT5 Bot Dashboard</h1>
+
+<div class="metrics" id="topMetrics"></div>
+<div class="metrics" id="healthMetrics"></div>
+
+<h2>Open Positions</h2>
+<div id="positions"></div>
+
+<h2>Regime Status</h2>
+<div id="regimeStatus"></div>
+
+<h2>Filter Rejection Breakdown</h2>
+<div id="filterBreakdown"></div>
+<div class="chart-container full"><canvas id="filterChart"></canvas></div>
+
+<h2>Performance Metrics</h2>
+<div class="metrics" id="perfMetrics"></div>
+
+<h2>Regime Performance</h2>
+<div id="regimePerf"></div>
+
+<h2>Today's Trade Log</h2>
+<div class="metric" id="todayPnlSummary" style="display:inline-block;margin-bottom:8px"></div>
+<table id="tradeLog"><thead><tr><th>Symbol</th><th>Type</th><th>Vol</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Event</th><th>Time</th></tr></thead><tbody></tbody></table>
+
+<h2>Bot Log</h2>
+<pre class="log" id="botLog">Loading...</pre>
+
+<p style="margin-top:16px;color:#555;font-size:0.8em">Auto-refreshes every 10s</p>
+
+<script>
+const CHART_COLORS = { green: '#00d4aa', red: '#ff4466', blue: '#4488ff' };
+const _charts = {};
+function rs(v) { return `Rs.${(v??0).toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2})}`; }
+
+async function load() {
+  try {
+    const [state, trades] = await Promise.all([
+      fetch('/api/state').then(r=>r.json()),
+      fetch('/api/trades').then(r=>r.json())
+    ]);
+    renderMetrics(state);
+    renderHealth(state);
+    renderPositions(state);
+    renderRegimeStatus(state);
+    renderFilters(state);
+    renderRegimePerf(trades);
+    renderPerfMetrics(trades);
+    renderTradeLog(trades);
+  } catch (e) {
+    console.error('Dashboard load failed:', e);
+  }
+  renderLog();
+}
+
+function renderMetrics(state) {
+  const el = document.getElementById('topMetrics');
+  if (!state?.balance) { el.innerHTML = '<div class="metric"><div class="label">--</div><div class="value">--</div></div>'.repeat(5); return; }
+  el.innerHTML = `
+    <div class="metric"><div class="label">Balance</div><div class="value green">${rs(state.balance)}</div></div>
+    <div class="metric"><div class="label">Equity</div><div class="value blue">${rs(state.equity)}</div></div>
+    <div class="metric"><div class="label">Floating P&amp;L</div><div class="value ${(state.profit||0)>=0?'green':'red'}">${rs(state.profit)}</div></div>
+    <div class="metric"><div class="label">Margin Free</div><div class="value">${rs(state.margin_free)}</div></div>
+    <div class="metric"><div class="label">Positions</div><div class="value">${state.positions||0}</div></div>`;
+}
+function renderHealth(state) {
+  const el = document.getElementById('healthMetrics');
+  if (!state?.health) return;
+  el.innerHTML = `
+    <div class="metric"><div class="label">MT5 Connected</div><div class="value ${state.health.connected?'status-ok':'status-err'}">${state.health.connected?'Yes':'No'}</div></div>
+    <div class="metric"><div class="label">Server</div><div class="value" style="font-size:1em">${state.health.server||'--'}</div></div>`;
+}
+function renderPositions(state) {
+  const el = document.getElementById('positions');
+  if (!state?.positions_detail?.length) { el.innerHTML = '<p style="color:#555">No open positions</p>'; return; }
+  let h = '<table><thead><tr><th>Symbol</th><th>Type</th><th>Vol</th><th>Entry</th><th>SL</th><th>TP</th><th>Profit</th><th>Swap</th></tr></thead><tbody>';
+  for (const p of state.positions_detail) {
+    h += `<tr><td>${p.symbol}</td><td>${p.type}</td><td>${p.volume}</td><td>${p.price_open}</td><td>${p.sl||'--'}</td><td>${p.tp||'--'}</td><td class="${(p.profit||0)>=0?'positive':'negative'}">${rs(p.profit)}</td><td>${p.swap||0}</td></tr>`;
+  }
+  el.innerHTML = h + '</tbody></table>';
+}
+function renderFilters(state) {
+  const el = document.getElementById('filterBreakdown');
+  if (!state?.filters) return;
+  const syms = Object.keys(state.filters);
+  const filters = ['regime_gate','ml_gate','sanity','no_signal','signals','tail_risk','ml'];
+  let h = '<table><thead><tr><th>Symbol</th>'+filters.map(f=>`<th>${f.replace('_',' ')}</th>`).join('')+'</tr></thead><tbody>';
+  for (const sym of syms) {
+    const s = state.filters[sym];
+    h += `<tr><td>${sym}</td>${filters.map(f=>`<td>${s[f]||0}</td>`).join('')}</tr>`;
+  }
+  el.innerHTML = h + '</tbody></table>';
+  renderFilterChart(syms, state);
+}
+function renderFilterChart(syms, state) {
+  const filters = ['regime_gate','ml_gate','sanity','no_signal','tail_risk','ml'];
+  const ctx = document.getElementById('filterChart').getContext('2d');
+  if (_charts.filterChart) _charts.filterChart.destroy();
+  _charts.filterChart = new Chart(ctx, {
+    type: 'bar', data: {
+      labels: syms,
+      datasets: filters.map((f,i) => ({
+        label: f.replace('_',' '), data: syms.map(s => state.filters?.[s]?.[f]||0),
+        backgroundColor: `hsla(${i*40},70%,60%,0.7)`
+      }))
+    },
+    options: { responsive: true, plugins: { legend: { position:'top', labels:{color:'#8888bb'} } },
+      scales: { x: { ticks:{color:'#8888bb'} }, y: { ticks:{color:'#8888bb'} } } }
+  });
+}
+function renderPerfMetrics(trades) {
+  const el = document.getElementById('perfMetrics');
+  const closed = trades.filter(t => ['CLOSE','REVERSAL','MR_EXIT'].includes(t.event));
+  if (!closed.length) { el.innerHTML = '<p style="color:#555">No closed trades yet</p>'; return; }
+  const wins = closed.filter(t => t.pnl > 0);
+  const losses = closed.filter(t => t.pnl <= 0);
+  const totalPnl = closed.reduce((s,t) => s + (t.pnl||0), 0);
+  const wr = closed.length ? (wins.length/closed.length*100) : 0;
+  const avgWin = wins.length ? wins.reduce((s,t) => s+(t.pnl||0),0)/wins.length : 0;
+  const avgLoss = losses.length ? Math.abs(losses.reduce((s,t) => s+(t.pnl||0),0)/losses.length) : 0;
+  const pf = losses.length && Math.abs(losses.reduce((s,t) => s+(t.pnl||0),0))>0
+    ? Math.abs(wins.reduce((s,t) => s+(t.pnl||0),0) / Math.abs(losses.reduce((s,t) => s+(t.pnl||0),0))) : 'inf';
+  const sortedWin = wins.map(t=>t.pnl||0).sort((a,b)=>b-a);
+  const sortedLoss = losses.map(t=>Math.abs(t.pnl||0)).sort((a,b)=>b-a);
+  const largestWin = sortedWin.length ? sortedWin[0] : 0;
+  const largestLoss = sortedLoss.length ? -sortedLoss[0] : 0;
+  let bestStreak = 0, worstStreak = 0, curBest = 0, curWorst = 0;
+  for (const t of closed) {
+    if (t.pnl > 0) { curBest++; curWorst=0; } else { curWorst++; curBest=0; }
+    bestStreak = Math.max(bestStreak, curBest);
+    worstStreak = Math.max(worstStreak, curWorst);
+  }
+  let totalDuration = 0, durCount = 0;
+  for (const t of closed) {
+    if (t.entry_time && t.exit_time) {
+      const d = (new Date(t.exit_time) - new Date(t.entry_time)) / 60000;
+      if (d > 0 && d < 10080) { totalDuration += d; durCount++; }
+    }
+  }
+  const avgDur = durCount ? (totalDuration/durCount).toFixed(0) + 'm' : '--';
+  if (durCount >= 60) avgDur = (totalDuration/durCount/60).toFixed(1) + 'h';
+  el.innerHTML = `
+    <div class="metric"><div class="label">Total Trades</div><div class="value">${closed.length}</div></div>
+    <div class="metric"><div class="label">Win Rate</div><div class="value green">${wr.toFixed(1)}%</div></div>
+    <div class="metric"><div class="label">Total P&amp;L</div><div class="value ${totalPnl>=0?'green':'red'}">${rs(totalPnl)}</div></div>
+    <div class="metric"><div class="label">Profit Factor</div><div class="value">${typeof pf==='string'?pf:pf.toFixed(2)}</div></div>
+    <div class="metric"><div class="label">Avg Win / Loss</div><div class="value" style="font-size:0.9em">${rs(avgWin)} / ${rs(avgLoss)}</div></div>
+    <div class="metric"><div class="label">Largest Win / Loss</div><div class="value" style="font-size:0.9em">${rs(largestWin)} / ${rs(largestLoss)}</div></div>
+    <div class="metric"><div class="label">Best / Worst Streak</div><div class="value" style="font-size:0.9em">${bestStreak} / ${worstStreak}</div></div>
+    <div class="metric"><div class="label">Avg Duration</div><div class="value">${avgDur}</div></div>`;
+}
+function renderRegimePerf(trades) {
+  const el = document.getElementById('regimePerf');
+  const closed = trades.filter(t => ['CLOSE','REVERSAL','MR_EXIT','SCALE_OUT'].includes(t.event));
+  if (!closed.length) return;
+  const byRegime = {};
+  for (const t of closed) {
+    const r = t.event === 'SCALE_OUT' ? 'Scale-Out' : (t.event === 'MR_EXIT' ? 'Ranging' : (t.event === 'REVERSAL' ? 'Trend Reversal' : 'Trend'));
+    if (!byRegime[r]) byRegime[r] = {trades:0,wins:0,pnl:0};
+    byRegime[r].trades++;
+    byRegime[r].pnl += t.pnl||0;
+    if (t.pnl > 0) byRegime[r].wins++;
+  }
+  let h = '<table><thead><tr><th>Regime</th><th>Trades</th><th>PnL</th><th>Win Rate</th></tr></thead><tbody>';
+  for (const [r,d] of Object.entries(byRegime))
+    h += `<tr><td>${r}</td><td>${d.trades}</td><td class="${d.pnl>=0?'positive':'negative'}">${rs(d.pnl)}</td><td>${(d.wins/d.trades*100).toFixed(1)}%</td></tr>`;
+  el.innerHTML = h + '</tbody></table>';
+}
+function renderTradeLog(trades) {
+  const today = new Date().toDateString();
+  const todayTrades = trades.filter(t => {
+    const dt = t.exit_time || t.entry_time || '';
+    return dt && new Date(dt).toDateString() === today;
+  });
+  const tbody = document.querySelector('#tradeLog tbody');
+  tbody.innerHTML = todayTrades.map(t => {
+    const pnl = t.pnl||0;
+    const et = t.exit_time ? new Date(t.exit_time).toLocaleString() : (t.entry_time ? new Date(t.entry_time).toLocaleString() : '');
+    return `<tr><td>${t.symbol||''}</td><td>${t.type||''}</td><td>${t.volume||''}</td><td>${t.entry_price||''}</td><td>${t.exit_price||''}</td><td class="${pnl>=0?'positive':'negative'}">${rs(pnl)}</td><td>${t.event||''}</td><td>${et}</td></tr>`;
+  }).join('');
+  const sum = todayTrades.reduce((s,t) => s + (t.pnl||0), 0);
+  const el = document.getElementById('todayPnlSummary');
+  el.innerHTML = `<div class="label" style="font-size:0.75em;color:#8888bb;text-transform:uppercase">Today's P&L</div><div class="value" style="font-size:1.4em;font-weight:700;color:${sum>=0?'#00d4aa':'#ff4466'};margin-top:4px">${rs(sum)}</div>`;
+}
+function renderRegimeStatus(state) {
+  const el = document.getElementById('regimeStatus');
+  if (!state?.regimes) return;
+  let h = '<table><thead><tr><th>Symbol</th><th>Regime</th></tr></thead><tbody>';
+  for (const [s,r] of Object.entries(state.regimes))
+    h += `<tr><td>${s}</td><td>${r}</td></tr>`;
+  el.innerHTML = h + '</tbody></table>';
+}
+async function renderLog() {
+  try {
+    const resp = await fetch('/api/log');
+    const data = await resp.json();
+    document.getElementById('botLog').textContent = (data.lines||['No logs']).join('\n');
+  } catch(_) { document.getElementById('botLog').textContent = 'Failed to load log'; }
+}
+
+setInterval(load, 10000);
+load();
+</script>
+</body>
+</html>

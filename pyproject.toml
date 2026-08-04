@@ -1,0 +1,45 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:xdist"
+filterwarnings = [
+    "ignore::DeprecationWarning:discord_alerts",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "mock: tests requiring MT5 mocking",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+# Explicitly include ruff's defaults plus our diagnostic scripts.
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".mypy_cache",
+    "__pycache__",
+    "venv",
+    "site-packages",
+    "packages",
+    "data",
+    "logs",
+    "models",
+    "backups",
+    "analyze_scoring_weights.py",
+    "tools/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "ARG", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files use mock functions/lambdas that intentionally mirror upstream
+# API signatures (requests.post(url, json, timeout), mt5.*(symbol, ...)),
+# so unused arguments are expected and correct.
+"tests/*" = ["ARG", "SIM117"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+mypy_path = "bot"
+explicit_package_bases = true

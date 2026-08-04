@@ -1,0 +1,2 @@
+symbol,type,entry,exit,sl,tp,pnl,exit_reason,regime,entry_type
+SPY.raw,sell,668.42,672.24,672.24,656.9499999999999,-1066.974170200014,SL,strong_trend,pullback

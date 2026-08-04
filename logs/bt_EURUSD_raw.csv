@@ -1,0 +1,5 @@
+symbol,type,entry,exit,sl,tp,pnl,exit_reason,regime,entry_type
+EURUSD.raw,partial,1.19455,1.198551554147653,1.19189,1.20121,1117.6845330372905,SCALE_OUT,strong_trend,
+EURUSD.raw,buy,1.19455,1.1961082401541576,1.1961082401541576,1.20121,0.0,SL,strong_trend,pullback
+EURUSD.raw,buy,1.19242,1.1903000000000001,1.1903000000000001,1.19774,-592.1427331999721,SL,strong_trend,pullback
+EURUSD.raw,sell,1.18178,1.18334,1.18334,1.17787,-435.7276716000017,SL,strong_trend,pullback

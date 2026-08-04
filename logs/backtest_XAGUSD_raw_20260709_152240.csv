@@ -1,0 +1,2 @@
+type,entry,exit,sl,tp,pnl,entry_bar,exit_bar,exit_reason,regime,entry_type
+sell,32.912,33.07,33.07,32.515,-2206.1558960000175,1201,1207,SL,strong_trend,crossover

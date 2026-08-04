@@ -1,0 +1,4 @@
+type,entry,exit,sl,tp,pnl,entry_bar,exit_bar,exit_reason,regime,entry_type
+partial,21253.7,21339.538966280103,21196.5,21396.7,273.76244804259,301,303,SCALE_OUT,strong_trend,
+buy,21253.7,21396.7,21311.036375092517,21396.7,0.0,301,309,TP,strong_trend,pullback
+buy,21764.3,21719.6,21719.6,21876.2,-142.55974830326727,511,517,SL,strong_trend,pullback
