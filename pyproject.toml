@@ -1,6 +1,7 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:xdist"
+pythonpath = ["."]
 filterwarnings = [
     "ignore::DeprecationWarning:discord_alerts",
 ]

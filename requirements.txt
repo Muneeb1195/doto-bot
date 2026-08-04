@@ -1,4 +1,5 @@
 MetaTrader5>=5.0.45
+mt5linux>=1.0.0
 pytest>=8.0
 pytest-mock>=3.0
 altair==6.2.2
