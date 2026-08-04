@@ -45,13 +45,13 @@ def main():
     symbol = Path(args.csv).stem.replace("optimize_", "").replace("_", ".")
     if args.ini:
         print(f"[STRATEGY:{symbol}]")
-        print(f"ma_type = kama")
+        print("ma_type = kama")
         print(f"ema_fast_period = {int(rec['ema_fast'])}")
         print(f"ema_slow_period = {int(rec['ema_slow'])}")
         print(f"atr_sl_multiplier = {rec['sl']:.1f}")
         print(f"risk_reward_ratio = {rec['rr']:.1f}")
         print(f"adx_trend_threshold = {int(rec['adx'])}")
-        print(f"risk_percent = 1.0")
+        print("risk_percent = 1.0")
         print(f"scoring_min_entry = {rec['score']:.2f}")
     else:
         print(f"{symbol}: EMA{int(rec['ema_fast'])}/{int(rec['ema_slow'])} "

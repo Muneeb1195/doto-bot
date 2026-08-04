@@ -9,7 +9,6 @@ import logging
 import os
 import platform
 import subprocess
-import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -37,7 +36,9 @@ if _is_linux:
 
     mt5 = _get_mt5()
 else:
-    import MetaTrader5 as mt5
+    import MetaTrader5 as _mt5_impl
+
+    mt5 = _mt5_impl
 
 _mt5_proc: Optional["subprocess.Popen"] = None
 

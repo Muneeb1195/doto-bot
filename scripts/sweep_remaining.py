@@ -7,12 +7,11 @@ so a crash/power-outage doesn't lose everything.
 Usage:
     python scripts/sweep_remaining.py
 """
-import sys
 import csv
 import subprocess
-import numpy as np
 from pathlib import Path
-from datetime import datetime
+
+import numpy as np
 
 BASE = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE / "logs"
@@ -53,16 +52,14 @@ def get_best_from_log(symbol):
         return None
     # Extract the section until the next BEST or end
     next_idx = content.find("BEST for", idx + len(marker))
-    if next_idx == -1:
-        section = content[idx:]
-    else:
-        section = content[idx:next_idx]
+    section = content[idx:] if next_idx == -1 else content[idx:next_idx]
 
     best = {"symbol": symbol}
     for line in section.splitlines():
         line = line.strip()
         if line.startswith("EMA") and "SL=" in line:
-            # e.g. "EMA10/40  SL=1.5 RR=2.0 ADX=28 score=0.60  PF=0.73 Ret=Rs.-13149.5 DD=Rs.16365.0 WR=41.2% n=102  WF=0 windows=4"
+            # e.g. "EMA10/40  SL=1.5 RR=2.0 ADX=28 score=0.60  PF=0.73
+            # Ret=Rs.-13149.5 DD=Rs.16365.0 WR=41.2% n=102  WF=0 windows=4"
             parts = line.split()
             best["ema"] = parts[0]
             for p in parts:
@@ -132,7 +129,10 @@ def main():
             # Save progress after each symbol
             results.sort(key=lambda r: float(r.get("wf_score", 0)), reverse=True)
             with open(SWEEP_CSV, "w", newline="") as f:
-                w = csv.DictWriter(f, fieldnames=["symbol", "wf_score", "pf", "n_trades", "ret", "ema", "sl", "rr", "adx"])
+                w = csv.DictWriter(
+                    f,
+                    fieldnames=["symbol", "wf_score", "pf", "n_trades", "ret", "ema", "sl", "rr", "adx"],
+                )
                 w.writeheader()
                 for r in results:
                     w.writerow(r)
@@ -143,11 +143,15 @@ def main():
             print(f"  {sym}: ERROR {e}")
 
     results.sort(key=lambda r: float(r.get("wf_score", 0)), reverse=True)
-    print(f"\n=== SWEEP COMPLETE ===")
+    print("\n=== SWEEP COMPLETE ===")
     print(f"Results: {SWEEP_CSV}")
-    print(f"\nTop 12 by WF score:")
+    print("\nTop 12 by WF score:")
     for r in results[:12]:
-        print(f"  {r['symbol']:12s} WF={float(r.get('wf_score',0)):.3f} PF={float(r.get('pf',0)):.2f} n={r.get('n_trades','?'):>3s} ret=Rs.{float(r.get('ret',0)):.0f}")
+        print(
+            f"  {r['symbol']:12s} WF={float(r.get('wf_score', 0)):.3f} "
+            f"PF={float(r.get('pf', 0)):.2f} n={r.get('n_trades', '?'):>3s} "
+            f"ret=Rs.{float(r.get('ret', 0)):.0f}"
+        )
 
 
 if __name__ == "__main__":

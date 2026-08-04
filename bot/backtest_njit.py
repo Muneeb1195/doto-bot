@@ -44,7 +44,6 @@ def _mtf_signal_at(
     mtf_h4_ema_a,
     close_a,
     atr_a,
-    min_agreement,
 ):
     """Hierarchical bias+trigger MTF signal (AGENTS.md).
 
@@ -233,7 +232,6 @@ def _simulate_core(
     P_correlation_enabled,
     P_htf_misalign_size_mult,
     P_mtf_enabled,
-    P_mtf_agreement_threshold,
     score_a,
     conf_mult_a,
 ):
@@ -408,7 +406,6 @@ def _simulate_core(
                 mtf_h4_ema_a,
                 close_a,
                 atr_a,
-                P_mtf_agreement_threshold,
             )
             if mtf_sig == 0:
                 buy_signal = True

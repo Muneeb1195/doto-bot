@@ -7,12 +7,12 @@ logs/symbol_sweep_YYYYMMDD.csv sorted by WF score.
 Usage:
     python scripts/sweep_symbols.py
 """
-import sys
 import csv
 import subprocess
-import numpy as np
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import numpy as np
 
 BASE = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE / "logs"
@@ -28,7 +28,8 @@ def parse_best(output):
             # e.g. "  BEST for XAU500.raw:"
             best["symbol"] = line.split("BEST for")[1].split(":")[0].strip()
         elif "WF=" in line and "PF=" in line:
-            # e.g. "XAU500.raw  EMA10/40  SL=1.5 RR=2.0 ADX=28 score=0.60  PF=0.73 Ret=Rs.-13149.5 DD=Rs.16365.0 WR=41.2% n=102  WF=0 windows=4"
+            # e.g. "XAU500.raw  EMA10/40  SL=1.5 RR=2.0 ADX=28 score=0.60  PF=0.73
+            # Ret=Rs.-13149.5 DD=Rs.16365.0 WR=41.2% n=102  WF=0 windows=4"
             try:
                 parts = line.split()
                 # Find PF=, Ret=, n=, WF=
@@ -101,11 +102,14 @@ def main():
         for r in results:
             w.writerow(r)
 
-    print(f"\n=== SWEEP COMPLETE ===")
+    print("\n=== SWEEP COMPLETE ===")
     print(f"Results written to {out}")
-    print(f"\nTop 12 by WF score:")
+    print("\nTop 12 by WF score:")
     for r in results[:12]:
-        print(f"  {r['symbol']:12s} WF={r['wf_score']:.3f} PF={r.get('pf',0):.2f} n={r['n_trades']:3d} ret=Rs.{r.get('ret',0):.0f}")
+        print(
+            f"  {r['symbol']:12s} WF={r['wf_score']:.3f} PF={r.get('pf', 0):.2f} "
+            f"n={r['n_trades']:3d} ret=Rs.{r.get('ret', 0):.0f}"
+        )
 
 
 if __name__ == "__main__":

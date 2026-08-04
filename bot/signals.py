@@ -268,7 +268,6 @@ def get_mtf_fused_signal(cfg):
     h4_ema_period = cfg.get("mtf_h4_ema_period", 100)
     m15_fast = cfg.get("mtf_m15_ema_fast", max(5, fast // 2))
     m15_slow = cfg.get("mtf_m15_ema_slow", max(8, slow // 2))
-    min_agreement = cfg.get("mtf_agreement_threshold", 0.67)
 
     # --- Fetch H1 data (ATR + MA crossover) ---
     h1_needed = slow + cfg["atr_period"] + 50

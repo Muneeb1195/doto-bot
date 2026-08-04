@@ -35,10 +35,11 @@ if appdata.exists():
                     f.unlink(missing_ok=True)
 
 print("Lock files cleared. Starting terminal...")
-if platform.system() == "Linux":
-    proc = subprocess.Popen(["wine", MT5_PATH])
-else:
-    proc = subprocess.Popen([MT5_PATH])
+proc = (
+    subprocess.Popen(["wine", MT5_PATH])
+    if platform.system() == "Linux"
+    else subprocess.Popen([MT5_PATH])
+)
 time.sleep(20)
 
 import configparser  # noqa: E402

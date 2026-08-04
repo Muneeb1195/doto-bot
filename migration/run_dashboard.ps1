@@ -1,7 +1,6 @@
 if (-not $env:DASHBOARD_USER) { $env:DASHBOARD_USER = [Environment]::GetEnvironmentVariable("DASHBOARD_USER", "User") }
 if (-not $env:DASHBOARD_PASS) { $env:DASHBOARD_PASS = [Environment]::GetEnvironmentVariable("DASHBOARD_PASS", "User") }
 if (-not $env:DASHBOARD_USER) { $env:DASHBOARD_USER = "admin" }
-if (-not $env:DASHBOARD_PASS) { $env:DASHBOARD_PASS = "dNBQJlzbPuVIwWSC" }
 $RepoDir = Split-Path -Parent $PSScriptRoot
 $Python = Join-Path $RepoDir ".venv\Scripts\pythonw.exe"
 $LogDir = Join-Path $RepoDir "logs"

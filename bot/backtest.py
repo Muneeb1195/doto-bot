@@ -242,14 +242,24 @@ def precompute_fixed(df, params):
 
         if fixed["h4_adx"] is not None and len(fixed["h4_adx"]) > 0:
             fixed["h4_adx_aligned"] = np.array(
-                [fixed["h4_adx"].iloc[i // 4 - 1] if i >= 4 and i // 4 - 1 < len(fixed["h4_adx"]) else np.nan for i in range(n)],
+                [
+                    fixed["h4_adx"].iloc[i // 4 - 1]
+                    if i >= 4 and i // 4 - 1 < len(fixed["h4_adx"])
+                    else np.nan
+                    for i in range(n)
+                ],
                 dtype=float,
             )
         else:
             fixed["h4_adx_aligned"] = np.full(n, np.nan)
         if fixed["d1_adx"] is not None and len(fixed["d1_adx"]) > 0:
             fixed["d1_adx_aligned"] = np.array(
-                [fixed["d1_adx"].iloc[i // 24 - 1] if i >= 24 and i // 24 - 1 < len(fixed["d1_adx"]) else np.nan for i in range(n)],
+                [
+                    fixed["d1_adx"].iloc[i // 24 - 1]
+                    if i >= 24 and i // 24 - 1 < len(fixed["d1_adx"])
+                    else np.nan
+                    for i in range(n)
+                ],
                 dtype=float,
             )
         else:
@@ -356,7 +366,11 @@ class Backtest:
             self.vol_sma = df["tick_volume"].rolling(window=p.get("vf_sma_period", 20)).mean()
 
             tr = pd.DataFrame(
-                {"hl": df["high"] - df["low"], "hc": (df["high"] - df["close"].shift()).abs(), "lc": (df["low"] - df["close"].shift()).abs()}
+                {
+                    "hl": df["high"] - df["low"],
+                    "hc": (df["high"] - df["close"].shift()).abs(),
+                    "lc": (df["low"] - df["close"].shift()).abs(),
+                }
             ).max(axis=1)
             atr_base = tr.ewm(alpha=1.0 / p.get("atr_period", 14), adjust=False).mean()
             if p.get("volatility_filter", False):
@@ -399,14 +413,24 @@ class Backtest:
                     self.htf_close_aligned = self.h4_df["close"].reindex(df["time"], method="ffill")
                 if self.h4_adx is not None and len(self.h4_adx) > 0:
                     self.h4_adx_aligned = np.array(
-                        [self.h4_adx.iloc[i // 4 - 1] if i >= 4 and i // 4 - 1 < len(self.h4_adx) else np.nan for i in range(n)],
+                        [
+                            self.h4_adx.iloc[i // 4 - 1]
+                            if i >= 4 and i // 4 - 1 < len(self.h4_adx)
+                            else np.nan
+                            for i in range(n)
+                        ],
                         dtype=float,
                     )
                 else:
                     self.h4_adx_aligned = np.full(n, np.nan)
                 if self.d1_adx is not None and len(self.d1_adx) > 0:
                     self.d1_adx_aligned = np.array(
-                        [self.d1_adx.iloc[i // 24 - 1] if i >= 24 and i // 24 - 1 < len(self.d1_adx) else np.nan for i in range(n)],
+                        [
+                            self.d1_adx.iloc[i // 24 - 1]
+                            if i >= 24 and i // 24 - 1 < len(self.d1_adx)
+                            else np.nan
+                            for i in range(n)
+                        ],
                         dtype=float,
                     )
                 else:
@@ -1048,7 +1072,6 @@ class Backtest:
           entry_type: "crossover" (all 3 TFs agree) or "pullback" (H4+H1 only)
           confidence: 1.0 (crossover) or 0.67 (pullback) or 0.0
         """
-        p = self.p
         h4_ema = self.mtf_h4_ema.iloc[i] if self.mtf_h4_ema is not None else np.nan
         h1_close = self.df["close"].iloc[i]
         cur_atr = self.atr_series.iloc[i]
@@ -2059,7 +2082,6 @@ class Backtest:
                 b(p.get("correlation_enabled", False)),
                 f(p.get("htf_misalign_size_mult", 0.5)),
                 b(p.get("mtf_enabled", False)),
-                f(p.get("mtf_agreement_threshold", 0.67)),
                 score_a,
                 conf_mult_a,
             )

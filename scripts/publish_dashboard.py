@@ -25,10 +25,8 @@ import csv
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 REPO_DIR = Path(__file__).resolve().parent.parent
@@ -94,7 +92,9 @@ canvas { max-height:220px; }
 <section class="card" id="sec_breakdown">
   <h3>Signal Filter Breakdown</h3>
   <div style="display:flex; gap:24px; flex-wrap:wrap;">
-    <table id="tbl_filters"><thead><tr><th>Symbol</th><th>Signals</th><th>HTF Trend</th><th>Regime Gate</th><th>ML Gate</th><th>Sanity</th><th>No Signal</th><th>Tail Risk</th></tr></thead><tbody></tbody></table>
+    <table id="tbl_filters"><thead><tr><th>Symbol</th><th>Signals</th><th>HTF Trend</th>
+      <th>Regime Gate</th><th>ML Gate</th><th>Sanity</th><th>No Signal</th><th>Tail Risk</th>
+      </tr></thead><tbody></tbody></table>
   </div>
 </section>
 
@@ -108,7 +108,8 @@ canvas { max-height:220px; }
 
 <section class="card">
   <h3>Performance by Symbol</h3>
-  <table id="tbl_perf"><thead><tr><th>Symbol</th><th>Trades</th><th>Win Rate</th><th>Avg Pips</th></tr></thead><tbody></tbody></table>
+  <table id="tbl_perf"><thead><tr><th>Symbol</th><th>Trades</th><th>Win Rate</th>
+    <th>Avg Pips</th></tr></thead><tbody></tbody></table>
 </section>
 
 <section class="card">
@@ -120,7 +121,10 @@ canvas { max-height:220px; }
 const CLOSED = ["CLOSE","REVERSAL","MR_EXIT","CHANDELIER","MANUAL_CLOSE"];
 let state = null, trades = null;
 
-function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
 function pct(x) { return (x === null || x === undefined) ? "&ndash;" : (x * 100).toFixed(1) + "%"; }
 
 async function load() {
@@ -129,7 +133,8 @@ async function load() {
 
   document.getElementById("m_trades").textContent = trades.total_trades;
   document.getElementById("m_win").textContent = pct(trades.win_rate);
-  document.getElementById("m_pf").textContent = trades.profit_factor === null ? "&ndash;" : trades.profit_factor.toFixed(2);
+  document.getElementById("m_pf").textContent =
+    trades.profit_factor === null ? "&ndash;" : trades.profit_factor.toFixed(2);
 
   const regimeCounts = state.regime_counts || {};
   const dominant = Object.entries(regimeCounts).sort((a,b) => b[1]-a[1])[0];

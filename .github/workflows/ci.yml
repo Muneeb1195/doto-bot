@@ -64,7 +64,7 @@ jobs:
       - name: Grep fallback for obvious secrets
         run: |
           echo "Scanning tracked .py/.ps1 for hardcoded secret assignments..."
-          matches=$(git ls-files '*.py' '*.ps1' | grep -vE 'tests/' | xargs grep -RIinE '(password|DASHBOARD_PASS|api_key|apikey|secret|token)\s*[:=]\s*['"'"'"][^'"'"'"'\n]{4,}' 2>/dev/null || true)
+          matches=$(git ls-files '*.py' '*.ps1' | grep -vE 'tests/' | xargs grep -RIinE '(password|DASHBOARD_PASS|api_key|apikey|secret|token)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{4,}' 2>/dev/null || true)
           if [ -n "$matches" ]; then
             echo "::error::Possible hardcoded secret found:"
             echo "$matches"
@@ -83,7 +83,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          # MetaTrader5 ships a Windows-only wheel, so the CI runner (Linux)
+          # cannot install it. Tests mock the module at sys.modules level in
+          # tests/conftest.py, so the real package is not required.
+          grep -vE '^MetaTrader5' requirements.txt > /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt
           pip install pytest pytest-mock
       - name: Run tests
         run: pytest tests/ -v --tb=short

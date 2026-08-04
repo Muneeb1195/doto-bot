@@ -398,7 +398,7 @@ def fetch_m15_data(symbol, years=3):
     return df_m15
 
 
-_PRECOMPUTE_CACHE = {}
+_PRECOMPUTE_CACHE: dict[tuple[int, ...], dict] = {}
 
 
 def _get_fixed(df, params):
@@ -844,10 +844,9 @@ def main():
     fast_default = backtest._njit_available()
     fast = fast_default if args.fast is None else args.fast
 
+    import platform
     import subprocess
     import time
-
-    import platform
 
     import MetaTrader5 as mt5
 
