@@ -15,6 +15,16 @@ if _bot_dir not in sys.path:
     sys.path.insert(0, _bot_dir)
 
 
+# mt5linux 1.1.0 tries to start a Docker container when its MetaTrader5 client
+# is instantiated. CI runners have no Docker daemon, and mt5linux 1.1.0 also has
+# a '_port' attribute bug. Mock the module at conftest module level so it is in
+# place BEFORE test collection imports bot/mt5_connect.py (which instantiates
+# the client at module import time). Without this, collection fails on 6 modules.
+sys.modules.setdefault("mt5linux", MagicMock())
+sys.modules.setdefault("mt5linux.metatrader5", MagicMock())
+sys.modules.setdefault("mt5linux._container_manager", MagicMock())
+
+
 @pytest.fixture(autouse=True, scope="session")
 def mock_mt5():
     sys.modules["MetaTrader5"] = MagicMock()
