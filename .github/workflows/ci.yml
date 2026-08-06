@@ -86,7 +86,7 @@ jobs:
           # MetaTrader5 ships a Windows-only wheel, so the CI runner (Linux)
           # cannot install it. Tests mock the module at sys.modules level in
           # tests/conftest.py, so the real package is not required.
-          grep -vE '^MetaTrader5' requirements.txt > /tmp/requirements-ci.txt
+          grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
           pip install pytest pytest-mock
       - name: Run tests
