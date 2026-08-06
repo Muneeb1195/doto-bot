@@ -103,6 +103,12 @@ def patch_mt5_module(mt5_sim):
         if mod is not None:
             saved[name] = mod
     sys.modules["MetaTrader5"] = mt5_sim
+    # On Linux, mt5_connect instantiates mt5linux's client (mocked in conftest),
+    # so its module-level ``mt5`` is a MagicMock — not the simulator.  Override it
+    # so execution.check_scale_out / check_chandelier_exit route close requests
+    # through the simulator instead of into a dead MagicMock.
+    import bot.mt5_connect as _mt5c
+    _mt5c.mt5 = mt5_sim
     try:
         yield
     finally:
