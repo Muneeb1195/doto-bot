@@ -140,11 +140,15 @@ def get_positions(symbol):
 
 def get_filling_mode(symbol, default=None):
     sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
-    if sinfo and hasattr(sinfo, "filling_mode") and sinfo.filling_mode and sinfo.filling_mode > 0:
-        if sinfo.filling_mode & mt5.ORDER_FILLING_IOC:
-            return mt5.ORDER_FILLING_IOC
-        if sinfo.filling_mode & mt5.ORDER_FILLING_FOK:
-            return 0
+    try:
+        if sinfo and hasattr(sinfo, "filling_mode") and sinfo.filling_mode and sinfo.filling_mode > 0:
+            if sinfo.filling_mode & mt5.ORDER_FILLING_IOC:
+                return mt5.ORDER_FILLING_IOC
+            if sinfo.filling_mode & mt5.ORDER_FILLING_FOK:
+                return 0
+    except (TypeError, AttributeError):
+        # sinfo.filling_mode is not an int (e.g. MagicMock in tests)
+        pass
     return default or mt5.ORDER_FILLING_IOC
 
 

@@ -89,6 +89,9 @@ def optimize_one_symbol(symbol, mode="weekly"):
     return csv_path
 
 
+optimize_symbol = optimize_one_symbol
+
+
 def pick_best_params(csv_path, symbol):
     logging.info(f"  Picking plateau params for {symbol}...")
     try:
