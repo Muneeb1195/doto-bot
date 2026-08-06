@@ -96,7 +96,34 @@ def _max_workers():
     return max(1, (os.cpu_count() or 4) - 1)
 
 
-def fetch_data(symbol, years=3):
+def load_csv_data_optimize(symbol):
+    """Load pre-exported H1 bars from data/history/<SYMBOL>_H1.csv for offline optimization."""
+    from train_model import load_csv_data_train
+    csv_path = BASE_DIR / "data" / "history" / f"{symbol.replace('.', '_')}_H1.csv"
+    if not csv_path.exists():
+        print(f"  CSV not found: {csv_path}")
+        return None, None
+    df = load_csv_data_train(symbol, tf_name="H1")
+    if df is None:
+        return None, None
+    # Reuse parallel_optimize's info reconstruction from settings
+    point = 0.01
+    tick_value = 1.0
+    volume_step = 0.01
+    if settings.has_section("SYMBOL_POINTS"):
+        if settings.has_option("SYMBOL_POINTS", symbol):
+            point = float(settings.get("SYMBOL_POINTS", symbol))
+        if settings.has_option("SYMBOL_POINTS", symbol + "_tick"):
+            tick_value = float(settings.get("SYMBOL_POINTS", symbol + "_tick"))
+        if settings.has_option("SYMBOL_POINTS", symbol + "_vstep"):
+            volume_step = float(settings.get("SYMBOL_POINTS", symbol + "_vstep"))
+    print(f"  Loaded {len(df)} bars from CSV ({df['time'].iloc[0].date()} to {df['time'].iloc[-1].date()})")
+    return df, {"point": point, "tick_value": tick_value, "volume_step": volume_step}
+
+
+def fetch_data(symbol, years=3, csv_mode=False):
+    if csv_mode:
+        return load_csv_data_optimize(symbol)
     import time
 
     import MetaTrader5 as mt5
@@ -380,13 +407,16 @@ def fetch_m1_data(symbol, years=3):
 MAX_M15_BARS = 80000  # per-request page size (MT5 API cap observed ~80k)
 
 
-def fetch_m15_data(symbol, years=3):
+def fetch_m15_data(symbol, years=3, csv_mode=False):
     """Fetch M15 bars for the full window via backward paging.
 
     Previously a single copy_rates_from call capped at MAX_M15_BARS (~2.3y of
     M15), truncating the early part of a 3y window. Paging removes the
     per-request cap; total depth is still bounded by broker server history.
     """
+    if csv_mode:
+        from train_model import load_csv_data_train
+        return load_csv_data_train(symbol, tf_name="M15")
     import MetaTrader5 as mt5
     from mt5_connect import fetch_rates_paged
 
@@ -837,6 +867,7 @@ def main():
         "--no-fast", dest="fast", action="store_false", help="Force the pure-Python reference backtest loop"
     )
     parser.add_argument("--cpcv-paths", type=int, default=30, help="Number of CPCC paths (default 30; lower = faster)")
+    parser.add_argument("--csv", action="store_true", help="Use pre-exported CSV data (no MT5 terminal needed)")
     args = parser.parse_args()
 
     import backtest
@@ -853,48 +884,51 @@ def main():
     mt5_path = settings.get("MT5", "path", fallback="C:\\Program Files\\MetaTrader 5\\terminal64.exe")
     timeout_ms = settings.getint("MT5", "timeout_ms", fallback=180000)
 
-    ok = mt5.initialize()
-    if not ok:
-        ok = mt5.initialize(
-            path=mt5_path,
-            login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
+    if not args.csv:
+        ok = mt5.initialize()
+        if not ok:
+            ok = mt5.initialize(
+                path=mt5_path,
+                login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
+                password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
+                server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+                timeout=timeout_ms,
+            )
+        if not ok:
+            print(f"MT5 init failed ({mt5.last_error()}) - restarting terminal...")
+            if platform.system() == "Linux":
+                subprocess.run(["pkill", "-f", "terminal64.exe"], capture_output=True)
+                subprocess.run(["pkill", "-f", "winedevice.exe"], capture_output=True)
+            else:
+                subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], capture_output=True)
+                subprocess.run(["taskkill", "/F", "/IM", "winedevice.exe"], capture_output=True)
+            time.sleep(5)
+            if platform.system() == "Linux":
+                subprocess.Popen(["wine", mt5_path])
+            else:
+                subprocess.Popen([mt5_path])
+            time.sleep(15)
+            ok = mt5.initialize(
+                path=mt5_path,
+                login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
+                password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
+                server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+                timeout=timeout_ms,
+            )
+        if not ok:
+            print(f"MT5 init failed: {mt5.last_error()}")
+            return
+        authorized = mt5.login(
+            int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
             password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
             server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
-            timeout=timeout_ms,
         )
-    if not ok:
-        print(f"MT5 init failed ({mt5.last_error()}) - restarting terminal...")
-        if platform.system() == "Linux":
-            subprocess.run(["pkill", "-f", "terminal64.exe"], capture_output=True)
-            subprocess.run(["pkill", "-f", "winedevice.exe"], capture_output=True)
-        else:
-            subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], capture_output=True)
-            subprocess.run(["taskkill", "/F", "/IM", "winedevice.exe"], capture_output=True)
-        time.sleep(5)
-        if platform.system() == "Linux":
-            subprocess.Popen(["wine", mt5_path])
-        else:
-            subprocess.Popen([mt5_path])
-        time.sleep(15)
-        ok = mt5.initialize(
-            path=mt5_path,
-            login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-            password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-            server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
-            timeout=timeout_ms,
-        )
-    if not ok:
-        print(f"MT5 init failed: {mt5.last_error()}")
-        return
-    authorized = mt5.login(
-        int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-        password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-        server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
-    )
-    if not authorized:
-        print(f"MT5 login failed: {mt5.last_error()}")
-        mt5.shutdown()
-        return
+        if not authorized:
+            print(f"MT5 login failed: {mt5.last_error()}")
+            mt5.shutdown()
+            return
+    else:
+        print("CSV mode: skipping MT5 initialization (using pre-exported data)")
 
     symbols = (
         [s.strip() for s in settings.get("PORTFOLIO", "symbols", fallback="").split(",") if s.strip()]
@@ -933,8 +967,8 @@ def main():
     for symbol in symbols:
         print(f"\nFetching {symbol}...")
         # Fetch M15 BEFORE H1 (MT5 Python API bug: H1 fetch corrupts subsequent M15 fetches)
-        df_m15 = fetch_m15_data(symbol, args.years)
-        data = fetch_data(symbol, args.years)
+        df_m15 = fetch_m15_data(symbol, args.years, csv_mode=args.csv)
+        data = fetch_data(symbol, args.years, csv_mode=args.csv)
         if data is None or data[0] is None:
             print(f"  SKIP {symbol}")
             continue

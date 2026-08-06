@@ -90,13 +90,38 @@ def _resolve_label_params(symbol):
     return sl_mult * rr, sl_mult
 
 
-def fetch_data(symbol, years=3, tf=mt5.TIMEFRAME_H1):
+def load_csv_data_train(symbol, tf_name="H1"):
+    """Load pre-exported bars from data/history/<SYMBOL>_<TF>.csv.
+
+    Returns a DataFrame (time as datetime) or None if CSV missing.
+    """
+    csv_path = BASE_DIR / "data" / "history" / f"{symbol.replace('.', '_')}_{tf_name}.csv"
+    if not csv_path.exists():
+        return None
+    df = pd.read_csv(csv_path)
+    if "time" not in df.columns:
+        return None
+    if pd.api.types.is_numeric_dtype(df["time"]):
+        df["time"] = pd.to_datetime(df["time"], unit="s")
+    else:
+        df["time"] = pd.to_datetime(df["time"])
+    df = df.sort_values("time").reset_index(drop=True)
+    if "spread" not in df.columns:
+        df["spread"] = 0
+    return df
+
+
+def fetch_data(symbol, years=3, tf="H1", csv_mode=False):
+    if csv_mode:
+        return load_csv_data_train(symbol, tf_name=tf)
     if not mt5.initialize():
         print(f"Failed to initialize MT5: {mt5.last_error()}")
         return None
+    import MetaTrader5 as mt5_mod
+    tf_const = getattr(mt5_mod, f"TIMEFRAME_{tf}", mt5_mod.TIMEFRAME_H1)
     end = datetime.now()
     start = end - timedelta(days=int(years * 365))
-    rates = mt5.copy_rates_range(symbol, tf, start, end)
+    rates = mt5_mod.copy_rates_range(symbol, tf_const, start, end)
     if rates is None or len(rates) == 0:
         print(f"No data for {symbol}")
         return None
@@ -107,7 +132,7 @@ def fetch_data(symbol, years=3, tf=mt5.TIMEFRAME_H1):
     return df
 
 
-def fetch_m1_data(symbol, years=3):
+def fetch_m1_data(symbol, years=3, csv_mode=False):
     """Fetch M1 OHLCV+spread bars for historical orderflow feature backfill.
 
     Orderflow features are otherwise only computed live for the last bar, which
@@ -117,6 +142,8 @@ def fetch_m1_data(symbol, years=3):
     don't silently truncate the window. Returns None (graceful) if M1 is
     unavailable.
     """
+    if csv_mode:
+        return load_csv_data_train(symbol, tf_name="M1")
     if not mt5.initialize():
         return None
     from mt5_connect import fetch_rates_paged
@@ -680,6 +707,7 @@ def train_model_for_symbol(
     regression=False,
     drift_stats=False,
     tft=False,
+    csv_mode=False,
 ):
     print(f"\n{'=' * 60}")
     print(f"Training model for {symbol}")
@@ -693,12 +721,12 @@ def train_model_for_symbol(
         f"tp_atr={tp_atr_mult:.2f} sl_atr={sl_atr_mult:.2f} max_hold={max_hold}"
     )
 
-    df = fetch_data(symbol, years)
+    df = fetch_data(symbol, years, csv_mode=csv_mode)
     if df is None or len(df) < 200:
         return None
 
     print(f"Computing features ({len(FEATURE_COLS)} cols)...")
-    df_m1 = fetch_m1_data(symbol, years)
+    df_m1 = fetch_m1_data(symbol, years, csv_mode=csv_mode)
     feature_data, full_df = prepare_features(df, symbol=symbol, m1_df=df_m1)
     print(f"Feature matrix: {feature_data.shape}")
 
@@ -960,10 +988,11 @@ def main():
     parser.add_argument(
         "--tft", action="store_true", help="Train TFT as 4th ensemble member alongside XGBoost/LightGBM"
     )
+    parser.add_argument("--csv", action="store_true", help="Use pre-exported CSV data instead of MT5 terminal")
     args = parser.parse_args()
 
     print(f"ML Model Trainer — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"Config: tp_atr={args.tp_atr}, sl_atr={args.sl_atr}, max_hold={args.max_hold}, years={args.years}")
+    print(f"Config: tp_atr={args.tp_atr}, sl_atr={args.sl_atr}, max_hold={args.max_hold}, years={args.years}, csv={args.csv}")
 
     if args.retrain_all:
         symbols = [
@@ -980,9 +1009,10 @@ def main():
     else:
         symbols = [s.strip() for s in args.symbols.split(",")]
 
-    if not mt5.initialize():
-        print(f"MT5 init failed: {mt5.last_error()}")
-        return
+    if not args.csv:
+        if not mt5.initialize():
+            print(f"MT5 init failed: {mt5.last_error()}")
+            return
 
     if args.pool:
         classes = set(ASSET_CLASS_MAP.get(s) for s in symbols if s in ASSET_CLASS_MAP)
@@ -1011,6 +1041,7 @@ def main():
                 regression=args.regression,
                 drift_stats=args.drift_stats,
                 tft=args.tft,
+                csv_mode=args.csv,
             )
         except Exception as e:
             import traceback
@@ -1018,7 +1049,8 @@ def main():
             print(f"Error training {symbol}: {e}")
             traceback.print_exc()
 
-    mt5.shutdown()
+    if not args.csv:
+        mt5.shutdown()
     print("\nDone.")
 
 

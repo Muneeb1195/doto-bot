@@ -9,7 +9,6 @@ models_phase1_oos/
 models_pre_audit_bak/
 models/version_backups/
 backups/
-data/history/
 dashboard_state.json
 data/dashboard_state.json
 data/bot_state.json

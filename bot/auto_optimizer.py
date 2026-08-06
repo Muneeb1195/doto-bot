@@ -44,12 +44,14 @@ def _script_path(name):
     return str(script)
 
 
-def train_models():
+def train_models(csv_mode=False):
     logging.info(f"{'=' * 60}")
     logging.info("Phase 1: Training all ML models")
     logging.info(f"{'=' * 60}")
     trainer = _script_path("train_model.py")
     cmd = [sys.executable, trainer, "--retrain-all", "--symbols", "ALL", "--years", str(DATA_YEARS)]
+    if csv_mode:
+        cmd.append("--csv")
     logging.info(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
     for line in result.stdout.splitlines():
@@ -62,7 +64,7 @@ def train_models():
         logging.info("ML training complete.")
 
 
-def optimize_one_symbol(symbol, mode="weekly"):
+def optimize_one_symbol(symbol, mode="weekly", csv_mode=False):
     logging.info(f"\n{'─' * 60}")
     logging.info(f"Phase 2: Optimizing {symbol} ({mode})")
     logging.info(f"{'─' * 60}")
@@ -74,6 +76,8 @@ def optimize_one_symbol(symbol, mode="weekly"):
         "--full-grid" if mode == "weekly" else "--cpcv",
         "--years", str(years),
     ]
+    if csv_mode:
+        cmd.append("--csv")
     logging.info(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=OPTIMIZER_TIMEOUT)
     for line in result.stdout.splitlines():
@@ -211,6 +215,7 @@ def main():
     parser = argparse.ArgumentParser(description="Auto-Optimizer for Doto MT5 bot")
     parser.add_argument("--apply", action="store_true", help="Apply best params to settings.ini and restart bot")
     parser.add_argument("--skip-train", action="store_true", help="Skip ML model retraining")
+    parser.add_argument("--csv", action="store_true", help="Use pre-exported CSV data (no MT5 terminal, for CI)")
     parser.add_argument(
         "--mode", type=str, default="weekly", choices=["weekly", "monthly", "train-only"],
         help="weekly=full-grid (default), monthly=CPCV, train-only=skip optimization",
@@ -221,6 +226,8 @@ def main():
     logging.info("Auto-Optimizer Started")
     logging.info(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     logging.info(f"Mode: {args.mode.upper()} / {'APPLY' if args.apply else 'DRY-RUN'}")
+    if args.csv:
+        logging.info("CSV MODE: no MT5 terminal — outputting params to JSON release artifact")
     logging.info("=" * 60)
 
     symbols, settings = load_portfolio()
@@ -230,18 +237,18 @@ def main():
     logging.info(f"Portfolio: {', '.join(symbols)} ({len(symbols)} symbols)")
 
     if not args.skip_train:
-        train_models()
+        train_models(csv_mode=args.csv)
 
     if args.mode == "train-only":
         logging.info("train-only mode — optimization skipped")
         return
 
-    if args.apply:
+    if args.apply and not args.csv:
         stop_bot()
 
     all_best = {}
     for symbol in symbols:
-        csv_path = optimize_one_symbol(symbol, mode=args.mode)
+        csv_path = optimize_one_symbol(symbol, mode=args.mode, csv_mode=args.csv)
         if csv_path is None:
             continue
         rec = pick_best_params(csv_path, symbol)
@@ -261,6 +268,23 @@ def main():
             f"SL={rec['sl']:.1f} RR={rec['rr']:.1f} ADX={int(rec['adx'])} "
             f"score={rec['score']:.2f} WF={rec['wf_score']:.1f}"
         )
+
+    if args.csv:
+        import json
+        params_out = {}
+        for sym, rec in all_best.items():
+            params_out[sym] = {
+                "ema_fast_period": int(rec["ema_fast"]),
+                "ema_slow_period": int(rec["ema_slow"]),
+                "atr_sl_multiplier": float(rec["sl"]),
+                "risk_reward_ratio": float(rec["rr"]),
+                "adx_trend_threshold": int(rec["adx"]),
+                "scoring_min_entry": float(rec.get("score", 0.6)),
+            }
+        out_path = BASE_DIR / "strategy-params.json"
+        out_path.write_text(json.dumps(params_out, indent=2))
+        logging.info(f"Strategy params written to {out_path}")
+        return
 
     if args.apply:
         _, settings = load_portfolio()

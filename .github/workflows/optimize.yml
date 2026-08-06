@@ -1,0 +1,77 @@
+name: Optimize Strategy
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'       # Weekly Sun 02:00 UTC
+    - cron: '0 2 1-7 * 0'     # Monthly CPCV (1st Sun)
+  workflow_dispatch:
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Determine mode
+        id: mode
+        run: |
+          DOW=$(date +%d)
+          DOM=$(date +%u)
+          if [ "$DOW" -le 7 ] && [ "$DOM" -eq 7 ]; then
+            echo "mode=monthly" >> $GITHUB_OUTPUT
+          else
+            echo "mode=weekly" >> $GITHUB_OUTPUT
+          fi
+          echo "Selected mode: ${{ steps.mode.outputs.mode }}"
+      - name: Run optimizer
+        run: |
+          python bot/auto_optimizer.py --csv --mode ${{ steps.mode.outputs.mode }} --skip-train
+      - name: Package params
+        run: |
+          python -c "
+          import csv, json, glob, os, sys
+          result = {}
+          for path in sorted(glob.glob('logs/optimize_*.csv')):
+              sym = os.path.basename(path).replace('optimize_','').replace('.csv','').replace('_','.')
+              with open(path) as f:
+                  reader = csv.DictReader(f)
+                  rows = list(reader)
+              if not rows:
+                  continue
+              best = max(rows, key=lambda r: float(r.get('wf_score', 0) or 0))
+              result[sym] = {
+                  'ema_fast_period': int(best.get('ema_fast', 10)),
+                  'ema_slow_period': int(best.get('ema_slow', 40)),
+                  'atr_sl_multiplier': float(best.get('sl', 1.5)),
+                  'risk_reward_ratio': float(best.get('rr', 2.0)),
+                  'adx_trend_threshold': int(best.get('adx', 25)),
+                  'scoring_min_entry': float(best.get('score', 0.55)),
+              }
+          with open('strategy-params.json', 'w') as f:
+              json.dump(result, f, indent=2)
+          print(f'Params for {len(result)} symbols written to strategy-params.json')
+          "
+      - name: Create release
+        run: |
+          TAG="optimize-$(date +%Y%m%d-%H%M)"
+          gh release create "$TAG" strategy-params.json \
+            --title "Strategy Params $(date +%Y-%m-%d)" \
+            --notes "${{ steps.mode.outputs.mode }} optimization results"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          curl -sS -H "Content-Type: application/json" \
+            -d "{\"content\":\"Optimization (${{ steps.mode.outputs.mode }}): $STATUS\"}" \
+            "${{ secrets.DISCORD_WEBHOOK }}" || true

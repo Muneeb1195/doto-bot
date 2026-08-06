@@ -1,0 +1,59 @@
+name: Train Models
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Sun 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Train models
+        run: |
+          python bot/train_model.py --csv --symbols ALL --years 2
+      - name: Package artifacts
+        run: |
+          tar czf models.tar.gz models/*.pkl models/*.calib.npz 2>/dev/null || tar czf models.tar.gz models/*.pkl
+          python -c "
+          import csv, json, glob, os
+          result = {}
+          for path in sorted(glob.glob('logs/optimize_*.csv')):
+              sym = os.path.basename(path).replace('optimize_','').replace('.csv','').replace('_','.')
+              with open(path) as f:
+                  reader = csv.DictReader(f)
+                  rows = list(reader)
+              if not rows:
+                  continue
+              best = max(rows, key=lambda r: float(r.get('wf_score', 0) or 0))
+              result[sym] = {k: v for k, v in best.items()}
+          with open('strategy-params.json', 'w') as f:
+              json.dump(result, f, indent=2)
+          print(f'Params for {len(result)} symbols')
+          "
+      - name: Create release
+        run: |
+          TAG="train-$(date +%Y%m%d-%H%M)"
+          gh release create "$TAG" models.tar.gz strategy-params.json \
+            --title "ML Models $(date +%Y-%m-%d)" \
+            --notes "Weekly retrain — models + strategy params"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          curl -sS -H "Content-Type: application/json" \
+            -d "{\"content\":\"ML Training: $STATUS — $TAG\"}" \
+            "${{ secrets.DISCORD_WEBHOOK }}" || true
