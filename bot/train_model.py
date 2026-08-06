@@ -6,8 +6,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import joblib
-import MetaTrader5 as mt5
 import numpy as np
+
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
 import pandas as pd
 from sklearn.metrics import classification_report, f1_score
 
