@@ -1,4 +1,4 @@
-# Deploying the Doto MT5 Bot to the homer Server (CachyOS / Arch)
+# Deploying the Doto MT5 Bot to the home-server (homer) Server (CachyOS / Arch)
 
 This runbook walks through deploying the bot to a headless x86_64 Arch-based
 (CachyOS) box. The bot uses a **native Linux Python** process talking to an MT5
@@ -12,15 +12,15 @@ terminal running **under Wine** via the `mt5linux` RPyC bridge on
 
 ## 1. Prerequisites
 
-- homer server reachable over Tailscale (SSH works).
+- home-server reachable over Tailscale (SSH works).
 - The repo is already transferred with `rsync` (see §2).
-- `config/credentials.ini` exists on homer **but is never committed to git**.
+- `config/credentials.ini` exists on home-server **but is never committed to git**.
 - A broker account whose MT5 login will be used on the Wine terminal.
 
 Check the server:
 
 ```bash
-ssh homer 'uname -m && cat /etc/os-release | head -3 && free -h'
+home-server 'uname -m && cat /etc/os-release | head -3 && free -h'
 ```
 
 Expected: `x86_64`, `CachyOS`/Arch, enough RAM for MT5 under Wine (~1 GB).
@@ -30,26 +30,26 @@ Expected: `x86_64`, `CachyOS`/Arch, enough RAM for MT5 under Wine (~1 GB).
 ## 2. Transfer the repo (rsync, carries gitignored files)
 
 The dev box has `models/*.pkl`, `config/credentials.ini`, and log/data files
-that are gitignored but **required on homer**. They travel by rsync, never by
+that are gitignored but **required on home-server**. They travel by rsync, never by
 git.
 
 ```bash
 # From the dev box, inside the repo:
 rsync -avz --exclude='.git' --exclude='.venv*' \
   --exclude='wine' --exclude='backups' --exclude='__pycache__' \
-  -e ssh ./ homer:~/doto-mt5-bot/
+  -e ssh ./ home-server:~/doto-mt5-bot/
 ```
 
-- Keeps `.venv*` off the wire (a fresh Linux venv is created on homer).
+- Keeps `.venv*` off the wire (a fresh Linux venv is created on home-server).
 - `backups/` can be large (hundreds of MB) — skip it; `bot/backup.py`
-  regenerates archives on homer.
+  regenerates archives on home-server.
 
 If you later clone from the private git repo instead, models/credentials must
 be rsynced separately:
 
 ```bash
-rsync -avz -e ssh ./models homer:~/doto-mt5-bot/models/
-rsync -avz -e ssh ./config/credentials.ini homer:~/doto-mt5-bot/config/
+rsync -avz -e ssh ./models home-server:~/doto-mt5-bot/models/
+rsync -avz -e ssh ./config/credentials.ini home-server:~/doto-mt5-bot/config/
 ```
 
 ---
@@ -57,7 +57,7 @@ rsync -avz -e ssh ./config/credentials.ini homer:~/doto-mt5-bot/config/
 ## 3. Place credentials (manual, one-time)
 
 ```bash
-ssh homer
+home-server
 mkdir -p ~/doto-mt5-bot/config ~/doto-mt5-bot/logs ~/doto-mt5-bot/models
 nano ~/doto-mt5-bot/config/credentials.ini
 ```
@@ -88,7 +88,7 @@ systemctl --user restart doto-dashboard
 ## 4. Run the deploy script
 
 ```bash
-ssh homer
+home-server
 cd ~/doto-mt5-bot
 bash scripts/deploy-linux.sh
 ```
@@ -163,7 +163,7 @@ MT5 reconnected: <name> | Balance: Rs.<balance>
   to the public GitHub Pages site
   https://muneeb1195.github.io/doto-dashboard/ (balances, positions, and
   per-trade P&L are never published). Log: `logs/publish_dashboard.log`.
-  One-time setup on homer: `gh auth login` then
+  One-time setup on home-server: `gh auth login` then
   `git clone -b gh-pages https://github.com/Muneeb1195/doto-dashboard.git .dashboard_public`
   inside the repo (the publisher clones it automatically on first run if missing).
 
@@ -205,6 +205,6 @@ sudo loginctl disable-linger $USER
   the mt5linux RPyC path on Linux.
 - MT5 first connect under Wine can take 100+ seconds; the RPyC service
   (`Restart=always`, RestartSec=15) will keep retrying until MT5 is ready.
-- The dashboard is two-tier: full data stays on homer (`:8501`, reachable via
+- The dashboard is two-tier: full data stays on home-server (`:8501`, reachable via
   `tailscale serve 8501`); a sanitized snapshot is published to GitHub Pages by
   `scripts/publish_dashboard.py` (§7 of this doc / see that script).
