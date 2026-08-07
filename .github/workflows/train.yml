@@ -5,6 +5,9 @@ on:
     - cron: '0 3 * * 0'  # Sun 03:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   train:
     runs-on: ubuntu-latest
@@ -26,7 +29,7 @@ jobs:
           python bot/train_model.py --csv --symbols ALL --years 2
       - name: Package artifacts
         run: |
-          tar czf models.tar.gz models/*.pkl models/*.calib.npz 2>/dev/null || tar czf models.tar.gz models/*.pkl
+          tar czf models.tar.gz models/*.pkl models/*.calib.npz 2>/dev/null || true
           python -c "
           import csv, json, glob, os
           result = {}

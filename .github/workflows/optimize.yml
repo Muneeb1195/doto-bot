@@ -6,6 +6,9 @@ on:
     - cron: '0 2 1-7 * 0'     # Monthly CPCV (1st Sun)
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   optimize:
     runs-on: ubuntu-latest
