@@ -104,7 +104,7 @@ original reference):
 | 3 | Install Windows Python 3.12 under Wine; `wine python -m pip install MetaTrader5 mt5linux rpyc` |
 | 4 | Create native venv `~/.venv`; `pip install mt5linux` then `requirements.txt` |
 | 5 | systemd **user** services: xvfb-mt5, mt5, mt5-rpyc, doto-bot, doto-dashboard, doto-news |
-| 6 | systemd **user** timers: doto-optimizer (Sun 02:00, `--mode weekly --apply`), doto-retrain (Sun 03:00, `--years 3`), doto-backup (daily 04:00), doto-dashboard-publish (every 5 min) |
+| 6 | systemd **user** timers: doto-optimizer (Sun 02:00, `--mode weekly --apply`), doto-retrain (Sun 03:00, `--years 3`), doto-backup (daily 04:00) |
 | 7 | Wrapper scripts `start-mt5.sh` (with `/portable`), `start-rpyc.sh` (`mt5linux` on :18812), `redeploy.sh`, `update-and-redeploy.sh` |
 | 8 | Point `settings.ini` `[MT5] path` at the Wine terminal64.exe |
 | 9 | `loginctl enable-linger`, daemon-reload, enable + start everything in order |
@@ -158,14 +158,6 @@ MT5 reconnected: <name> | Balance: Rs.<balance>
 - **Check timers**: `systemctl --user list-timers`.
 - **Optimization run**: weekly Sun 02:00 via doto-optimizer; the bot is paused
   (`stop_bot()`) before optimization and restarted after settings write.
-- **Public dashboard**: `doto-dashboard-publish.timer` runs
-  `scripts/publish_dashboard.py` every 5 minutes, pushing a sanitized snapshot
-  to the public GitHub Pages site
-  https://muneeb1195.github.io/doto-dashboard/ (balances, positions, and
-  per-trade P&L are never published). Log: `logs/publish_dashboard.log`.
-  One-time setup on home-server: `gh auth login` then
-  `git clone -b gh-pages https://github.com/Muneeb1195/doto-dashboard.git .dashboard_public`
-  inside the repo (the publisher clones it automatically on first run if missing).
 
 ---
 
@@ -188,8 +180,7 @@ For prolonged outages, consider a UPS — the box is a low-power Intel NUC
 
 ```bash
 systemctl --user disable --now doto-optimizer.timer doto-retrain.timer doto-backup.timer \
-  doto-dashboard-publish.timer \
-  doto-bot doto-dashboard doto-news mt5-rpyc mt5 xvfb-mt5
+  doto-bot doto-dashboard doto-news mt5 xvfb-mt5
 rm -rf ~/.config/systemd/user/doto-* ~/.config/systemd/user/xvfb-mt5.service ~/.config/systemd/user/mt5.service
 sudo loginctl disable-linger $USER
 ```
@@ -205,6 +196,4 @@ sudo loginctl disable-linger $USER
   the mt5linux RPyC path on Linux.
 - MT5 first connect under Wine can take 100+ seconds; the RPyC service
   (`Restart=always`, RestartSec=15) will keep retrying until MT5 is ready.
-- The dashboard is two-tier: full data stays on home-server (`:8501`, reachable via
-  `tailscale serve 8501`); a sanitized snapshot is published to GitHub Pages by
-  `scripts/publish_dashboard.py` (§7 of this doc / see that script).
+- The dashboard runs on the home-server at `http://<tailscale-ip>:8501` (reachable via Tailscale). HTTP Basic auth via `DASHBOARD_USER`/`DASHBOARD_PASS` env vars.

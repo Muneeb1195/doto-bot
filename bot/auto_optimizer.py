@@ -24,7 +24,7 @@ logging.basicConfig(
     handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
 )
 
-DATA_YEARS = 2
+DATA_YEARS = 3
 OPTIMIZER_TIMEOUT = 7200
 
 

@@ -374,33 +374,6 @@ Persistent=true
 WantedBy=timers.target
 SVC
 
-cat > "$SYSTEMD_USER_DIR/doto-dashboard-publish.service" << SVC
-[Unit]
-Description=Doto Public Dashboard Publisher
-
-[Service]
-Type=oneshot
-WorkingDirectory=$REPO_DIR
-ExecStart=$REPO_DIR/.venv/bin/python scripts/publish_dashboard.py
-StandardOutput=append:$REPO_DIR/logs/publish_dashboard.log
-StandardError=append:$REPO_DIR/logs/publish_dashboard.log
-
-[Install]
-WantedBy=default.target
-SVC
-
-cat > "$SYSTEMD_USER_DIR/doto-dashboard-publish.timer" << SVC
-[Unit]
-Description=Publish sanitized dashboard snapshot every 5 minutes
-
-[Timer]
-OnCalendar=*:0/5
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
-
 log "Systemd user timers created (weekly-summary skipped — no script)"
 
 # ──────────────────────────────────────────────
@@ -568,7 +541,6 @@ systemctl --user enable doto-news.service
 systemctl --user enable doto-optimizer.timer
 systemctl --user enable doto-retrain.timer
 systemctl --user enable doto-backup.timer
-systemctl --user enable doto-dashboard-publish.timer
 
 log "Starting services (this will take ~60s)..."
 systemctl --user start xvfb-mt5.service
@@ -582,7 +554,6 @@ systemctl --user start doto-news.service
 systemctl --user start doto-optimizer.timer
 systemctl --user start doto-retrain.timer
 systemctl --user start doto-backup.timer
-systemctl --user start doto-dashboard-publish.timer
 
 # ──────────────────────────────────────────────
 # Phase 10: Verify deployment
@@ -597,7 +568,7 @@ done
 
 echo ""
 echo "=== Timer Status ==="
-for timer in doto-optimizer doto-retrain doto-backup doto-dashboard-publish; do
+for timer in doto-optimizer doto-retrain doto-backup; do
     status=$(systemctl --user is-active "$timer.timer" 2>/dev/null || echo "inactive")
     next=$(systemctl --user show "$timer.timer" -p NextElapseUSecRealtime --value 2>/dev/null || echo "unknown")
     echo "  $timer: $status (next: $next)"
