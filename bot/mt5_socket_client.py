@@ -272,8 +272,6 @@ class MT5SocketClient:
         results = []
         for _ in range(count):
             line = self._recv_line()
-            if line == "END":
-                break
             if line.startswith("BAR "):
                 results.append(_coerce_numeric(_parse_kv(line[4:])))
             elif line.startswith("POS "):
@@ -288,9 +286,10 @@ class MT5SocketClient:
                 results.append({"symbol": line[4:]})
             else:
                 results.append(_parse_kv(line))
-        # consume END if not already consumed
-        if results and isinstance(results[-1], dict) and results[-1].get("END"):
-            results.pop()
+        # Always consume the END line (even when count == 0)
+        end_line = self._recv_line()
+        if end_line != "END":
+            logger.warning(f"expected END, got: {end_line}")
         return results
 
     # --- module-level API (mirrors MetaTrader5) ---
