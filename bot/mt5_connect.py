@@ -83,11 +83,18 @@ def init_mt5():
 # Legacy compatibility: auto-init on import (may fail gracefully)
 try:
     init_mt5()
+    mt5 = _mt5_instance
 except Exception as e:
     logging.warning(f"MT5 auto-init failed: {e}")
     logging.warning("MT5 will be unavailable until init_mt5() succeeds")
-
-mt5 = _mt5_instance
+    logging.warning("Using fallback MT5 constants module (no trading)")
+    from mt5_socket_client import MT5SocketClient
+    mt5 = MT5SocketClient.__new__(MT5SocketClient)
+    mt5.host = "127.0.0.1"
+    mt5.port = 9000
+    mt5.timeout = 30
+    mt5._sock = None
+    mt5._buf = b""
 
 _mt5_proc: Optional["subprocess.Popen"] = None
 

@@ -13,13 +13,134 @@
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\AccountInfo.mqh>
 
+// --- Winsock structures (must precede #import) ---
+struct sockaddr_in
+{
+   short  sin_family;
+   ushort sin_port;
+   uint   sin_addr;
+   char   sin_zero[8];
+};
+
+// --- Winsock API via DLL import ---
+// NOTE: MQL5's built-in SocketCreate() produces a terminal-internal handle that
+// is NOT a Winsock SOCKET, and MQL5 has no server-socket API at all. So the
+// entire socket layer here is raw Winsock. SOCKET is 64-bit on Win64 -> long.
+// Requires "Allow DLL imports" enabled in the EA properties / terminal options.
+#import "ws2_32.dll"
+   long WSASocketW(int af, int type, int protocol, long lpProtocolInfo, int g, uint dwFlags);
+   int  bind(long s, sockaddr_in &addr, int namelen);
+   int  listen(long s, int backlog);
+   long accept(long s, long addr, long addrlen);
+   int  recv(long s, uchar &buf[], int len, int flags);
+   int  send(long s, uchar &buf[], int len, int flags);
+   int  closesocket(long s);
+   int  WSAStartup(ushort wVersionRequested, uchar &lpWSAData[]);
+   int  WSACleanup();
+   int  WSAGetLastError();
+   ushort htons(ushort hostshort);
+   uint inet_addr(string cp);
+   int  ioctlsocket(long s, int cmd, uint &argp);
+#import
+
+#define WS_INVALID_SOCKET  (-1)
+#define WS_AF_INET         2
+#define WS_SOCK_STREAM     1
+#define WS_IPPROTO_TCP     6
+#define WS_FIONBIO         (int)0x8004667E
+#define WS_EWOULDBLOCK     10035
+
+bool _wsaLoaded = false;
+
+bool WsStartup()
+{
+   if(_wsaLoaded) return true;
+   uchar wsadata[];
+   ArrayResize(wsadata, 512);
+   ArrayInitialize(wsadata, 0);
+   int rc = WSAStartup((ushort)0x0202, wsadata); // MAKEWORD(2,2)
+   if(rc != 0)
+   {
+      Print("[MT5Socket] WSAStartup failed: ", rc);
+      return false;
+   }
+   _wsaLoaded = true;
+   return true;
+}
+
+long WsCreate()
+{
+   return WSASocketW(WS_AF_INET, WS_SOCK_STREAM, WS_IPPROTO_TCP, 0, 0, 0);
+}
+
+void WsClose(long sock)
+{
+   if(sock != WS_INVALID_SOCKET) closesocket(sock);
+}
+
+bool WsSetNonBlocking(long sock)
+{
+   uint nb = 1;
+   return (ioctlsocket(sock, WS_FIONBIO, nb) == 0);
+}
+
+// Parse a dotted-quad IPv4 string into network-byte-order uint.
+// Do NOT use ws2_32!inet_addr: MQL5 passes strings as UTF-16, so the ANSI
+// inet_addr sees "1\0" and returns INADDR_NONE -> bind() fails with 10049.
+uint WsInetAddr(string address)
+{
+   string parts[];
+   if(StringSplit(address, '.', parts) != 4)
+      return 0xFFFFFFFF;
+   uint result = 0;
+   for(int i = 0; i < 4; i++)
+   {
+      int octet = (int)StringToInteger(parts[i]);
+      if(octet < 0 || octet > 255)
+         return 0xFFFFFFFF;
+      result |= ((uint)octet) << (8 * i);   // network byte order on little-endian
+   }
+   return result;
+}
+
+bool WsBind(long sock, int port, string address)
+{
+   sockaddr_in addr;
+   addr.sin_family = WS_AF_INET;
+   addr.sin_port   = htons((ushort)port);
+   addr.sin_addr   = WsInetAddr(address);
+   for(int i = 0; i < 8; i++) addr.sin_zero[i] = 0;
+   return (bind(sock, addr, sizeof(sockaddr_in)) == 0);
+}
+
+bool WsListen(long sock, int backlog)
+{
+   return (listen(sock, backlog) == 0);
+}
+
+long WsAccept(long sock)
+{
+   return accept(sock, 0, 0);
+}
+
+int WsRecv(long sock, uchar &array[], int count)
+{
+   if(ArraySize(array) < count) ArrayResize(array, count);
+   return recv(sock, array, count, 0);
+}
+
+int WsSend(long sock, uchar &array[], int count)
+{
+   return send(sock, array, count, 0);
+}
+
 input int    SocketPort = 9000;
 input int    PollIntervalMs = 50;
 input int    MaxBufferSize = 65536;
 
 //--- globals
-int    g_serverSocket = INVALID_HANDLE;
-int    g_clientSocket = INVALID_HANDLE;
+long   g_serverSocket = WS_INVALID_SOCKET;
+long   g_clientSocket = WS_INVALID_SOCKET;
 bool   g_initialized  = false;
 bool   g_clientConnected = false;
 string g_readBuffer   = "";
@@ -55,28 +176,50 @@ CAccountInfo g_accInfo;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   g_serverSocket = SocketCreate();
-   if(g_serverSocket == INVALID_HANDLE)
+   Print("[MT5Socket] OnInit begin");
+
+   if(!MQLInfoInteger(MQL_DLLS_ALLOWED))
    {
-      Print("[MT5Socket] SocketCreate failed: ", GetLastError());
+      Print("[MT5Socket] DLL imports are disabled. Enable 'Allow DLL imports' in the EA settings.");
       return INIT_FAILED;
    }
 
-   if(!SocketBind(g_serverSocket, SocketPort, "127.0.0.1"))
+   Print("[MT5Socket] DLLs allowed, calling WSAStartup");
+   if(!WsStartup()) return INIT_FAILED;
+
+   Print("[MT5Socket] WSAStartup ok, creating socket");
+   g_serverSocket = WsCreate();
+   if(g_serverSocket == WS_INVALID_SOCKET)
    {
-      Print("[MT5Socket] SocketBind failed: ", GetLastError());
-      SocketClose(g_serverSocket);
+      Print("[MT5Socket] socket() failed: ", WSAGetLastError());
       return INIT_FAILED;
    }
 
-   if(!SocketListen(g_serverSocket, 1))
+   if(!WsBind(g_serverSocket, SocketPort, "127.0.0.1"))
    {
-      Print("[MT5Socket] SocketListen failed: ", GetLastError());
-      SocketClose(g_serverSocket);
+      Print("[MT5Socket] bind() failed: ", WSAGetLastError());
+      WsClose(g_serverSocket);
+      g_serverSocket = WS_INVALID_SOCKET;
       return INIT_FAILED;
    }
 
-   EventSetTimer(PollIntervalMs / 1000);
+   if(!WsListen(g_serverSocket, 1))
+   {
+      Print("[MT5Socket] listen() failed: ", WSAGetLastError());
+      WsClose(g_serverSocket);
+      g_serverSocket = WS_INVALID_SOCKET;
+      return INIT_FAILED;
+   }
+
+   if(!WsSetNonBlocking(g_serverSocket))
+   {
+      Print("[MT5Socket] ioctlsocket(FIONBIO) failed: ", WSAGetLastError());
+      WsClose(g_serverSocket);
+      g_serverSocket = WS_INVALID_SOCKET;
+      return INIT_FAILED;
+   }
+
+   EventSetMillisecondTimer(PollIntervalMs);
    Print("[MT5Socket] Listening on 127.0.0.1:", SocketPort);
    return INIT_SUCCEEDED;
 }
@@ -85,8 +228,11 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    EventKillTimer();
-   if(g_clientSocket != INVALID_HANDLE) SocketClose(g_clientSocket);
-   if(g_serverSocket != INVALID_HANDLE) SocketClose(g_serverSocket);
+   WsClose(g_clientSocket);
+   WsClose(g_serverSocket);
+   g_clientSocket = WS_INVALID_SOCKET;
+   g_serverSocket = WS_INVALID_SOCKET;
+   if(_wsaLoaded) { WSACleanup(); _wsaLoaded = false; }
    Print("[MT5Socket] Stopped. Reason: ", reason);
 }
 
@@ -96,9 +242,10 @@ void OnTimer()
    //--- accept new connection if none
    if(!g_clientConnected)
    {
-      int accepted = SocketAccept(g_serverSocket, 1);
-      if(accepted != INVALID_HANDLE)
+      long accepted = WsAccept(g_serverSocket);
+      if(accepted != WS_INVALID_SOCKET)
       {
+         WsSetNonBlocking(accepted);
          g_clientSocket = accepted;
          g_clientConnected = true;
          g_readBuffer = "";
@@ -109,48 +256,74 @@ void OnTimer()
 
    //--- read available data
    uchar buf[];
-   int bytes = SocketRead(g_clientSocket, buf, MaxBufferSize, 0);
+   ArrayResize(buf, MaxBufferSize);
+   int bytes = WsRecv(g_clientSocket, buf, MaxBufferSize);
    if(bytes < 0)
    {
-      int err = GetLastError();
-      if(err != 40002) // WSAEWOULDBLOCK
+      int err = WSAGetLastError();
+      if(err != WS_EWOULDBLOCK)
       {
-         Print("[MT5Socket] Client disconnected: ", err);
-         SocketClose(g_clientSocket);
-         g_clientSocket = INVALID_HANDLE;
+         Print("[MT5Socket] Client error, closing: ", err);
+         WsClose(g_clientSocket);
+         g_clientSocket = WS_INVALID_SOCKET;
          g_clientConnected = false;
       }
       return;
    }
-   if(bytes == 0) return;
-
-   //--- convert to string and append to buffer
-   string chunk = CharArrayToString(buf, 0, bytes);
-   g_readBuffer += chunk;
-
-   //--- process complete lines
-   int pos;
-   while((pos = StringFind(g_readBuffer, "\n")) >= 0)
+   if(bytes == 0)
    {
-      StringReplace(g_readBuffer, "\r", "");
-      StringReplace(g_readBuffer, "\n", "");
-      // re-find after cleanup
-      pos = StringFind(g_readBuffer, "\n");
-      if(pos < 0) break;
-      line = StringSubstr(g_readBuffer, 0, pos);
-      g_readBuffer = StringSubstr(g_readBuffer, pos + 1);
-      ProcessCommand(line);
+      // graceful peer shutdown
+      Print("[MT5Socket] Client disconnected");
+      WsClose(g_clientSocket);
+      g_clientSocket = WS_INVALID_SOCKET;
+      g_clientConnected = false;
+      return;
    }
+
+    //--- convert to string and append to buffer
+    string chunk = CharArrayToString(buf, 0, bytes, CP_UTF8);
+    g_readBuffer += chunk;
+
+    //--- process complete lines
+    string line;
+    int pos;
+    while((pos = StringFind(g_readBuffer, "\n")) >= 0)
+    {
+       line = StringSubstr(g_readBuffer, 0, pos);
+       StringReplace(line, "\r", "");
+       g_readBuffer = StringSubstr(g_readBuffer, pos + 1);
+       if(StringLen(line) > 0) ProcessCommand(line);
+    }
 }
 
 //+------------------------------------------------------------------+
 void SendResponse(string msg)
 {
-   if(!g_clientConnected || g_clientSocket == INVALID_HANDLE) return;
+   if(!g_clientConnected || g_clientSocket == WS_INVALID_SOCKET) return;
    msg += "\n";
    uchar buf[];
-   StringToCharArray(msg, buf);
-   SocketSend(g_clientSocket, buf, StringLen(msg));
+   int len = StringToCharArray(msg, buf, 0, WHOLE_ARRAY, CP_UTF8) - 1; // drop NUL
+   if(len <= 0) return;
+   int sent = 0;
+   while(sent < len)
+   {
+      uchar chunk[];
+      int remaining = len - sent;
+      ArrayResize(chunk, remaining);
+      ArrayCopy(chunk, buf, 0, sent, remaining);
+      int n = WsSend(g_clientSocket, chunk, remaining);
+      if(n <= 0)
+      {
+         int err = WSAGetLastError();
+         if(err == WS_EWOULDBLOCK) { Sleep(1); continue; }
+         Print("[MT5Socket] send() failed: ", err);
+         WsClose(g_clientSocket);
+         g_clientSocket = WS_INVALID_SOCKET;
+         g_clientConnected = false;
+         return;
+      }
+      sent += n;
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -207,25 +380,16 @@ void CmdInit(string args)
 {
    if(g_initialized) { SendOK("already"); return; }
 
-   string parts[];
-   int n = StringSplit(args, ' ', parts);
-
-   bool ok = false;
-   if(n >= 3)
-      ok = TerminalInitialize(IntegerToString(parts[0]), parts[1], parts[2]);
-   else
-      ok = TerminalInitialize("", "", "");
-
-   if(ok)
+   // The EA already runs inside the terminal, so there is nothing to
+   // initialize — just verify the terminal is connected to the broker.
+   if(!TerminalInfoInteger(TERMINAL_CONNECTED))
    {
-      g_initialized = true;
-      SendOK("initialized");
+      SendERR("terminal not connected to broker");
+      return;
    }
-   else
-   {
-      int err = GetLastError();
-      SendERR("init failed: " + IntegerToString(err));
-   }
+
+   g_initialized = true;
+   SendOK("initialized");
 }
 
 //+------------------------------------------------------------------+
@@ -243,12 +407,15 @@ void CmdAccount()
    double eq    = AccountInfoDouble(ACCOUNT_EQUITY);
    double margin= AccountInfoDouble(ACCOUNT_MARGIN);
    double freeM = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
-   double lev   = AccountInfoDouble(ACCOUNT_LEVERAGE);
+   double prof  = AccountInfoDouble(ACCOUNT_PROFIT);
+   double credit= AccountInfoDouble(ACCOUNT_CREDIT);
+   double mlevel= AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
+    long   lev   = AccountInfoInteger(ACCOUNT_LEVERAGE);
    long   login = AccountInfoInteger(ACCOUNT_LOGIN);
    string name  = AccountInfoString(ACCOUNT_NAME);
    string cur   = AccountInfoString(ACCOUNT_CURRENCY);
    string srv   = AccountInfoString(ACCOUNT_SERVER);
-   int    mode  = (int)AccountInfoInteger(ACCOUNT_TRADE_MODE);
+    int    mode  = (int)AccountInfoInteger(ACCOUNT_TRADE_MODE);
 
    string s = "login=" + IntegerToString(login)
             + "|name=" + name
@@ -256,7 +423,10 @@ void CmdAccount()
             + "|equity=" + DoubleToString(eq, 2)
             + "|margin=" + DoubleToString(margin, 2)
             + "|margin_free=" + DoubleToString(freeM, 2)
-            + "|leverage=" + IntegerToString((int)lev)
+            + "|profit=" + DoubleToString(prof, 2)
+            + "|credit=" + DoubleToString(credit, 2)
+            + "|margin_level=" + DoubleToString(mlevel, 2)
+             + "|leverage=" + IntegerToString(lev)
             + "|currency=" + cur
             + "|server=" + srv
             + "|trade_mode=" + IntegerToString(mode);
@@ -332,22 +502,22 @@ void CmdSymbol(string sym)
    double tickSize = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
    double contractSize = SymbolInfoDouble(sym, SYMBOL_TRADE_CONTRACT_SIZE);
    int tradeMode = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_MODE);
-   double spread = SymbolInfoDouble(sym, SYMBOL_SPREAD);
-   string curBase = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
-   string curProfit = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
-   string curMargin = SymbolInfoString(sym, SYMBOL_CURRENCY_MARGIN);
-   string desc = SymbolInfoString(sym, SYMBOL_DESCRIPTION);
+    int spread = (int)SymbolInfoInteger(sym, SYMBOL_SPREAD);
+    string curBase = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
+    string curProfit = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
+    string curMargin = SymbolInfoString(sym, SYMBOL_CURRENCY_MARGIN);
+    string desc = SymbolInfoString(sym, SYMBOL_DESCRIPTION);
 
-   string s = "symbol=" + sym
-            + "|bid=" + DoubleToString(bid, digits)
-            + "|ask=" + DoubleToString(ask, digits)
-            + "|point=" + DoubleToString(point, digits + 2)
-            + "|digits=" + IntegerToString(digits)
-            + "|tick_value=" + DoubleToString(tickVal, 6)
-            + "|tick_size=" + DoubleToString(tickSize, 8)
-            + "|contract_size=" + DoubleToString(contractSize, 2)
-            + "|trade_mode=" + IntegerToString(tradeMode)
-            + "|spread=" + DoubleToString(spread, 1)
+    string s = "symbol=" + sym
+             + "|bid=" + DoubleToString(bid, digits)
+             + "|ask=" + DoubleToString(ask, digits)
+             + "|point=" + DoubleToString(point, digits + 2)
+             + "|digits=" + IntegerToString(digits)
+             + "|tick_value=" + DoubleToString(tickVal, 6)
+             + "|tick_size=" + DoubleToString(tickSize, 8)
+             + "|contract_size=" + DoubleToString(contractSize, 2)
+             + "|trade_mode=" + IntegerToString(tradeMode)
+             + "|spread=" + IntegerToString(spread)
             + "|currency_base=" + curBase
             + "|currency_profit=" + curProfit
             + "|currency_margin=" + curMargin
@@ -400,10 +570,10 @@ void CmdRatesPos(string args)
    int n = StringSplit(args, ' ', parts);
    if(n < 4) { SendERR("usage: RATES_POS symbol tf pos count"); return; }
 
-   string sym = parts[0];
-   int tf = StringToInteger(parts[1]);
-   int pos = StringToInteger(parts[2]);
-   int count = StringToInteger(parts[3]);
+    string sym = parts[0];
+    int tf = (int)StringToInteger(parts[1]);
+    int pos = (int)StringToInteger(parts[2]);
+    int count = (int)StringToInteger(parts[3]);
 
    MqlRates rates[];
    int copied = CopyRates(sym, (ENUM_TIMEFRAMES)tf, pos, count, rates);
@@ -437,10 +607,10 @@ void CmdRatesRange(string args)
    int n = StringSplit(args, ' ', parts);
    if(n < 4) { SendERR("usage: RATES_RANGE symbol tf start end"); return; }
 
-   string sym = parts[0];
-   int tf = StringToInteger(parts[1]);
-   datetime start = (datetime)StringToInteger(parts[2]);
-   datetime end = (datetime)StringToInteger(parts[3]);
+    string sym = parts[0];
+    int tf = (int)StringToInteger(parts[1]);
+    datetime start = (datetime)StringToInteger(parts[2]);
+    datetime end = (datetime)StringToInteger(parts[3]);
 
    MqlRates rates[];
    int copied = CopyRates(sym, (ENUM_TIMEFRAMES)tf, start, end, rates);
@@ -472,22 +642,21 @@ void CmdOrders()
    if(!EnsureInit()) return;
    int total = OrdersTotal();
    SendResponse("COUNT " + IntegerToString(total));
-   for(int i = 0; i < total; i++)
-   {
-      ulong ticket = OrderGetInteger(ORDER_TICKET);
-      if(ticket == 0) continue;
-      string line = "ORD tkt=" + IntegerToString(ticket)
-                  + "|sym=" + OrderGetString(ORDER_SYMBOL)
-                  + "|type=" + IntegerToString((int)OrderGetInteger(ORDER_TYPE))
-                  + "|vol=" + DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT), 4)
-                  + "|price=" + DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN), 8)
-                  + "|sl=" + DoubleToString(OrderGetDouble(ORDER_SL), 8)
-                  + "|tp=" + DoubleToString(OrderGetDouble(ORDER_TP), 8)
-                  + "|magic=" + IntegerToString((int)OrderGetInteger(ORDER_MAGIC))
-                  + "|comment=" + OrderGetString(ORDER_COMMENT);
-      SendResponse(line);
-      if(!OrderSelectByIndex(i)) break;
-   }
+    for(int i = 0; i < total; i++)
+    {
+       ulong ticket = OrderGetTicket(i);
+       if(ticket == 0) continue;
+       string line = "ORD tkt=" + IntegerToString(ticket)
+                   + "|sym=" + OrderGetString(ORDER_SYMBOL)
+                   + "|type=" + IntegerToString((int)OrderGetInteger(ORDER_TYPE))
+                   + "|vol=" + DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT), 4)
+                   + "|price=" + DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN), 8)
+                   + "|sl=" + DoubleToString(OrderGetDouble(ORDER_SL), 8)
+                   + "|tp=" + DoubleToString(OrderGetDouble(ORDER_TP), 8)
+                   + "|magic=" + IntegerToString((int)OrderGetInteger(ORDER_MAGIC))
+                   + "|comment=" + OrderGetString(ORDER_COMMENT);
+       SendResponse(line);
+    }
    SendResponse("END");
 }
 
@@ -497,10 +666,11 @@ void CmdPositions()
    if(!EnsureInit()) return;
    int total = PositionsTotal();
    SendResponse("COUNT " + IntegerToString(total));
-   for(int i = 0; i < total; i++)
-   {
-      if(!PositionSelectByIndex(i)) continue;
-      ulong ticket = PositionGetInteger(POSITION_TICKET);
+    for(int i = 0; i < total; i++)
+    {
+       ulong ticket = PositionGetTicket(i);
+       if(ticket == 0) continue;
+       if(!PositionSelectByTicket(ticket)) continue;
       string sym = PositionGetString(POSITION_SYMBOL);
       long type = PositionGetInteger(POSITION_TYPE);
       double vol = PositionGetDouble(POSITION_VOLUME);

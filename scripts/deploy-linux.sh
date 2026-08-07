@@ -68,6 +68,10 @@ log "Wine prefix ready at $WINEPREFIX"
 log "Phase 2: Installing MetaTrader 5 terminal"
 MT5_INSTALLER="/tmp/mt5setup.exe"
 MT5_DIR="$WINEPREFIX/drive_c/Program Files/MetaTrader 5"
+# Generic MetaQuotes build — used for the base install. The broker-branded
+# installer is fetched later (Phase 2b) purely for its servers.dat, which is
+# the only place the DOTOGlobal-* server entries exist. Without it the
+# terminal cannot log in and TERMINAL_CONNECTED stays false.
 if [ ! -f "$MT5_INSTALLER" ]; then
     wget -q "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe" \
         -O "$MT5_INSTALLER"
@@ -98,6 +102,34 @@ for i in $(seq 1 120); do
 done
 
 [ -d "$MT5_DIR" ] || err "MT5 install failed — MT5 dir missing at $MT5_DIR"
+
+# ──────────────────────────────────────────────
+# Phase 2b: Broker-branded servers.dat
+# ──────────────────────────────────────────────
+# The generic MetaQuotes build ships a servers.dat with no DOTOGlobal entries,
+# so the terminal silently never attempts a login (zero "Network" log lines).
+# Installing the branded build purely to harvest its servers.dat fixes this
+# without disturbing the working MetaTrader 5 dir (EA, common.ini, .ex5).
+log "Phase 2b: Installing broker-branded servers.dat"
+BRAND_INSTALLER="/tmp/dotoglobal5setup.exe"
+BRAND_DIR="$WINEPREFIX/drive_c/Program Files/DOTO Global MT5 Terminal"
+if [ ! -f "$BRAND_INSTALLER" ]; then
+    wget -q "https://download.mql5.com/cdn/web/21973/mt5/dotoglobal5setup.exe" \
+        -O "$BRAND_INSTALLER" || warn "Branded installer download failed"
+fi
+if [ -f "$BRAND_INSTALLER" ] && [ ! -f "$BRAND_DIR/Config/servers.dat" ]; then
+    DISPLAY=:99 timeout 300 wine "$BRAND_INSTALLER" /auto || \
+        warn "Branded installer reported issues — continuing"
+fi
+if [ -f "$BRAND_DIR/Config/servers.dat" ]; then
+    [ -f "$MT5_DIR/Config/servers.dat" ] && \
+        cp "$MT5_DIR/Config/servers.dat" "$MT5_DIR/Config/servers.dat.generic.bak"
+    cp "$BRAND_DIR/Config/servers.dat" "$MT5_DIR/Config/servers.dat"
+    log "Broker servers.dat installed"
+else
+    warn "Broker servers.dat not found — MT5 will not be able to log in"
+fi
+
 kill $XVFB_PID 2>/dev/null || true
 
 # ──────────────────────────────────────────────
@@ -409,8 +441,10 @@ if [ ! -f "$MT5_PATH" ]; then
     exit 1
 fi
 
-# The /portable flag is essential — without it MT5 ignores ini configs
-wine "$MT5_PATH" /portable
+# The /portable flag is essential — without it MT5 ignores ini configs.
+# /config: must point at a SPACE-FREE path; a path containing spaces gets
+# mangled by the terminal ("cannot load config ... at start").
+wine "$MT5_PATH" /portable /config:C:\\start_ea.ini
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-mt5.sh"
 
@@ -484,6 +518,66 @@ log "Phase 8: Configuring settings.ini for Linux/Wine"
 if [ -f "$REPO_DIR/config/settings.ini" ]; then
     sed -i "s|path = .*|path = $WINEPREFIX/drive_c/Program Files/MetaTrader 5/terminal64.exe|" \
         "$REPO_DIR/config/settings.ini" 2>/dev/null || warn "Could not rewrite settings.ini path — fix manually"
+fi
+
+# ──────────────────────────────────────────────
+# Phase 8b: MT5 socket-server EA wiring
+# ──────────────────────────────────────────────
+# Wine's named pipes are broken, so the MetaTrader5 Python package can never
+# reach the terminal. Instead an MQL5 EA runs inside the terminal and exposes
+# the MT5 API over TCP 127.0.0.1:9000; bot/mt5_socket_client.py speaks to it.
+log "Phase 8b: Wiring the MT5 socket-server EA"
+
+# 1. EA source into MQL5/Experts/
+mkdir -p "$MT5_DIR/MQL5/Experts"
+cp "$REPO_DIR/scripts/mt5_socket_server.mq5" "$MT5_DIR/MQL5/Experts/mt5_socket_server.mq5"
+
+# 2. Enable DLL imports (the EA calls ws2_32.dll). common.ini is UTF-16LE.
+if [ -f "$MT5_DIR/Config/common.ini" ]; then
+    cp "$MT5_DIR/Config/common.ini" "$MT5_DIR/Config/common.ini.bak"
+    python3 - "$MT5_DIR/Config/common.ini" <<'PY' || warn "Could not patch AllowDllImport"
+import sys
+p = sys.argv[1]
+d = open(p, "rb").read().decode("utf-16")
+d = d.replace("AllowDllImport=0", "AllowDllImport=1")
+open(p, "wb").write(d.encode("utf-16"))
+PY
+fi
+
+# 3. Startup ini: broker login + EA auto-attach. Must be UTF-16 and live at a
+#    space-free path. The chart symbol MUST exist on the broker after sync —
+#    this broker uses .raw suffixes, so plain "EURUSD" silently never inits.
+python3 - "$REPO_DIR/config/credentials.ini" "$WINEPREFIX/drive_c/start_ea.ini" <<'PY' || \
+    warn "Could not write start_ea.ini — MT5 will not auto-login"
+import configparser, sys
+cred, out = sys.argv[1], sys.argv[2]
+c = configparser.ConfigParser(strict=False)  # duplicate 'password' key in file
+c.read(cred)
+s = c["LOGIN"]
+open(out, "wb").write((
+    "[Common]\n"
+    f"Login={s['account']}\n"
+    f"Password={s['password']}\n"
+    f"Server={s['server']}\n"
+    "KeepPrivate=1\n"
+    "NewsEnable=0\n"
+    "\n"
+    "[StartUp]\n"
+    "Expert=mt5_socket_server\n"
+    "Symbol=EURUSD.raw\n"
+    "Period=H1\n"
+).encode("utf-16"))
+PY
+
+# 4. Compile the EA headlessly. Note the capital E in MetaEditor64.exe, and
+#    that it exits non-zero even on success — verify via compile.log.
+( cd "$MT5_DIR" && DISPLAY=:99 timeout 200 wine MetaEditor64.exe \
+    /compile:"MQL5\\Experts\\mt5_socket_server.mq5" \
+    /log:"MQL5\\Experts\\compile.log" ) || true
+if [ -f "$MT5_DIR/MQL5/Experts/mt5_socket_server.ex5" ]; then
+    log "EA compiled: $(du -h "$MT5_DIR/MQL5/Experts/mt5_socket_server.ex5" | cut -f1)"
+else
+    warn "EA did not compile — check $MT5_DIR/MQL5/Experts/compile.log (UTF-16LE)"
 fi
 
 # ──────────────────────────────────────────────

@@ -113,6 +113,23 @@ def _coerce_numeric(d: dict[str, str]) -> dict[str, Any]:
     return result
 
 
+_BAR_FIELDS = {
+    "t": "time",
+    "o": "open",
+    "h": "high",
+    "l": "low",
+    "c": "close",
+    "v": "tick_volume",
+    "s": "spread",
+    "rv": "real_volume",
+}
+
+
+def _expand_bars(bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rename the wire-format short bar keys to native MetaTrader5 field names."""
+    return [{_BAR_FIELDS.get(k, k): v for k, v in bar.items()} for bar in bars]
+
+
 class MT5SocketClient:
     """Client for the MQL5 Socket Server EA."""
 
@@ -336,7 +353,7 @@ class MT5SocketClient:
 
     # --- module-level API (mirrors MetaTrader5) ---
 
-    def initialize(self, login: str = "", password: str = "", server: str = "") -> bool:
+    def initialize(self, login: str = "", password: str = "", server: str = "", timeout: int = 60000, **kwargs) -> bool:
         if not self._sock:
             self.connect()
         args = f"{login} {password} {server}".strip()
@@ -359,8 +376,10 @@ class MT5SocketClient:
 
     def account_info(self) -> Optional[_NamedTuple]:
         try:
-            data = self._call("ACCOUNT")
-            return _NamedTuple(_coerce_numeric(data))
+            data = _coerce_numeric(self._call("ACCOUNT"))
+            for key in ("profit", "credit", "margin_level"):
+                data.setdefault(key, 0.0)
+            return _NamedTuple(data)
         except Exception as e:
             logger.warning(f"account_info failed: {e}")
             return None
@@ -428,7 +447,7 @@ class MT5SocketClient:
 
     def copy_rates_from_pos(self, symbol: str, timeframe: int, start_pos: int, count: int) -> list[dict]:
         try:
-            return self._call_multi(f"RATES_POS {symbol} {timeframe} {start_pos} {count}")
+            return _expand_bars(self._call_multi(f"RATES_POS {symbol} {timeframe} {start_pos} {count}"))
         except Exception as e:
             logger.warning(f"copy_rates_from_pos failed: {e}")
             return []
@@ -436,7 +455,7 @@ class MT5SocketClient:
     def copy_rates_from(self, symbol: str, timeframe: int, date_from, count: int) -> list[dict]:
         ts = int(date_from.timestamp()) if hasattr(date_from, "timestamp") else int(date_from)
         try:
-            return self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts} {ts + count * 3600}")
+            return _expand_bars(self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts} {ts + count * 3600}"))
         except Exception as e:
             logger.warning(f"copy_rates_from failed: {e}")
             return []
@@ -445,7 +464,7 @@ class MT5SocketClient:
         ts1 = int(date_from.timestamp()) if hasattr(date_from, "timestamp") else int(date_from)
         ts2 = int(date_to.timestamp()) if hasattr(date_to, "timestamp") else int(date_to)
         try:
-            return self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts1} {ts2}")
+            return _expand_bars(self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts1} {ts2}"))
         except Exception as e:
             logger.warning(f"copy_rates_range failed: {e}")
             return []

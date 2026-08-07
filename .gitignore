@@ -20,3 +20,6 @@ wine/
 __pycache__/
 *.pyc
 scripts/mt5server.exe
+
+# MT5 socket server compiled binary
+scripts/*.ex5
