@@ -45,13 +45,13 @@ if ! command -v wine >/dev/null 2>&1; then
         /etc/pacman.conf 2>/dev/null || warn "Could not auto-enable multilib — enable it manually"
 fi
 
-sudo pacman -Syu --noconfirm --needed \
+sudo pacman -S --noconfirm --needed \
     wine \
     xorg-xvfb xdotool \
     wget curl git \
     python python-virtualenv python-pip \
     base-devel cmake pkg-config \
-    2>&1 | tail -5
+    2>&1
 
 # ──────────────────────────────────────────────
 # Phase 1: Initialize Wine prefix
