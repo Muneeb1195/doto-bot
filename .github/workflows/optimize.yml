@@ -39,13 +39,23 @@ jobs:
       - name: Run optimizer
         run: |
           python bot/auto_optimizer.py --csv --mode ${{ steps.mode.outputs.mode }} --skip-train
-      - name: Package params
+      - name: Package params (filter to 8 portfolio symbols)
         run: |
           python -c "
-          import csv, json, glob, os, sys
+          import csv, json, glob, os, sys, configparser
+          # Read portfolio symbols from settings.ini
+          settings = configparser.ConfigParser()
+          settings.read('config/settings.ini')
+          portfolio_str = settings.get('PORTFOLIO', 'symbols', fallback='')
+          portfolio_symbols = set(s.strip() for s in portfolio_str.split(',') if s.strip())
+          if not portfolio_symbols:
+              portfolio_symbols = {'BTCUSD.raw','US30.raw','GBPJPY.raw','SOLUSD.raw','XRPUSD.raw','EURUSD.raw','US500.raw','XAUUSD.raw'}
+          
           result = {}
           for path in sorted(glob.glob('logs/optimize_*.csv')):
               sym = os.path.basename(path).replace('optimize_','').replace('.csv','').replace('_','.')
+              if sym not in portfolio_symbols:
+                  continue
               with open(path) as f:
                   reader = csv.DictReader(f)
                   rows = list(reader)

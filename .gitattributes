@@ -1,3 +1,8 @@
-# M1 bars are large (~90MB/symbol) — track via Git LFS.
-# H1 (~1MB) and M15 (~4MB) stay in regular git.
+# Git LFS tracking for large data files
+data/history/*_H1.csv filter=lfs diff=lfs merge=lfs -text
 data/history/*_M1.csv filter=lfs diff=lfs merge=lfs -text
+data/history/*_M15.csv filter=lfs diff=lfs merge=lfs -text
+
+# Model files (optional - already in .gitignore but can track via LFS if needed)
+models/*.pkl filter=lfs diff=lfs merge=lfs -text
+models/*.calib.npz filter=lfs diff=lfs merge=lfs -text

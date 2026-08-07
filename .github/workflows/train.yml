@@ -26,32 +26,16 @@ jobs:
           pip install -r /tmp/requirements-ci.txt
       - name: Train models
         run: |
-          python bot/train_model.py --csv --symbols ALL --years 3
+          python bot/train_model.py --csv --retrain-all --years 3
       - name: Package artifacts
         run: |
           tar czf models.tar.gz models/*.pkl models/*.calib.npz 2>/dev/null || true
-          python -c "
-          import csv, json, glob, os
-          result = {}
-          for path in sorted(glob.glob('logs/optimize_*.csv')):
-              sym = os.path.basename(path).replace('optimize_','').replace('.csv','').replace('_','.')
-              with open(path) as f:
-                  reader = csv.DictReader(f)
-                  rows = list(reader)
-              if not rows:
-                  continue
-              best = max(rows, key=lambda r: float(r.get('wf_score', 0) or 0))
-              result[sym] = {k: v for k, v in best.items()}
-          with open('strategy-params.json', 'w') as f:
-              json.dump(result, f, indent=2)
-          print(f'Params for {len(result)} symbols')
-          "
       - name: Create release
         run: |
           TAG="train-$(date +%Y%m%d-%H%M)"
-          gh release create "$TAG" models.tar.gz strategy-params.json \
+          gh release create "$TAG" models.tar.gz \
             --title "ML Models $(date +%Y-%m-%d)" \
-            --notes "Weekly retrain — models + strategy params"
+            --notes "Weekly retrain — models"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Notify Discord

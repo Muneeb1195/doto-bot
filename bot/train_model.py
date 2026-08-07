@@ -1002,17 +1002,29 @@ def main():
     )
 
     if args.retrain_all:
-        symbols = [
-            "XAU500.raw",
-            "BTCUSD.raw",
-            "NZDUSD.raw",
-            "US30.raw",
-            "GBPJPY.raw",
-            "SOLUSD.raw",
-            "XRPUSD.raw",
-            "DOGUSD.raw",
-        ]
-        print(f"Retrain-all mode: {symbols}")
+        # Read portfolio from settings.ini
+        import configparser
+        settings = configparser.ConfigParser()
+        settings_path = BASE_DIR / "config" / "settings.ini"
+        if settings_path.exists():
+            settings.read(settings_path)
+            portfolio_str = settings.get("PORTFOLIO", "symbols", fallback="")
+            symbols = [s.strip() for s in portfolio_str.split(",") if s.strip()]
+        else:
+            symbols = []
+        if not symbols:
+            # Fallback to default 8 symbols
+            symbols = [
+                "BTCUSD.raw",
+                "US30.raw",
+                "GBPJPY.raw",
+                "SOLUSD.raw",
+                "XRPUSD.raw",
+                "EURUSD.raw",
+                "US500.raw",
+                "XAUUSD.raw",
+            ]
+        print(f"Retrain-all mode (from settings.ini): {symbols}")
     else:
         symbols = [s.strip() for s in args.symbols.split(",")]
 
