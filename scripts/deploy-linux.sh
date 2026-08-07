@@ -18,8 +18,10 @@
 # Notes:
 #   - Requires the [multilib] repo enabled in /etc/pacman.conf for Wine.
 #   - MT5 terminal runs under Wine on the Xvfb :99 virtual display.
-#   - The native venv talks to MT5 through the mt5linux RPyC bridge on
-#     127.0.0.1:18812 (Wine-hosted Windows Python runs the bridge server).
+#   - The native venv talks to MT5 through the mt5_socket_server MQL5 EA,
+#     which runs inside the terminal and listens on 127.0.0.1:9000.
+#     (Wine's named pipes are broken, so the MetaTrader5 Python package and
+#     every RPyC bridge built on it cannot work here — hence the EA.)
 
 set -euo pipefail
 
@@ -183,7 +185,7 @@ mkdir -p "$SYSTEMD_USER_DIR"
 cat > "$SYSTEMD_USER_DIR/xvfb-mt5.service" << SVC
 [Unit]
 Description=Xvfb virtual framebuffer for MT5
-Before=mt5.service mt5-rpyc.service
+Before=mt5.service
 
 [Service]
 Type=simple
@@ -216,34 +218,12 @@ RestartSec=10
 WantedBy=default.target
 SVC
 
-# RPyC bridge (Windows Python running mt5linux server)
-cat > "$SYSTEMD_USER_DIR/mt5-rpyc.service" << SVC
-[Unit]
-Description=MT5 RPyC Bridge (mt5linux)
-After=mt5.service
-Requires=mt5.service
-
-[Service]
-Type=simple
-Environment=DISPLAY=:99
-Environment=WINEPREFIX=$WINEPREFIX
-Environment=WINEARCH=win64
-ExecStart=$REPO_DIR/scripts/start-rpyc.sh
-Restart=always
-RestartSec=15
-StartLimitIntervalSec=300
-StartLimitBurst=3
-
-[Install]
-WantedBy=default.target
-SVC
-
 # Bot main loop
 cat > "$SYSTEMD_USER_DIR/doto-bot.service" << SVC
 [Unit]
 Description=Doto MT5 Trading Bot
-After=mt5-rpyc.service
-Requires=mt5-rpyc.service
+After=mt5.service
+Requires=mt5.service
 
 [Service]
 Type=simple
@@ -262,8 +242,8 @@ SVC
 cat > "$SYSTEMD_USER_DIR/doto-dashboard.service" << SVC
 [Unit]
 Description=Doto MT5 Dashboard
-After=mt5-rpyc.service
-Requires=mt5-rpyc.service
+After=mt5.service
+Requires=mt5.service
 
 [Service]
 Type=simple
@@ -448,22 +428,6 @@ wine "$MT5_PATH" /portable /config:C:\\start_ea.ini
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-mt5.sh"
 
-# RPyC bridge startup wrapper (uses standalone mt5server.exe binary)
-cat > "$REPO_DIR/scripts/start-rpyc.sh" << 'SCRIPT'
-#!/usr/bin/env bash
-# start-rpyc.sh — Launch mt5server.exe (standalone MT5 RPyC bridge)
-# Called by systemd (mt5-rpyc.service)
-export DISPLAY=:99
-export WINEPREFIX="$HOME/.wine"
-export WINEARCH=win64
-
-# Wait for MT5 terminal to be ready
-sleep 10
-
-exec wine "$HOME/doto-mt5-bot/scripts/mt5server.exe" --port 18812 --host 127.0.0.1
-SCRIPT
-chmod +x "$REPO_DIR/scripts/start-rpyc.sh"
-
 # Redeploy script
 cat > "$REPO_DIR/scripts/redeploy.sh" << 'SCRIPT'
 #!/usr/bin/env bash
@@ -592,7 +556,6 @@ systemctl --user daemon-reload
 
 systemctl --user enable xvfb-mt5.service
 systemctl --user enable mt5.service
-systemctl --user enable mt5-rpyc.service
 systemctl --user enable doto-bot.service
 systemctl --user enable doto-dashboard.service
 systemctl --user enable doto-news.service
@@ -606,9 +569,7 @@ log "Starting services (this will take ~60s)..."
 systemctl --user start xvfb-mt5.service
 sleep 3
 systemctl --user start mt5.service
-sleep 20  # MT5 takes time to start under Wine
-systemctl --user start mt5-rpyc.service
-sleep 10
+sleep 90  # MT5 under Wine needs ~85s before the socket EA binds port 9000
 systemctl --user start doto-bot.service
 systemctl --user start doto-dashboard.service
 systemctl --user start doto-news.service
@@ -624,7 +585,7 @@ systemctl --user start doto-dashboard-publish.timer
 log "Phase 10: Verifying deployment"
 echo ""
 echo "=== Service Status ==="
-for svc in xvfb-mt5 mt5 mt5-rpyc doto-bot doto-dashboard doto-news; do
+for svc in xvfb-mt5 mt5 doto-bot doto-dashboard doto-news; do
     status=$(systemctl --user is-active "$svc" 2>/dev/null || echo "inactive")
     echo "  $svc: $status"
 done

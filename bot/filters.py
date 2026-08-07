@@ -5,7 +5,10 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import joblib
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st
@@ -480,7 +483,7 @@ def load_ml_models(cfg):
                 _ml_models[symbol] = data
                 logging.info(f"[{symbol}] ML model loaded from {model_path}")
             except Exception as e:
-                logging.warning(f"[{symbol}] Failed to load ML model: {e}")
+                logging.warning(f"[{symbol}] Failed to load ML model: {type(e).__name__}: {e}", exc_info=True)
         else:
             logging.warning(f"[{symbol}] ML model not found at {model_path}")
         meta_path = BASE_DIR / f"models/model_{safe_symbol}.meta.pkl"

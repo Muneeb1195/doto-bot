@@ -10,7 +10,10 @@ forming-bar semantics was the root cause of repeated intrabar-flicker and
 lookahead regressions.
 """
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st

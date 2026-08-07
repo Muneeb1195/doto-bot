@@ -14,7 +14,10 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 from datetime import datetime, timedelta  # noqa: E402
 
-import MetaTrader5 as mt5  # noqa: E402
+try:
+    import MetaTrader5 as mt5  # noqa: E402
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5  # noqa: E402
 import pandas as pd  # noqa: E402
 from backtest import Backtest  # noqa: E402
 

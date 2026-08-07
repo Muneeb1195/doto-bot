@@ -4,7 +4,10 @@ from pathlib import Path
 
 import joblib
 import lightgbm as lgb
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st

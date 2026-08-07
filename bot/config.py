@@ -4,7 +4,10 @@ import configparser
 import logging
 import os
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 from state import CONFIG_DIR
 
 SYMBOL_OVERRIDE_KEYS = {

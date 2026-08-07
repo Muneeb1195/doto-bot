@@ -5,7 +5,10 @@ import logging
 import os
 from datetime import datetime
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 from mt5_connect import mt5_call
 from state import DASHBOARD_STATE, _corr_cache, _dynamic_deviation, _exec_quality, _filter_stats
 

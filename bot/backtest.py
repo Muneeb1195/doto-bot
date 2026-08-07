@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import joblib
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 from analytics import volume_filter_pass

@@ -8,7 +8,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5
 import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent

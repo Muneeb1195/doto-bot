@@ -96,7 +96,10 @@ if getattr(sys, "_base_executable", sys.executable) != sys.executable:
 
 os.environ["JOBLIB_PARALLEL_BACKEND"] = "threading"
 
-import MetaTrader5 as mt5  # noqa: E402
+try:
+    import MetaTrader5 as mt5  # noqa: E402
+except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+    from mt5_connect import mt5  # noqa: E402
 import numpy as np  # noqa: E402
 import state as _st  # noqa: E402
 from analytics import fused_regime_score  # noqa: E402
