@@ -26,7 +26,7 @@ jobs:
           pip install -r /tmp/requirements-ci.txt
       - name: Train models
         run: |
-          python bot/train_model.py --csv --retrain-all --years 3
+          python bot/train_model.py --csv --retrain-all --pool --years 3
       - name: Package artifacts
         run: |
           tar czf models.tar.gz models/*.pkl models/*.calib.npz 2>/dev/null || true

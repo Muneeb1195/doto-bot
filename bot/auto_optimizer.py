@@ -49,7 +49,7 @@ def train_models(csv_mode=False):
     logging.info("Phase 1: Training all ML models")
     logging.info(f"{'=' * 60}")
     trainer = _script_path("train_model.py")
-    cmd = [sys.executable, trainer, "--retrain-all", "--symbols", "ALL", "--years", str(DATA_YEARS)]
+    cmd = [sys.executable, trainer, "--retrain-all", "--pool", "--years", str(DATA_YEARS)]
     if csv_mode:
         cmd.append("--csv")
     logging.info(f"Running: {' '.join(cmd)}")
