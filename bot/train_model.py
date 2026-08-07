@@ -996,7 +996,10 @@ def main():
     args = parser.parse_args()
 
     print(f"ML Model Trainer — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"Config: tp_atr={args.tp_atr}, sl_atr={args.sl_atr}, max_hold={args.max_hold}, years={args.years}, csv={args.csv}")
+    print(
+        f"Config: tp_atr={args.tp_atr}, sl_atr={args.sl_atr}, "
+        f"max_hold={args.max_hold}, years={args.years}, csv={args.csv}"
+    )
 
     if args.retrain_all:
         symbols = [
@@ -1013,10 +1016,9 @@ def main():
     else:
         symbols = [s.strip() for s in args.symbols.split(",")]
 
-    if not args.csv:
-        if not mt5.initialize():
-            print(f"MT5 init failed: {mt5.last_error()}")
-            return
+    if not args.csv and not mt5.initialize():
+        print(f"MT5 init failed: {mt5.last_error()}")
+        return
 
     if args.pool:
         classes = set(ASSET_CLASS_MAP.get(s) for s in symbols if s in ASSET_CLASS_MAP)

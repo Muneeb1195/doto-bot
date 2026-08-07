@@ -131,7 +131,7 @@ def main():
     # Connect via mt5linux (Linux NUC) or native (Windows)
     sys.path.insert(0, str(BASE_DIR / "bot"))
     try:
-        from mt5_connect import ensure_mt5_connected, mt5 as mt5_mod
+        from mt5_connect import ensure_mt5_connected, mt5 as mt5_mod  # noqa: I001
         ok = ensure_mt5_connected()
         if not ok:
             logger.error("MT5 not connected — skipping export (timer will retry next cycle)")

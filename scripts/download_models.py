@@ -50,7 +50,11 @@ def _latest_release_tag(logger):
     r = _run(["gh", "release", "view", "--repo", REPO, "--json", "-q", ".tagName"], env=env)
     if r.returncode != 0:
         # Fallback: list releases and get latest
-        r = _run(["gh", "release", "list", "--repo", REPO, "--limit", "1", "--json", "tagName", "-q", ".[0].tagName"], env=env)
+        r = _run(
+            ["gh", "release", "list", "--repo", REPO, "--limit", "1",
+             "--json", "tagName", "-q", ".[0].tagName"],
+            env=env,
+        )
         if r.returncode != 0 or not r.stdout.strip():
             logger.warning(f"Could not list releases: {r.stderr.strip()}")
             return None
@@ -89,7 +93,6 @@ def _apply_strategy_params(logger):
         logger.error(f"Failed to read strategy-params.json: {e}")
         return
 
-    import configparser
     sys.path.insert(0, str(BASE_DIR / "bot"))
     from auto_optimizer import load_portfolio, update_symbol_strategy, write_settings
 
