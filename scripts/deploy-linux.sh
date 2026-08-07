@@ -51,7 +51,7 @@ sudo pacman -S --noconfirm --needed \
     wget curl git \
     python python-virtualenv python-pip \
     base-devel cmake pkg-config \
-    2>&1
+    2>&1 || warn "pacman reported issues — continuing"
 
 # ──────────────────────────────────────────────
 # Phase 1: Initialize Wine prefix
