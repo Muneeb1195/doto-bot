@@ -19,3 +19,4 @@ wine/
 .venv_news/
 __pycache__/
 *.pyc
+scripts/mt5server.exe

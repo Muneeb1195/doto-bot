@@ -101,29 +101,24 @@ done
 kill $XVFB_PID 2>/dev/null || true
 
 # ──────────────────────────────────────────────
-# Phase 3: Install Windows Python + MT5 bridge deps under Wine
+# Phase 3: Install mt5server.exe (standalone RPyC bridge)
 # ──────────────────────────────────────────────
-log "Phase 3: Installing Windows Python + MetaTrader5 packages"
-PYTHON_INSTALLER="/tmp/python-3.12.9-amd64.exe"
-if [ ! -f "$PYTHON_INSTALLER" ]; then
-    wget -q "https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe" \
-        -O "$PYTHON_INSTALLER"
+log "Phase 3: Installing mt5server.exe (standalone MT5 RPyC bridge)"
+MT5SERVER_URL="https://github.com/lucas-campagna/mt5linux/releases/download/server-1.1.1/mt5server.exe"
+MT5SERVER_PATH="$REPO_DIR/scripts/mt5server.exe"
+
+if [ ! -f "$MT5SERVER_PATH" ]; then
+    log "Downloading mt5server.exe from GitHub releases..."
+    wget -q "$MT5SERVER_URL" -O "$MT5SERVER_PATH" || \
+        err "Failed to download mt5server.exe — check internet connection"
+    chmod +x "$MT5SERVER_PATH"
+    log "mt5server.exe downloaded ($(du -h "$MT5SERVER_PATH" | cut -f1))"
+else
+    log "mt5server.exe already present — skipping download"
 fi
 
-Xvfb :99 -screen 0 1280x720x16 &>/dev/null &
-XVFB_PID=$!
-sleep 1
-
-DISPLAY=:99 wine "$PYTHON_INSTALLER" \
-    /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 Include_tools=0 2>/dev/null
-sleep 5
-
-# Install MetaTrader5 + mt5linux (bridge server) + rpyc in Windows Python.
-# mt5linux is REQUIRED — start-rpyc.sh runs `wine python -m mt5linux`.
-wine python -m pip install --upgrade pip -q 2>/dev/null || true
-wine python -m pip install MetaTrader5 mt5linux rpyc -q 2>/dev/null || true
-
-kill $XVFB_PID 2>/dev/null || true
+# NOTE: No Windows Python needed — mt5server.exe is a standalone binary
+# that handles MT5 IPC internally (avoids Wine named-pipe bugs).
 
 # ──────────────────────────────────────────────
 # Phase 4: Native Linux Python venv + bot deps
@@ -419,10 +414,10 @@ wine "$MT5_PATH" /portable
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-mt5.sh"
 
-# RPyC bridge startup wrapper
+# RPyC bridge startup wrapper (uses standalone mt5server.exe binary)
 cat > "$REPO_DIR/scripts/start-rpyc.sh" << 'SCRIPT'
 #!/usr/bin/env bash
-# start-rpyc.sh — Launch mt5linux RPyC server under Wine
+# start-rpyc.sh — Launch mt5server.exe (standalone MT5 RPyC bridge)
 # Called by systemd (mt5-rpyc.service)
 export DISPLAY=:99
 export WINEPREFIX="$HOME/.wine"
@@ -431,7 +426,7 @@ export WINEARCH=win64
 # Wait for MT5 terminal to be ready
 sleep 10
 
-wine python -m mt5linux --port 18812 --host 127.0.0.1
+exec wine "$HOME/doto-mt5-bot/scripts/mt5server.exe" --port 18812 --host 127.0.0.1
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-rpyc.sh"
 
