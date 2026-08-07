@@ -22,23 +22,72 @@ from state import _RATE_CACHE_TTL, _rate_cache
 
 _is_linux = platform.system() == "Linux"
 
-if _is_linux:
+_mt5_instance: Optional[object] = None
+_mt5_backend: str = "unknown"
+
+
+def _init_mt5linux():
+    """Try mt5linux RPyC bridge (mt5linux v0.x without Docker)."""
     from mt5linux import MetaTrader5 as _MT5Client
+    inst = _MT5Client(host="127.0.0.1", port=18812)
+    inst.initialize()
+    return inst
 
-    _mt5_instance: Optional[_MT5Client] = None
 
-    def _get_mt5():
-        global _mt5_instance
-        if _mt5_instance is None:
-            _mt5_instance = _MT5Client(host="127.0.0.1", port=18812)
-            _mt5_instance.initialize()
+def _init_socket_client():
+    """Fallback: MQL5 socket server (works when Wine IPC is broken)."""
+    from mt5_socket_client import MT5SocketClient
+    inst = MT5SocketClient(host="127.0.0.1", port=9000)
+    inst.connect()
+    return inst
+
+
+def _get_mt5():
+    global _mt5_instance
+    if _mt5_instance is not None:
         return _mt5_instance
+    raise RuntimeError("MT5 not initialized — call init_mt5() first")
 
-    mt5 = _get_mt5()
-else:
-    import MetaTrader5 as _mt5_impl
 
-    mt5 = _mt5_impl
+def init_mt5():
+    """Initialize MT5 connection with fallback chain."""
+    global _mt5_instance, _mt5_backend
+    if _mt5_instance is not None:
+        return
+
+    if not _is_linux:
+        import MetaTrader5 as _mt5_impl
+        _mt5_instance = _mt5_impl
+        _mt5_backend = "native"
+        logging.info("MT5 backend: native (Windows)")
+        return
+
+    # Linux: try mt5linux first, then socket client
+    try:
+        logging.info("MT5 backend: trying mt5linux...")
+        _mt5_instance = _init_mt5linux()
+        _mt5_backend = "mt5linux"
+        logging.info("MT5 backend: mt5linux (RPyC)")
+        return
+    except Exception as e:
+        logging.warning(f"mt5linux failed ({e}), trying socket client...")
+
+    try:
+        _mt5_instance = _init_socket_client()
+        _mt5_backend = "socket"
+        logging.info("MT5 backend: socket (MQL5 EA)")
+    except Exception as e:
+        raise RuntimeError(f"All MT5 backends failed. Last error: {e}")
+
+
+# Legacy compatibility: auto-init on import (may fail gracefully)
+try:
+    init_mt5()
+except Exception as e:
+    logging.warning(f"MT5 auto-init failed: {e}")
+    logging.warning("MT5 will be unavailable until init_mt5() succeeds")
+
+mt5 = _mt5_instance
 
 _mt5_proc: Optional["subprocess.Popen"] = None
 
