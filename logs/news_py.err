@@ -1323,3 +1323,19 @@ INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC
 INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
 INFO:root:Marketaux returned 3 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
 INFO:root:Wrote 8 symbols (3 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-08-07 11:19:31 [WATCHDOG] killing previous child pid=8832
+2026-08-07 11:19:31 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+INFO:root:Marketaux returned 1 articles for [XAUUSD,CC:BTC,NZDUSD,DJIA,GBPJPY,CC:SOL,CC:XRP,CC:DOGE]
+INFO:root:Wrote 8 symbols (1 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-08-07 11:22:34 [INFO] news exited (code 1073807364), restarting in 5s...
+2026-08-07 11:30:44 [WATCHDOG] killing previous child pid=3528
+2026-08-07 11:30:44 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+WARNING:root:Marketaux fetch failed: HTTPSConnectionPool(host='api.marketaux.com', port=443): Read timed out. (read timeout=15)
+WARNING:root:Marketaux failed — will retry in ~45 min
+INFO:root:Wrote 8 symbols (7 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+INFO:root:Wrote 8 symbols (8 articles) to C:\doto-mt5-bot\data\news_sentiment.json
+2026-08-07 12:04:06 [INFO] news exited (code 1073807364), restarting in 5s...
+2026-08-07 12:05:10 [WATCHDOG] killing previous child pid=9916
+2026-08-07 12:05:10 [INFO] Starting news (C:\doto-mt5-bot\.venv_news\Scripts\pythonw.exe services/news_sentiment.py)
+2026-08-07 12:05:13 [INFO] news exited (code 1073807364), restarting in 5s...

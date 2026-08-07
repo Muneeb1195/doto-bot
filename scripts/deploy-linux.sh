@@ -480,7 +480,9 @@ log "Wrapper scripts created"
 # ──────────────────────────────────────────────
 log "Phase 8: Configuring settings.ini for Linux/Wine"
 if [ -f "$REPO_DIR/config/settings.ini" ]; then
-    sed -i "s|path = .*|path = $WINEPREFIX/drive_c/Program Files/MetaTrader 5/terminal64.exe|" \
+    # Anchor to start-of-line: an unanchored "path = .*" also clobbers
+    # model_path (and any other *_path key), which silently breaks ML loading.
+    sed -i "s|^path = .*|path = $WINEPREFIX/drive_c/Program Files/MetaTrader 5/terminal64.exe|" \
         "$REPO_DIR/config/settings.ini" 2>/dev/null || warn "Could not rewrite settings.ini path — fix manually"
 fi
 

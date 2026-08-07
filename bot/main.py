@@ -256,9 +256,15 @@ def main():
     )
     log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logging.basicConfig(level=log_level, handlers=[log_handler, logging.StreamHandler()])
-    if not ensure_mt5_connected(cfg):
-        logging.critical("MT5 unavailable on startup — aborting")
-        return
+    # Startup grace period: the MT5 terminal (and its socket EA) can take well
+    # over a minute to come up under Wine, so retry in-process before aborting.
+    startup_deadline = time.time() + cfg.get("mt5_startup_grace_sec", 180)
+    while not ensure_mt5_connected(cfg):
+        if time.time() >= startup_deadline:
+            logging.critical("MT5 unavailable on startup — aborting")
+            return
+        logging.warning("MT5 not ready yet — retrying during startup grace period")
+        time.sleep(10)
 
     account_info = mt5_call(mt5.account_info, _timeout=10)
     if account_info is None:

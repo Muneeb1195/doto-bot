@@ -261,8 +261,55 @@ def _kill_process(name):
         subprocess.run(["taskkill", "/F", "/IM", name], capture_output=True, timeout=5)
 
 
+def _ensure_socket_connected(cfg):
+    """Reconnect path for the socket backend (MQL5 EA inside the terminal).
+
+    systemd owns the MT5 terminal here, so we must never kill or relaunch it.
+    We only re-establish the TCP session and re-send INIT, which the EA
+    answers idempotently.
+    """
+    attempts = int(cfg.get("mt5_socket_attempts", 5))
+    for attempt in range(attempts):
+        try:
+            ok = mt5_call(
+                mt5.initialize,
+                login=cfg.get("account"),
+                password=cfg.get("password"),
+                server=cfg.get("server"),
+                timeout=60000,
+                _timeout=65,
+            )
+        except Exception as e:
+            logging.warning(f"MT5 socket initialize raised: {e}")
+            ok = False
+
+        if ok:
+            acc = mt5_call(mt5.account_info, _timeout=10)
+            if acc is not None:
+                if attempt > 0:
+                    logging.info(f"MT5 reconnected: {acc.name} | Balance: Rs.{acc.balance:.2f}")
+                for sym in cfg["symbols"]:
+                    mt5_call(mt5.symbol_select, sym, True, _timeout=10)
+                return True
+            logging.warning("MT5 socket INIT ok but account_info unavailable")
+
+        err = mt5_call(mt5.last_error, _timeout=3)
+        logging.warning(f"MT5 socket init failed (attempt {attempt + 1}/{attempts}): {err}")
+
+        with suppress(Exception):
+            mt5.disconnect()
+        time.sleep(int(cfg.get("mt5_socket_retry_sleep", 10)))
+        with suppress(Exception):
+            mt5.connect()
+
+    logging.error("MT5 socket bridge unavailable — terminal/EA not ready (systemd owns the terminal)")
+    return False
+
+
 def ensure_mt5_connected(cfg):
     global _mt5_proc
+    if _mt5_backend == "socket":
+        return _ensure_socket_connected(cfg)
     try:
         info = mt5_call(mt5.terminal_info, _timeout=5)
         if info is not None and getattr(info, "connected", True):

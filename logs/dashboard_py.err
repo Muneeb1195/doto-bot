@@ -11618,3 +11618,21 @@ INFO:     Started server process [8636]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8501 (Press CTRL+C to quit)
+2026-08-07 11:19:31 [WATCHDOG] killing previous child pid=8636
+2026-08-07 11:19:31 [INFO] Starting dashboard (C:\doto-mt5-bot\.venv\Scripts\pythonw.exe -m uvicorn dashboard.api:app --host 127.0.0.1 --port 8501)
+INFO:     Started server process [2700]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8501 (Press CTRL+C to quit)
+2026-08-07 11:22:34 [INFO] dashboard exited (code 1073807364), restarting in 5s...
+2026-08-07 11:22:39 [INFO] Starting dashboard (C:\doto-mt5-bot\.venv\Scripts\pythonw.exe -m uvicorn dashboard.api:app --host 127.0.0.1 --port 8501)
+2026-08-07 11:30:44 [WATCHDOG] killing previous child pid=2700
+2026-08-07 11:30:44 [INFO] Starting dashboard (C:\doto-mt5-bot\.venv\Scripts\pythonw.exe -m uvicorn dashboard.api:app --host 127.0.0.1 --port 8501)
+INFO:     Started server process [9932]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8501 (Press CTRL+C to quit)
+2026-08-07 12:04:06 [INFO] dashboard exited (code 1073807364), restarting in 5s...
+2026-08-07 12:05:10 [WATCHDOG] killing previous child pid=9932
+2026-08-07 12:05:10 [INFO] Starting dashboard (C:\doto-mt5-bot\.venv\Scripts\pythonw.exe -m uvicorn dashboard.api:app --host 127.0.0.1 --port 8501)
+2026-08-07 12:05:13 [INFO] dashboard exited (code 1073807364), restarting in 5s...
