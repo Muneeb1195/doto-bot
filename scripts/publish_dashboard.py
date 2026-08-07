@@ -35,7 +35,8 @@ TRADES_CSV = REPO_DIR / "logs" / "trades.csv"
 BOT_LOG = REPO_DIR / "logs" / "bot.log"
 
 # Public gh-pages repo. Change via --public-repo if you fork.
-PUBLIC_REPO = os.environ.get("DOTO_PUBLIC_REPO", "Muneeb1195/doto-dashboard")
+# Use SSH URL so the deploy key works (no gh CLI or PAT needed).
+PUBLIC_REPO = os.environ.get("DOTO_PUBLIC_REPO", "git@github.com:Muneeb1195/doto-dashboard.git")
 PUBLIC_BRANCH = "gh-pages"
 
 LOG_LINE_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} \[(INFO|WARNING|ERROR)\]")
@@ -328,12 +329,18 @@ def main() -> int:
     work.mkdir(parents=True, exist_ok=True)
 
     if not (work / ".git").exists():
+        # If dir exists but isn't a git repo, wipe it first
+        if work.exists() and any(work.iterdir()):
+            print(f"working dir {work} exists but is not a git repo — removing")
+            import shutil
+            shutil.rmtree(work)
+            work.mkdir(parents=True, exist_ok=True)
         if args.dry_run:
             print(f"[dry-run] would clone {args.public_repo} into {work}")
         else:
             print(f"cloning {args.public_repo} into {work}")
             subprocess.run(
-                ["git", "clone", f"https://github.com/{args.public_repo}.git", "-b", PUBLIC_BRANCH, str(work)],
+                ["git", "clone", args.public_repo, "-b", PUBLIC_BRANCH, str(work)],
                 check=True, capture_output=True, text=True,
             )
 

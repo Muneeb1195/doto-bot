@@ -239,6 +239,9 @@ WantedBy=default.target
 SVC
 
 # Dashboard (FastAPI — private tier)
+# Read dashboard credentials from environment (must be set before running this script)
+DASHBOARD_USER="${DASHBOARD_USER:-admin}"
+DASHBOARD_PASS="${DASHBOARD_PASS:-changeme}"
 cat > "$SYSTEMD_USER_DIR/doto-dashboard.service" << SVC
 [Unit]
 Description=Doto MT5 Dashboard
@@ -248,8 +251,8 @@ Requires=mt5.service
 [Service]
 Type=simple
 WorkingDirectory=$REPO_DIR
-Environment=DASHBOARD_USER=\$DASHBOARD_USER
-Environment=DASHBOARD_PASS=\$DASHBOARD_PASS
+Environment=DASHBOARD_USER=$DASHBOARD_USER
+Environment=DASHBOARD_PASS=$DASHBOARD_PASS
 ExecStart=$REPO_DIR/.venv/bin/python -m uvicorn dashboard.api:app --host 0.0.0.0 --port 8501
 Restart=on-failure
 RestartSec=10
