@@ -47,7 +47,7 @@ fi
 
 sudo pacman -S --noconfirm --needed \
     wine \
-    xorg-xvfb xdotool \
+    xorg-server-xvfb xdotool \
     wget curl git \
     python python-virtualenv python-pip \
     base-devel cmake pkg-config \
