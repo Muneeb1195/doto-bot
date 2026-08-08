@@ -102,51 +102,70 @@ jobs:
         with:
           path: /tmp/shards
           merge-multiple: true
+      - name: Install merge deps
+        run: pip install pandas
       - name: Build strategy-params.json
         run: |
           mkdir -p logs && cp /tmp/shards/optimize_*.csv logs/ 2>/dev/null || true
           python - <<'PY'
-          import csv, json, glob, os, configparser, math
+          import glob, json, math, os, configparser
+          import pandas as pd
+
+          # Reuse the SAME plateau picker the sequential auto_optimizer used.
+          # Taking a plain argmax over wf_score would pick knife-edge parameter
+          # sets that win by noise and are surrounded by poor neighbours; the
+          # plateau picker instead takes the middle of the top-scoring cluster,
+          # which is the whole point of having it.
+          from scripts.plateau_picker import pick_middle_of_plateau
 
           settings = configparser.ConfigParser()
           settings.read('config/settings.ini')
           portfolio = {s.strip() for s in settings.get('PORTFOLIO', 'symbols', fallback='').split(',') if s.strip()}
+
+          def num(row, key, default=float('nan')):
+              try:
+                  v = row.get(key)
+                  return float(v) if v is not None and v == v else default
+              except (TypeError, ValueError):
+                  return default
 
           result, skipped = {}, []
           for path in sorted(glob.glob('logs/optimize_*.csv')):
               sym = os.path.basename(path).replace('optimize_', '').replace('.csv', '').replace('_', '.')
               if sym not in portfolio:
                   continue
-              with open(path) as f:
-                  rows = list(csv.DictReader(f))
-              if not rows:
+              df = pd.read_csv(path)
+              if df.empty:
                   continue
-              best = max(rows, key=lambda r: float(r.get('wf_score', 0) or 0))
+
+              rec = pick_middle_of_plateau(df, score_col='wf_score', pct=0.90, min_trades=3)
+              if rec is None:
+                  skipped.append(f'{sym}: no valid plateau')
+                  continue
 
               # Multiple-testing guard: a walk-forward winner drawn from a large
               # search is not evidence of edge on its own. Skip publishing any
               # symbol whose result is indistinguishable from a lucky draw.
-              def num(key, default=float('nan')):
-                  try:
-                      return float(best.get(key, '') or default)
-                  except ValueError:
-                      return default
-              dsr, pbo = num('dsr'), num('pbo')
+              dsr, pbo = num(rec, 'dsr'), num(rec, 'pbo')
               if not math.isnan(dsr) and dsr < 0.95:
-                  skipped.append(f"{sym}: DSR={dsr:.3f} < 0.95")
+                  skipped.append(f'{sym}: DSR={dsr:.3f} < 0.95')
                   continue
               if not math.isnan(pbo) and pbo > 0.5:
-                  skipped.append(f"{sym}: PBO={pbo:.2f} > 0.50")
+                  skipped.append(f'{sym}: PBO={pbo:.2f} > 0.50')
                   continue
 
               result[sym] = {
-                  'ema_fast_period': int(float(best.get('ema_fast', 10))),
-                  'ema_slow_period': int(float(best.get('ema_slow', 40))),
-                  'atr_sl_multiplier': float(best.get('sl', 1.5)),
-                  'risk_reward_ratio': float(best.get('rr', 2.0)),
-                  'adx_trend_threshold': int(float(best.get('adx', 25))),
-                  'scoring_min_entry': float(best.get('score', 0.55)),
+                  'ema_fast_period': int(rec['ema_fast']),
+                  'ema_slow_period': int(rec['ema_slow']),
+                  'atr_sl_multiplier': float(rec['sl']),
+                  'risk_reward_ratio': float(rec['rr']),
+                  'adx_trend_threshold': int(rec['adx']),
+                  'scoring_min_entry': float(rec['score']),
               }
+              print(f"  {sym}: EMA{int(rec['ema_fast'])}/{int(rec['ema_slow'])} "
+                    f"SL={float(rec['sl']):.1f} RR={float(rec['rr']):.1f} "
+                    f"ADX={int(rec['adx'])} score={float(rec['score']):.2f} "
+                    f"(plateau pick, DSR={dsr:.3f} PBO={pbo})")
 
           with open('strategy-params.json', 'w') as f:
               json.dump(result, f, indent=2)
