@@ -37,7 +37,7 @@ TF_MAP = {
     "M1": {"tf_attr": "TIMEFRAME_M1", "use_paged": True},
 }
 
-EXPORT_YEARS = 2
+EXPORT_YEARS = 3
 
 
 def _setup_logging():
@@ -73,9 +73,7 @@ def _save_symbol_info(settings, symbol, point, tick_value, volume_step):
 
 def _export_tf(mt5_mod, symbol, tf_name, tf_config, logger):
     """Export one timeframe for one symbol. Returns (rows, info) or (None, None)."""
-    tf = getattr(mt5_mod.TIMEFRAME_M1 if tf_name == "M1"
-                else mt5_mod.TIMEFRAME_M15 if tf_name == "M15"
-                else mt5_mod.TIMEFRAME_H1)
+    tf = getattr(mt5_mod, tf_config["tf_attr"])
 
     end = datetime.now()
     start = end - timedelta(days=int(EXPORT_YEARS * 365))
@@ -120,9 +118,25 @@ def _export_tf(mt5_mod, symbol, tf_name, tf_config, logger):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Export MT5 history to data/history/ CSVs")
+    parser.add_argument("--tf", default="", help="Comma-separated timeframes to export (default: all)")
+    parser.add_argument("--symbols", default="", help="Comma-separated symbols (default: portfolio)")
+    parser.add_argument("--no-git", action="store_true", help="Skip the git commit/push step")
+    args = parser.parse_args()
+
+    tf_map = TF_MAP
+    if args.tf:
+        wanted = {t.strip().upper() for t in args.tf.split(",") if t.strip()}
+        tf_map = {k: v for k, v in TF_MAP.items() if k in wanted}
+    symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] or SYMBOLS
+
     logger = _setup_logging()
     logger.info("=" * 60)
     logger.info("MT5 Data Export Started")
+    logger.info(f"Symbols: {symbols}")
+    logger.info(f"Timeframes: {list(tf_map)} | years={EXPORT_YEARS}")
     logger.info("=" * 60)
 
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
@@ -131,8 +145,11 @@ def main():
     # Connect via mt5linux (Linux NUC) or native (Windows)
     sys.path.insert(0, str(BASE_DIR / "bot"))
     try:
+        from config import load_config  # noqa: I001
         from mt5_connect import ensure_mt5_connected, mt5 as mt5_mod  # noqa: I001
-        ok = ensure_mt5_connected()
+        cfg = load_config()
+        cfg["symbols"] = symbols
+        ok = ensure_mt5_connected(cfg)
         if not ok:
             logger.error("MT5 not connected — skipping export (timer will retry next cycle)")
             return
@@ -141,9 +158,9 @@ def main():
         return
 
     results = {}
-    for symbol in SYMBOLS:
+    for symbol in symbols:
         results[symbol] = {}
-        for tf_name, tf_config in TF_MAP.items():
+        for tf_name, tf_config in tf_map.items():
             try:
                 rows, info = _export_tf(mt5_mod, symbol, tf_name, tf_config, logger)
                 if rows is not None and info is not None:
@@ -162,6 +179,10 @@ def main():
     }
     meta_path = HISTORY_DIR / ".export_meta.json"
     meta_path.write_text(json.dumps(export_meta, indent=2))
+
+    if args.no_git:
+        logger.info("--no-git: skipping commit/push")
+        return
 
     try:
         subprocess.run(["git", "add", "data/history/", ".gitattributes", "config/settings.ini"],

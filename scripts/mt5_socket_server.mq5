@@ -507,6 +507,11 @@ void CmdSymbol(string sym)
     string curProfit = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
     string curMargin = SymbolInfoString(sym, SYMBOL_CURRENCY_MARGIN);
     string desc = SymbolInfoString(sym, SYMBOL_DESCRIPTION);
+    double volMin = SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN);
+    double volMax = SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX);
+    double volStep = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
+    int stopsLevel = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL);
+    int fillMode = (int)SymbolInfoInteger(sym, SYMBOL_FILLING_MODE);
 
     string s = "symbol=" + sym
              + "|bid=" + DoubleToString(bid, digits)
@@ -514,7 +519,14 @@ void CmdSymbol(string sym)
              + "|point=" + DoubleToString(point, digits + 2)
              + "|digits=" + IntegerToString(digits)
              + "|tick_value=" + DoubleToString(tickVal, 6)
+             + "|trade_tick_value=" + DoubleToString(tickVal, 6)
              + "|tick_size=" + DoubleToString(tickSize, 8)
+             + "|trade_tick_size=" + DoubleToString(tickSize, 8)
+             + "|volume_min=" + DoubleToString(volMin, 4)
+             + "|volume_max=" + DoubleToString(volMax, 4)
+             + "|volume_step=" + DoubleToString(volStep, 4)
+             + "|trade_stops_level=" + IntegerToString(stopsLevel)
+             + "|filling_mode=" + IntegerToString(fillMode)
              + "|contract_size=" + DoubleToString(contractSize, 2)
              + "|trade_mode=" + IntegerToString(tradeMode)
              + "|spread=" + IntegerToString(spread)

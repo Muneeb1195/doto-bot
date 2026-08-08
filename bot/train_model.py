@@ -597,7 +597,9 @@ def train_meta_labeler(X, y_primary, y_true, tune_params=None):
     return meta_model
 
 
-def train_pool_model(symbols, years=3, tp_atr_mult=2.0, sl_atr_mult=1.0, max_hold=12, tuned_params=None, tft=False):
+def train_pool_model(
+    symbols, years=3, tp_atr_mult=2.0, sl_atr_mult=1.0, max_hold=12, tuned_params=None, tft=False, csv_mode=False
+):
     class_label = None
     for sym in symbols:
         if sym in ASSET_CLASS_MAP:
@@ -617,10 +619,12 @@ def train_pool_model(symbols, years=3, tp_atr_mult=2.0, sl_atr_mult=1.0, max_hol
     all_X = []
     all_y = []
     for symbol in symbols:
-        df = fetch_data(symbol, years)
+        df = fetch_data(symbol, years, csv_mode=csv_mode)
         if df is None or len(df) < 200:
+            n = 0 if df is None else len(df)
+            print(f"  [{symbol}] skipped — insufficient data ({n} bars, need 200)")
             continue
-        df_m1 = fetch_m1_data(symbol, years)
+        df_m1 = fetch_m1_data(symbol, years, csv_mode=csv_mode)
         feature_data, full_df = prepare_features(df, symbol=symbol, m1_df=df_m1)
         labels = triple_barrier_labels(full_df, tp_atr_mult, sl_atr_mult, max_hold)
         aligned = pd.concat([feature_data, labels], axis=1).dropna(subset=["label"])
@@ -727,6 +731,9 @@ def train_model_for_symbol(
 
     df = fetch_data(symbol, years, csv_mode=csv_mode)
     if df is None or len(df) < 200:
+        n = 0 if df is None else len(df)
+        src = "CSV (data/history/)" if csv_mode else "MT5"
+        print(f"  [{symbol}] SKIPPED — insufficient data from {src}: {n} bars (need 200)")
         return None
 
     print(f"Computing features ({len(FEATURE_COLS)} cols)...")
@@ -1038,7 +1045,15 @@ def main():
             class_syms = [s for s in symbols if ASSET_CLASS_MAP.get(s) == cls]
             if len(class_syms) >= 2:
                 try:
-                    train_pool_model(class_syms, args.years, args.tp_atr, args.sl_atr, args.max_hold, tft=args.tft)
+                    train_pool_model(
+                        class_syms,
+                        args.years,
+                        args.tp_atr,
+                        args.sl_atr,
+                        args.max_hold,
+                        tft=args.tft,
+                        csv_mode=args.csv,
+                    )
                 except Exception as e:
                     import traceback
 

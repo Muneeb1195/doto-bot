@@ -23,3 +23,4 @@ scripts/mt5server.exe
 
 # MT5 socket server compiled binary
 scripts/*.ex5
+data/history/.export_meta.json
