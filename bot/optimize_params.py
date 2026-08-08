@@ -56,12 +56,24 @@ SYMBOL_PROFILE = {
     "USDCAD.raw": "A",
 }
 
+# MA grids restored to the pre-reduction (2026-07) set.
+#
+# Deliberately NOT widened further. Bailey & Lopez de Prado's Minimum Backtest
+# Length result binds the number of trials to the sample length, not to CPU
+# time: with ~3y of data, searching many hundreds of independent configurations
+# per symbol all but guarantees an in-sample winner with zero out-of-sample
+# edge. Cheap compute is what makes overfitting easy, not what licenses more
+# search. SL/RR/ADX are intentionally left at their current values because they
+# add genuinely independent dimensions (unlike neighbouring MA pairs, which are
+# highly correlated reparameterizations of one idea and contribute little
+# effective breadth). See the dsr/pbo columns in the optimizer CSV, which
+# report the multiple-testing correction for whatever grid is actually run.
 PROFILE_EMAS = {
-    "A": [(10, 40), (12, 48), (15, 60), (20, 80)],
-    "B": [(6, 24), (8, 34), (10, 40)],
-    "C": [(10, 40), (12, 48), (15, 60), (18, 72)],
-    "D": [(10, 40), (12, 48), (15, 60)],
-    "FAST": [(5, 20), (6, 18), (8, 24), (10, 30)],
+    "A": [(8, 32), (10, 40), (12, 48), (15, 60), (20, 80), (25, 100)],
+    "B": [(6, 24), (8, 34), (10, 40), (12, 48)],
+    "C": [(6, 24), (8, 32), (10, 40), (12, 48), (15, 60), (18, 72), (20, 80), (25, 100), (30, 120)],
+    "D": [(8, 32), (10, 40), (12, 48), (15, 60)],
+    "FAST": [(3, 12), (5, 20), (6, 18), (8, 24), (10, 30), (12, 36)],
 }
 
 PROFILE_MR = {"A": True, "B": False, "C": False, "D": False, "FAST": True}
@@ -391,8 +403,19 @@ def build_params(
     return p
 
 
-def fetch_m1_data(symbol, years=3):
-    """Fetch M1 bars for the full window via backward paging (no per-request cap)."""
+def fetch_m1_data(symbol, years=3, csv_mode=False):
+    """Fetch M1 bars for the full window via backward paging (no per-request cap).
+
+    In csv_mode the bars come from data/history/<SYMBOL>_M1.csv when present.
+    M1 exports are large and are not committed for every symbol, so a missing
+    file is not an error: callers treat None as "no orderflow features", which
+    matches how the models were trained in CI.
+    """
+    if csv_mode:
+        from train_model import load_csv_data_train
+
+        return load_csv_data_train(symbol, tf_name="M1")
+
     import MetaTrader5 as mt5
     from mt5_connect import fetch_rates_paged
 
@@ -608,6 +631,46 @@ def optimize_symbol(
                 "stability": sp2,
             }
         )
+
+    # Multiple-testing diagnostics. A walk-forward score reports the winner of
+    # this search without charging for the size of the search; these columns
+    # make that cost visible. They are informational only and do not change
+    # which candidate is selected above.
+    try:
+        from overfit_stats import summarize
+
+        cand_scores = [r["wf_score"] for r in rows]
+        # final entries are (ef, es, sl, rr, adx, sc, wf_r, wf_s, sp, final);
+        # index 6 is the per-window result list. Mean OOS profit factor across
+        # windows is the out-of-sample counterpart to the in-sample wf_score.
+        oos_scores = [
+            float(np.mean([w["oos"].get("profit_factor", 0) or 0 for w in entry[6]])) for entry in final
+        ]
+        searched = [(e[0], e[1], e[2], e[3], e[4], e[5]) for e in final]
+        stats = summarize(
+            cand_scores,
+            oos_scores=oos_scores,
+            n_obs=int(wf_r[-1]["is"].get("n_trades", 0)),
+            combos=searched,
+        )
+        for r in rows:
+            r.update(stats)
+        print(
+            f"    Overfitting check: trials={stats['n_trials']} "
+            f"effective={stats['effective_trials']} "
+            f"E[max|null]={stats['expected_max_sr']:.2f} "
+            f"DSR={stats['dsr']:.3f} PBO={stats['pbo']}"
+        )
+        if stats["dsr"] < 0.95:
+            print(
+                f"    [!] DSR {stats['dsr']:.3f} < 0.95 — this result is not "
+                f"distinguishable from a lucky draw across {stats['n_trials']} trials"
+            )
+        if np.isfinite(stats["pbo"]) and stats["pbo"] > 0.5:
+            print(f"    [!] PBO {stats['pbo']:.2f} > 0.50 — selection is likely fitting noise")
+    except Exception as e:  # diagnostics must never break an optimization run
+        print(f"    (overfitting diagnostics unavailable: {e})")
+
     pd.DataFrame(rows).to_csv(LOG_DIR / f"optimize_{symbol.replace('.', '_')}.csv", index=False)
 
     return {
@@ -879,12 +942,15 @@ def main():
     import subprocess
     import time
 
-    import MetaTrader5 as mt5
-
     mt5_path = settings.get("MT5", "path", fallback="C:\\Program Files\\MetaTrader 5\\terminal64.exe")
     timeout_ms = settings.getint("MT5", "timeout_ms", fallback=180000)
 
     if not args.csv:
+        # Imported lazily: --csv mode runs entirely from data/history/ and must
+        # work on hosts without the (Windows-only) MetaTrader5 package, which
+        # is how the CI optimize workflow runs.
+        import MetaTrader5 as mt5
+
         ok = mt5.initialize()
         if not ok:
             ok = mt5.initialize(
@@ -980,7 +1046,7 @@ def main():
         # retrain, so the optimizer's ML gate must see real values (parity with
         # training/live). Attach of_* to the H1 frame BEFORE window slicing so
         # every walk-forward window carries them into worker processes.
-        df_m1 = fetch_m1_data(symbol, args.years)
+        df_m1 = fetch_m1_data(symbol, args.years, csv_mode=args.csv)
         if df_m1 is not None:
             from ml_features import attach_orderflow_features
 
@@ -1038,7 +1104,10 @@ def main():
         if best:
             all_best.append(best)
 
-    mt5.shutdown()
+    if not args.csv:
+        import MetaTrader5 as mt5  # noqa: I001  (lazy: unavailable in --csv/CI mode)
+
+        mt5.shutdown()
 
     print(f"\n{'=' * 80}")
     print("WALK-FORWARD OPTIMIZATION RESULTS")

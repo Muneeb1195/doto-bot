@@ -289,62 +289,12 @@ log "Systemd user services created"
 # ──────────────────────────────────────────────
 log "Phase 6: Installing systemd user timers"
 
-# Auto-optimizer — weekly Sunday 02:00 (full-grid 2yr, applies + restarts bot)
-cat > "$SYSTEMD_USER_DIR/doto-optimizer.service" << SVC
-[Unit]
-Description=Doto Auto-Optimizer (weekly)
-
-[Service]
-Type=oneshot
-WorkingDirectory=$REPO_DIR
-ExecStart=$REPO_DIR/.venv/bin/python bot/auto_optimizer.py --mode weekly --apply
-StandardOutput=append:$REPO_DIR/logs/auto_optimizer.log
-StandardError=append:$REPO_DIR/logs/auto_optimizer.log
-
-[Install]
-WantedBy=default.target
-SVC
-
-cat > "$SYSTEMD_USER_DIR/doto-optimizer.timer" << SVC
-[Unit]
-Description=Run auto-optimizer weekly on Sunday 02:00
-
-[Timer]
-OnCalendar=Sun 02:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
-
-# ML retrain — weekly Sunday 03:00
-cat > "$SYSTEMD_USER_DIR/doto-retrain.service" << SVC
-[Unit]
-Description=Doto ML Model Retraining
-
-[Service]
-Type=oneshot
-WorkingDirectory=$REPO_DIR
-ExecStartPre=/bin/sleep 3600
-ExecStart=$REPO_DIR/.venv/bin/python bot/train_model.py --retrain-all --symbols ALL --years 3
-StandardOutput=append:$REPO_DIR/logs/retrain.log
-StandardError=append:$REPO_DIR/logs/retrain.log
-
-[Install]
-WantedBy=default.target
-SVC
-
-cat > "$SYSTEMD_USER_DIR/doto-retrain.timer" << SVC
-[Unit]
-Description=Run ML retraining weekly on Sunday 03:00
-
-[Timer]
-OnCalendar=Sun 03:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
+# NOTE: optimization and ML retraining deliberately have NO systemd timers.
+# Both run on GitHub Actions only (.github/workflows/optimize.yml and
+# train.yml). A single 48-combo symbol takes ~23 min on this box and the full
+# portfolio ~8h, which would also compete with the live bot for CPU. CI shards
+# the symbols across parallel jobs instead, and doto-download.timer pulls the
+# resulting models/params back here.
 
 # Backup — daily 04:00
 cat > "$SYSTEMD_USER_DIR/doto-backup.service" << SVC
@@ -538,8 +488,6 @@ systemctl --user enable doto-bot.service
 systemctl --user enable doto-dashboard.service
 systemctl --user enable doto-news.service
 
-systemctl --user enable doto-optimizer.timer
-systemctl --user enable doto-retrain.timer
 systemctl --user enable doto-backup.timer
 
 log "Starting services (this will take ~60s)..."
@@ -551,8 +499,6 @@ systemctl --user start doto-bot.service
 systemctl --user start doto-dashboard.service
 systemctl --user start doto-news.service
 
-systemctl --user start doto-optimizer.timer
-systemctl --user start doto-retrain.timer
 systemctl --user start doto-backup.timer
 
 # ──────────────────────────────────────────────
@@ -568,7 +514,7 @@ done
 
 echo ""
 echo "=== Timer Status ==="
-for timer in doto-optimizer doto-retrain doto-backup; do
+for timer in doto-backup; do
     status=$(systemctl --user is-active "$timer.timer" 2>/dev/null || echo "inactive")
     next=$(systemctl --user show "$timer.timer" -p NextElapseUSecRealtime --value 2>/dev/null || echo "unknown")
     echo "  $timer: $status (next: $next)"

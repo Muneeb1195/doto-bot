@@ -1,17 +1,66 @@
 name: Optimize Strategy
 
+# Optimization runs on GitHub runners ONLY. The home-server (i5-4250U, 4
+# threads) needs ~23 min for a single 48-combo symbol and ~8h for the full
+# portfolio, which would also contend with the live bot for CPU. Runners are
+# ~2x faster per core and, more importantly, the symbols are sharded across a
+# job matrix below so they run concurrently instead of end to end.
+
 on:
   schedule:
     - cron: '0 2 * * 0'       # Weekly Sun 02:00 UTC
     - cron: '0 2 1-7 * 0'     # Monthly CPCV (1st Sun)
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Optimization mode'
+        required: false
+        default: 'auto'
+        type: choice
+        options: [auto, weekly, monthly]
 
 permissions:
   contents: write
 
 jobs:
-  optimize:
+  # Resolve the mode once so every shard agrees, and read the portfolio from
+  # settings.ini so the matrix stays in sync with the live symbol list.
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.cfg.outputs.mode }}
+      symbols: ${{ steps.cfg.outputs.symbols }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: cfg
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" != "auto" ]; then
+            MODE="${{ inputs.mode }}"
+          else
+            DOM=$(date +%d); DOW=$(date +%u)
+            if [ "$DOM" -le 7 ] && [ "$DOW" -eq 7 ]; then MODE=monthly; else MODE=weekly; fi
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          SYMBOLS=$(python -c "
+          import configparser, json
+          c = configparser.ConfigParser(); c.read('config/settings.ini')
+          s = [x.strip() for x in c.get('PORTFOLIO','symbols',fallback='').split(',') if x.strip()]
+          print(json.dumps(s))
+          ")
+          echo "symbols=$SYMBOLS" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE symbols=$SYMBOLS"
+
+  # One job per symbol. A single symbol is 12-52 min, so sharding keeps every
+  # job well inside the 6h limit even for monthly CPCV.
+  optimize:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        symbol: ${{ fromJson(needs.setup.outputs.symbols) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,67 +74,98 @@ jobs:
           python -m pip install --upgrade pip
           grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
-      - name: Determine mode
-        id: mode
+      - name: Optimize ${{ matrix.symbol }}
         run: |
-          DOW=$(date +%d)
-          DOM=$(date +%u)
-          if [ "$DOW" -le 7 ] && [ "$DOM" -eq 7 ]; then
-            echo "mode=monthly" >> $GITHUB_OUTPUT
-          else
-            echo "mode=weekly" >> $GITHUB_OUTPUT
-          fi
-          echo "Selected mode: ${{ steps.mode.outputs.mode }}"
-      - name: Run optimizer
+          MODE="${{ needs.setup.outputs.mode }}"
+          if [ "$MODE" = "monthly" ]; then FLAG="--cpcv"; YEARS=3; else FLAG="--full-grid"; YEARS=3; fi
+          python bot/optimize_params.py --symbols "${{ matrix.symbol }}" --csv $FLAG --years $YEARS
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimize-${{ matrix.symbol }}
+          path: logs/optimize_*.csv
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Merge every shard's CSV into one strategy-params.json and publish it.
+  publish:
+    needs: [setup, optimize]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all shard results
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/shards
+          merge-multiple: true
+      - name: Build strategy-params.json
         run: |
-          python bot/auto_optimizer.py --csv --mode ${{ steps.mode.outputs.mode }} --skip-train
-      - name: Package params (filter to 8 portfolio symbols)
-        run: |
-          python -c "
-          import csv, json, glob, os, sys, configparser
-          # Read portfolio symbols from settings.ini
+          mkdir -p logs && cp /tmp/shards/optimize_*.csv logs/ 2>/dev/null || true
+          python - <<'PY'
+          import csv, json, glob, os, configparser, math
+
           settings = configparser.ConfigParser()
           settings.read('config/settings.ini')
-          portfolio_str = settings.get('PORTFOLIO', 'symbols', fallback='')
-          portfolio_symbols = set(s.strip() for s in portfolio_str.split(',') if s.strip())
-          if not portfolio_symbols:
-              portfolio_symbols = {'BTCUSD.raw','US30.raw','GBPJPY.raw','SOLUSD.raw','XRPUSD.raw','EURUSD.raw','US500.raw','XAUUSD.raw'}
-          
-          result = {}
+          portfolio = {s.strip() for s in settings.get('PORTFOLIO', 'symbols', fallback='').split(',') if s.strip()}
+
+          result, skipped = {}, []
           for path in sorted(glob.glob('logs/optimize_*.csv')):
-              sym = os.path.basename(path).replace('optimize_','').replace('.csv','').replace('_','.')
-              if sym not in portfolio_symbols:
+              sym = os.path.basename(path).replace('optimize_', '').replace('.csv', '').replace('_', '.')
+              if sym not in portfolio:
                   continue
               with open(path) as f:
-                  reader = csv.DictReader(f)
-                  rows = list(reader)
+                  rows = list(csv.DictReader(f))
               if not rows:
                   continue
               best = max(rows, key=lambda r: float(r.get('wf_score', 0) or 0))
+
+              # Multiple-testing guard: a walk-forward winner drawn from a large
+              # search is not evidence of edge on its own. Skip publishing any
+              # symbol whose result is indistinguishable from a lucky draw.
+              def num(key, default=float('nan')):
+                  try:
+                      return float(best.get(key, '') or default)
+                  except ValueError:
+                      return default
+              dsr, pbo = num('dsr'), num('pbo')
+              if not math.isnan(dsr) and dsr < 0.95:
+                  skipped.append(f"{sym}: DSR={dsr:.3f} < 0.95")
+                  continue
+              if not math.isnan(pbo) and pbo > 0.5:
+                  skipped.append(f"{sym}: PBO={pbo:.2f} > 0.50")
+                  continue
+
               result[sym] = {
-                  'ema_fast_period': int(best.get('ema_fast', 10)),
-                  'ema_slow_period': int(best.get('ema_slow', 40)),
+                  'ema_fast_period': int(float(best.get('ema_fast', 10))),
+                  'ema_slow_period': int(float(best.get('ema_slow', 40))),
                   'atr_sl_multiplier': float(best.get('sl', 1.5)),
                   'risk_reward_ratio': float(best.get('rr', 2.0)),
-                  'adx_trend_threshold': int(best.get('adx', 25)),
+                  'adx_trend_threshold': int(float(best.get('adx', 25))),
                   'scoring_min_entry': float(best.get('score', 0.55)),
               }
+
           with open('strategy-params.json', 'w') as f:
               json.dump(result, f, indent=2)
-          print(f'Params for {len(result)} symbols written to strategy-params.json')
-          "
+          print(f'Published params for {len(result)} symbols')
+          for s in skipped:
+              print(f'  SKIPPED {s}')
+          PY
       - name: Create release
         run: |
           TAG="optimize-$(date +%Y%m%d-%H%M)"
-          gh release create "$TAG" strategy-params.json \
+          gh release create "$TAG" strategy-params.json logs/optimize_*.csv \
             --title "Strategy Params $(date +%Y-%m-%d)" \
-            --notes "${{ steps.mode.outputs.mode }} optimization results"
+            --notes "${{ needs.setup.outputs.mode }} optimization (sharded across ${{ strategy.job-total }} jobs)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Notify Discord
         if: always()
         run: |
-          STATUS="${{ job.status }}"
+          COUNT=$(python -c "import json;print(len(json.load(open('strategy-params.json'))))" 2>/dev/null || echo 0)
           curl -sS -H "Content-Type: application/json" \
-            -d "{\"content\":\"Optimization (${{ steps.mode.outputs.mode }}): $STATUS\"}" \
+            -d "{\"content\":\"Optimization (${{ needs.setup.outputs.mode }}): ${{ job.status }} — $COUNT symbols passed DSR/PBO gate\"}" \
             "${{ secrets.DISCORD_WEBHOOK }}" || true
