@@ -6,14 +6,19 @@ name: Optimize Strategy
 # ~2x faster per core and, more importantly, the symbols are sharded across a
 # job matrix below so they run concurrently instead of end to end.
 
+# Schedule: CPCV monthly only. CPCV strictly dominates the weekly walk-forward
+# run -- same grid, but validated across overlapping paths with a 25th-pctile
+# OOS PF >= 1.1 floor, versus 4 recency-anchored windows with no robustness
+# gate. The weekly run answered "did this work lately?", a subset of CPCV's
+# "does this work across regimes?" and the more overfit-prone question.
+# Runs 2h after train.yml so CPCV optimizes against freshly published models.
 on:
   schedule:
-    - cron: '0 2 * * 0'       # Weekly Sun 02:00 UTC
-    - cron: '0 2 1-7 * 0'     # Monthly CPCV (1st Sun)
+    - cron: '0 5 1-7 * 0'     # Monthly CPCV, 1st Sunday 05:00 UTC
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Optimization mode'
+        description: 'Optimization mode (weekly = full-grid, for ad-hoc comparison)'
         required: false
         default: 'auto'
         type: choice
@@ -32,13 +37,26 @@ jobs:
       symbols: ${{ steps.cfg.outputs.symbols }}
     steps:
       - uses: actions/checkout@v4
+      # POSIX cron ORs day-of-month with day-of-week when both are restricted,
+      # so '0 5 1-7 * 0' can fire on every day 1-7 AND every Sunday. Gate on the
+      # real condition so a scheduled run only proceeds on the 1st Sunday.
+      - name: Guard first-Sunday schedule
+        if: github.event_name == 'schedule'
+        run: |
+          DOM=$(date -u +%d); DOW=$(date -u +%u)
+          if [ "$DOM" -gt 7 ] || [ "$DOW" -ne 7 ]; then
+            echo "Not the first Sunday (day=$DOM dow=$DOW) - skipping."
+            exit 1
+          fi
+          echo "First Sunday confirmed (day=$DOM)."
       - id: cfg
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" != "auto" ]; then
             MODE="${{ inputs.mode }}"
           else
-            DOM=$(date +%d); DOW=$(date +%u)
-            if [ "$DOM" -le 7 ] && [ "$DOW" -eq 7 ]; then MODE=monthly; else MODE=weekly; fi
+            # Scheduled runs are always CPCV; 'weekly' remains reachable only
+            # via workflow_dispatch for ad-hoc comparison against CPCV picks.
+            MODE=monthly
           fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           SYMBOLS=$(python -c "
@@ -74,6 +92,31 @@ jobs:
           python -m pip install --upgrade pip
           grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
+      # models/*.pkl is gitignored, so without this the optimizer finds no model,
+      # build_params() sets ml_enabled=False, and we tune parameters for a bot
+      # with NO ML gate -- then apply them to a live bot that has one.
+      - name: Fetch trained models
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+                  --json tagName --jq '[.[].tagName | select(startswith("train-"))] | first')
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "::error::No train-* release found; optimizing without ML would" \
+                 "produce parameters that do not match live behaviour."
+            exit 1
+          fi
+          echo "Using models from release $TAG"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'models.tar.gz' --dir /tmp
+          # The tarball already contains a top-level models/ directory.
+          tar xzf /tmp/models.tar.gz -C .
+          SAFE="$(echo '${{ matrix.symbol }}' | tr '.' '_')"
+          if [ ! -f "models/model_${SAFE}.pkl" ]; then
+            echo "::error::models/model_${SAFE}.pkl missing from $TAG - refusing to" \
+                 "optimize ${{ matrix.symbol }} with the ML gate silently disabled."
+            exit 1
+          fi
+          echo "Models present: $(ls models/ | wc -l) files"
       - name: Optimize ${{ matrix.symbol }}
         run: |
           MODE="${{ needs.setup.outputs.mode }}"

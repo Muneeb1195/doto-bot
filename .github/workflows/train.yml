@@ -9,7 +9,11 @@ name: Train Models
 
 on:
   schedule:
-    - cron: '0 3 * * 0'  # Sun 03:00 UTC
+    # Monthly, 1st Sunday 03:00 UTC -- 2h before optimize.yml so CPCV tunes
+    # parameters against the models that were just published, rather than
+    # against last cycle's. Weekly retraining churned models faster than the
+    # (now monthly) parameter cycle could make use of.
+    - cron: '0 3 1-7 * 0'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +23,18 @@ jobs:
   train:
     runs-on: ubuntu-latest
     steps:
+      # POSIX cron ORs day-of-month with day-of-week when both are restricted,
+      # so '0 3 1-7 * 0' can fire on every day 1-7 AND every Sunday. Gate on the
+      # real condition so a scheduled run only proceeds on the 1st Sunday.
+      - name: Guard first-Sunday schedule
+        if: github.event_name == 'schedule'
+        run: |
+          DOM=$(date -u +%d); DOW=$(date -u +%u)
+          if [ "$DOM" -gt 7 ] || [ "$DOW" -ne 7 ]; then
+            echo "Not the first Sunday (day=$DOM dow=$DOW) - skipping."
+            exit 1
+          fi
+          echo "First Sunday confirmed (day=$DOM)."
       - uses: actions/checkout@v4
         with:
           lfs: true
