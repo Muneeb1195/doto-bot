@@ -172,19 +172,85 @@ jobs:
           print(f'Published params for {len(result)} symbols')
           for s in skipped:
               print(f'  SKIPPED {s}')
+
+          # A skipped symbol keeps whatever is already in settings.ini (the
+          # downloader only touches symbols present in the JSON), so it silently
+          # carries on with older parameters. That is the safe behaviour, but it
+          # must not be invisible: persist the reasons so the release notes and
+          # the Discord alert can surface them.
+          with open('skipped.json', 'w') as f:
+              json.dump(skipped, f, indent=2)
           PY
       - name: Create release
         run: |
           TAG="optimize-$(date +%Y%m%d-%H%M)"
-          gh release create "$TAG" strategy-params.json logs/optimize_*.csv \
+          {
+            echo "${{ needs.setup.outputs.mode }} optimization (sharded per symbol)."
+            echo
+            echo "Params are selected by pick_middle_of_plateau() and then gated on"
+            echo "DSR >= 0.95 and PBO <= 0.50. A symbol that fails the gate is omitted"
+            echo "from strategy-params.json and therefore KEEPS ITS EXISTING settings.ini"
+            echo "parameters on the live bot -- it is not disabled, just not updated."
+            echo
+            python - <<'PY'
+          import json
+          p = json.load(open('strategy-params.json'))
+          s = json.load(open('skipped.json'))
+          print(f"### Applied ({len(p)})")
+          for k, v in sorted(p.items()):
+              print(f"- {k}: EMA{v['ema_fast_period']}/{v['ema_slow_period']} "
+                    f"SL={v['atr_sl_multiplier']} RR={v['risk_reward_ratio']} "
+                    f"ADX={v['adx_trend_threshold']} score={v['scoring_min_entry']}")
+          print()
+          print(f"### Not updated ({len(s)})")
+          for line in s:
+              print(f"- {line}")
+          PY
+          } > notes.md
+          gh release create "$TAG" strategy-params.json skipped.json logs/optimize_*.csv \
             --title "Strategy Params $(date +%Y-%m-%d)" \
-            --notes "${{ needs.setup.outputs.mode }} optimization (sharded across ${{ strategy.job-total }} jobs)"
+            --notes-file notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Notify Discord
         if: always()
+        env:
+          MODE: ${{ needs.setup.outputs.mode }}
+          STATUS: ${{ job.status }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          COUNT=$(python -c "import json;print(len(json.load(open('strategy-params.json'))))" 2>/dev/null || echo 0)
-          curl -sS -H "Content-Type: application/json" \
-            -d "{\"content\":\"Optimization (${{ needs.setup.outputs.mode }}): ${{ job.status }} — $COUNT symbols passed DSR/PBO gate\"}" \
-            "${{ secrets.DISCORD_WEBHOOK }}" || true
+          python - <<'PY'
+          import json, os, urllib.request
+
+          def load(path, default):
+              try:
+                  with open(path) as f:
+                      return json.load(f)
+              except Exception:
+                  return default
+
+          applied = load('strategy-params.json', {})
+          skipped = load('skipped.json', [])
+
+          msg = (f"Optimization ({os.environ['MODE']}): {os.environ['STATUS']} — "
+                 f"{len(applied)} applied, {len(skipped)} not updated")
+          if skipped:
+              shown = "; ".join(skipped[:4])
+              extra = f" (+{len(skipped) - 4} more)" if len(skipped) > 4 else ""
+              msg += f"\nKept existing params: {shown}{extra}"
+
+          hook = os.environ.get('WEBHOOK')
+          if not hook:
+              print(msg)
+              raise SystemExit(0)
+          req = urllib.request.Request(
+              hook,
+              data=json.dumps({'content': msg}).encode(),
+              headers={'Content-Type': 'application/json'},
+          )
+          try:
+              urllib.request.urlopen(req, timeout=30)
+          except Exception as e:
+              print(f'Discord notify failed (non-fatal): {e}')
+          print(msg)
+          PY
