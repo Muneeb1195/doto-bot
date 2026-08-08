@@ -44,6 +44,22 @@ TIMEFRAME_D1 = 24 | 0x4000
 TIMEFRAME_W1 = 1 | 0x8000
 TIMEFRAME_MN1 = 1 | 0xC000
 
+
+def timeframe_seconds(timeframe: int) -> int:
+    """Seconds per bar for an MT5 timeframe constant.
+
+    MT5 encodes the period in the low bits and the unit in flag bits:
+    minutes have no flag, hours set 0x4000, weeks 0x8000, months 0xC000.
+    """
+    if timeframe & 0xC000 == 0xC000:  # months (check before week/hour)
+        return (timeframe & 0x3FFF) * 30 * 24 * 3600
+    if timeframe & 0x8000:  # weeks
+        return (timeframe & 0x7FFF) * 7 * 24 * 3600
+    if timeframe & 0x4000:  # hours
+        return (timeframe & 0x3FFF) * 3600
+    return timeframe * 60  # minutes
+
+
 ORDER_TYPE_BUY = 0
 ORDER_TYPE_SELL = 1
 ORDER_FILLING_IOC = 1
@@ -453,9 +469,17 @@ class MT5SocketClient:
             return []
 
     def copy_rates_from(self, symbol: str, timeframe: int, date_from, count: int) -> list[dict]:
+        """Return up to *count* bars ending at *date_from*, matching MetaTrader5.
+
+        The native call walks BACKWARDS from date_from, and fetch_rates_paged()
+        depends on that direction to page through deep history. The window width
+        must be derived from the timeframe: hardcoding an H1 bar width returned
+        zero bars for every other timeframe (M1/M15 paging silently yielded None).
+        """
         ts = int(date_from.timestamp()) if hasattr(date_from, "timestamp") else int(date_from)
+        span = count * timeframe_seconds(timeframe)
         try:
-            return _expand_bars(self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts} {ts + count * 3600}"))
+            return _expand_bars(self._call_multi(f"RATES_RANGE {symbol} {timeframe} {ts - span} {ts}"))
         except Exception as e:
             logger.warning(f"copy_rates_from failed: {e}")
             return []
