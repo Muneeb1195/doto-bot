@@ -135,7 +135,7 @@ jobs:
           # Upload ONLY this shard's own CSV. A glob here swept up any other
           # optimize_*.csv present on the runner, so stale results from earlier
           # code versions were republished as if they were current.
-          path: logs/optimize_${{ replace(matrix.symbol, '.', '_') }}.csv
+          path: logs/optimize_${{ matrix.symbol }}.csv
           if-no-files-found: error
           retention-days: 7
 
