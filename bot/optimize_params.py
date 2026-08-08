@@ -25,28 +25,32 @@ creds = configparser.ConfigParser()
 creds.read(CONFIG_DIR / "credentials.ini")
 
 
+# Profile assignment per symbol. This is a LOOKUP TABLE, not the portfolio:
+# what actually gets optimized comes from [PORTFOLIO] symbols in settings.ini.
+# Entries below that are not in the portfolio are only reached when a symbol is
+# named explicitly (e.g. --symbols ETHUSD.raw) or trained as a pool member.
 SYMBOL_PROFILE = {
-    # --- Live portfolio (7 symbols) ---
-    "XAU500.raw": "D",
+    # --- Live portfolio (8 symbols, mirrors [PORTFOLIO] in settings.ini) ---
     "BTCUSD.raw": "FAST",
     "US30.raw": "C",
     "GBPJPY.raw": "B",
     "SOLUSD.raw": "FAST",
     "XRPUSD.raw": "FAST",
-    "DOGUSD.raw": "FAST",
-    # --- Pool members with trained models (kept so optimizer/auto-train can target them) ---
     "EURUSD.raw": "A",
+    "US500.raw": "C",
+    "XAUUSD.raw": "D",
+    # --- Not traded: pool members + legacy symbols, kept for explicit runs ---
+    "XAU500.raw": "D",
+    "DOGUSD.raw": "FAST",
     "NZDUSD.raw": "A",
     "USDJPY.raw": "B",
     "EURJPY.raw": "B",
     "ETHUSD.raw": "C",
-    "US500.raw": "C",
     "LTCUSD.raw": "FAST",
     "ADAUSD.raw": "FAST",
     "AVXUSD.raw": "FAST",
     "GBPUSD.raw": "A",
     "AUDUSD.raw": "A",
-    "XAUUSD.raw": "D",
     "XAGUSD.raw": "D",
     "XNGUSD.raw": "C",
     "XPTUSD.raw": "D",
@@ -133,7 +137,7 @@ def load_csv_data_optimize(symbol):
     return df, {"point": point, "tick_value": tick_value, "volume_step": volume_step}
 
 
-def fetch_data(symbol, years=3, csv_mode=False):
+def fetch_data(symbol, years=5.1, csv_mode=False):
     if csv_mode:
         return load_csv_data_optimize(symbol)
     import time
@@ -403,7 +407,7 @@ def build_params(
     return p
 
 
-def fetch_m1_data(symbol, years=3, csv_mode=False):
+def fetch_m1_data(symbol, years=5.1, csv_mode=False):
     """Fetch M1 bars for the full window via backward paging (no per-request cap).
 
     In csv_mode the bars come from data/history/<SYMBOL>_M1.csv when present.
@@ -430,7 +434,7 @@ def fetch_m1_data(symbol, years=3, csv_mode=False):
 MAX_M15_BARS = 80000  # per-request page size (MT5 API cap observed ~80k)
 
 
-def fetch_m15_data(symbol, years=3, csv_mode=False):
+def fetch_m15_data(symbol, years=5.1, csv_mode=False):
     """Fetch M15 bars for the full window via backward paging.
 
     Previously a single copy_rates_from call capped at MAX_M15_BARS (~2.3y of
@@ -904,7 +908,7 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
 def main():
     parser = argparse.ArgumentParser(description="Optimize per-symbol params")
     parser.add_argument("--symbols", type=str, help="Comma-separated symbols")
-    parser.add_argument("--years", type=float, default=3)
+    parser.add_argument("--years", type=float, default=5.1)
     parser.add_argument("--quick", action="store_true", help="Quick screening mode (1 window, reduced grid)")
     parser.add_argument(
         "--cpcv", action="store_true", help="Combinatorial Purged Cross-Validation (15 paths, ~3 min/symbol)"

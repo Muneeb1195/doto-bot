@@ -27,16 +27,20 @@ settings.read(CONFIG_DIR / "settings.ini")
 creds = configparser.ConfigParser()
 creds.read(CONFIG_DIR / "credentials.ini")
 
+# Profile lookup table, NOT the portfolio. The live symbol list comes from
+# [PORTFOLIO] in settings.ini; entries here that are not in it are only reached
+# when a symbol is named explicitly or trained as a pool member.
 SYMBOL_PROFILE = {
-    # --- Live portfolio (7 symbols) ---
-    "XAU500.raw": "D",
+    # --- Live portfolio (8 symbols, mirrors [PORTFOLIO] in settings.ini) ---
     "BTCUSD.raw": "FAST",
     "US30.raw": "C",
     "GBPJPY.raw": "B",
     "SOLUSD.raw": "FAST",
     "XRPUSD.raw": "FAST",
+    "XAUUSD.raw": "D",
+    # --- Not traded: pool members + legacy symbols, kept for explicit runs ---
+    "XAU500.raw": "D",
     "DOGUSD.raw": "FAST",
-    # --- Pool members with trained models ---
     "EURUSD.raw": "A",
     "NZDUSD.raw": "A",
     "USDJPY.raw": "B",
@@ -48,7 +52,6 @@ SYMBOL_PROFILE = {
     "AVXUSD.raw": "FAST",
     "GBPUSD.raw": "A",
     "AUDUSD.raw": "A",
-    "XAUUSD.raw": "D",
     "XAGUSD.raw": "D",
     "XNGUSD.raw": "C",
     "XPTUSD.raw": "D",
@@ -170,7 +173,7 @@ def load_csv_data(symbol):
     return df, info
 
 
-def fetch_data(symbol, years=3, csv_only=False):
+def fetch_data(symbol, years=5.1, csv_only=False):
     if csv_only:
         return load_csv_data(symbol)
     import MetaTrader5 as mt5_mod
@@ -604,7 +607,7 @@ def _fetch_csv_mode(args):
 def main():
     parser = argparse.ArgumentParser(description="Parallel walk-forward optimizer")
     parser.add_argument("--symbols", type=str, help="Comma-separated symbols")
-    parser.add_argument("--years", type=float, default=3)
+    parser.add_argument("--years", type=float, default=5.1)
     parser.add_argument("--threads", type=int, default=16, help="Parallel backtest threads")
     parser.add_argument(
         "--fast", action="store_true", help="Use the bit-exact Numba fast path (backtest.run(fast=True))"

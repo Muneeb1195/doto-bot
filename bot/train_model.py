@@ -115,7 +115,7 @@ def load_csv_data_train(symbol, tf_name="H1"):
     return df
 
 
-def fetch_data(symbol, years=3, tf="H1", csv_mode=False):
+def fetch_data(symbol, years=5.1, tf="H1", csv_mode=False):
     if csv_mode:
         return load_csv_data_train(symbol, tf_name=tf)
     if not mt5.initialize():
@@ -136,7 +136,7 @@ def fetch_data(symbol, years=3, tf="H1", csv_mode=False):
     return df
 
 
-def fetch_m1_data(symbol, years=3, csv_mode=False):
+def fetch_m1_data(symbol, years=5.1, csv_mode=False):
     """Fetch M1 OHLCV+spread bars for historical orderflow feature backfill.
 
     Orderflow features are otherwise only computed live for the last bar, which
@@ -598,7 +598,7 @@ def train_meta_labeler(X, y_primary, y_true, tune_params=None):
 
 
 def train_pool_model(
-    symbols, years=3, tp_atr_mult=2.0, sl_atr_mult=1.0, max_hold=12, tuned_params=None, tft=False, csv_mode=False
+    symbols, years=5.1, tp_atr_mult=2.0, sl_atr_mult=1.0, max_hold=12, tuned_params=None, tft=False, csv_mode=False
 ):
     class_label = None
     for sym in symbols:
@@ -704,7 +704,7 @@ def train_pool_model(
 
 def train_model_for_symbol(
     symbol,
-    years=3,
+    years=5.1,
     tp_atr_mult=2.0,
     sl_atr_mult=1.0,
     max_hold=12,
@@ -983,7 +983,7 @@ def main():
     parser.add_argument(
         "--symbols", type=str, default="ETHUSD.raw,XAUUSD.raw", help="Symbols to train on (comma-separated)"
     )
-    parser.add_argument("--years", type=float, default=3.0, help="Years of historical data")
+    parser.add_argument("--years", type=float, default=5.1, help="Years of historical data")
     parser.add_argument("--tp-atr", type=float, default=2.0, help="Take profit ATR multiplier")
     parser.add_argument("--sl-atr", type=float, default=1.0, help="Stop loss ATR multiplier")
     parser.add_argument("--max-hold", type=int, default=12, help="Max holding period in bars")

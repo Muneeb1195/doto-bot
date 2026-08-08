@@ -37,7 +37,7 @@ TF_MAP = {
     "M1": {"tf_attr": "TIMEFRAME_M1", "use_paged": True},
 }
 
-EXPORT_YEARS = 3
+EXPORT_YEARS = 5.1
 
 
 def _setup_logging():

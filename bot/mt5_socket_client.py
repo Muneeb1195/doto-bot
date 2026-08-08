@@ -13,10 +13,8 @@ Multi-line: "COUNT N\n" then N lines of "BAR ..." then "END\n"
 
 from __future__ import annotations
 
-import socket
-import struct
 import logging
-import time
+import socket
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -347,11 +345,7 @@ class MT5SocketClient:
         results = []
         for _ in range(count):
             line = self._recv_line()
-            if line.startswith("BAR "):
-                results.append(_coerce_numeric(_parse_kv(line[4:])))
-            elif line.startswith("POS "):
-                results.append(_coerce_numeric(_parse_kv(line[4:])))
-            elif line.startswith("ORD "):
+            if line.startswith("BAR ") or line.startswith("POS ") or line.startswith("ORD "):
                 results.append(_coerce_numeric(_parse_kv(line[4:])))
             elif line.startswith("HORD "):
                 results.append(_coerce_numeric(_parse_kv(line[5:])))

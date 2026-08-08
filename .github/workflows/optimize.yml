@@ -120,7 +120,13 @@ jobs:
       - name: Optimize ${{ matrix.symbol }}
         run: |
           MODE="${{ needs.setup.outputs.mode }}"
-          if [ "$MODE" = "monthly" ]; then FLAG="--cpcv"; YEARS=3; else FLAG="--full-grid"; YEARS=3; fi
+          # 5.1y satisfies two independent constraints: CPCV needs >=3.8y to
+          # reach its full 15 paths (3y yielded only 6), and Bailey/Lopez de
+          # Prado's MinBTL requires ~5.1y for our worst-case effective trial
+          # count (profile B, 48 effective trials) before a backtest winner is
+          # distinguishable from the best of N lucky draws.
+          if [ "$MODE" = "monthly" ]; then FLAG="--cpcv"; else FLAG="--full-grid"; fi
+          YEARS=5.1
           python bot/optimize_params.py --symbols "${{ matrix.symbol }}" --csv $FLAG --years $YEARS
       - name: Upload result
         uses: actions/upload-artifact@v4
