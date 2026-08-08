@@ -256,15 +256,33 @@ def calc_efficiency_ratio(close, period=10):
     return change / volatility if volatility > 0 else 0.0
 
 
+# Scales the dimensionless (MA price delta / ATR) ratio onto 0-1 for the
+# fused-regime slope term. Measured over 3y H1 across all 8 portfolio symbols
+# (see calc_fused_regime_score). The backtest twins in backtest.py import this
+# constant so live and backtest cannot drift apart.
+SLOPE_SCALE = 2.0
+
+
 def calc_ma_slope(ma_series, period=1):
-    """ATR-relative MA slope as a ratio (not yet multiplied by 10).
+    """MA slope over *period* bars, in RAW PRICE UNITS.
+
+    Returns the price delta (end - start) so callers can normalize it against
+    another price-unit quantity (e.g. ATR in calc_fused_regime_score) and have
+    the units cancel. Previously this returned a dimensionless ratio
+    ((end-start)/|start|), which the fused-regime score then divided by ATR —
+    a ratio over a price. Because the units did not cancel, the slope term
+    scaled inversely with instrument price: it collapsed to ~0 on high-priced
+    symbols (gold, indices, BTC) and saturated to a free 20/20 on low-priced
+    FX pairs. Either way the 20% slope weight carried no real information, and
+    the live regime gate stayed shut on ~100% of bars for 7 of 8 symbols.
+
     Returns 0.0 if insufficient data.
     """
     if len(ma_series) < period + 1:
         return 0.0
     end = ma_series.iloc[-1]
     start = ma_series.iloc[-1 - period]
-    return float(end - start) / max(abs(float(start)), 1e-10)
+    return float(end - start)
 
 
 def calc_fused_regime_score(adx, er, ma_change, atr):
@@ -272,11 +290,26 @@ def calc_fused_regime_score(adx, er, ma_change, atr):
 
     Weights per AGPro Trend Quality: 45% ADX, 35% ER, 20% slope.
     Higher score = more trend-favorable.
+
+    *ma_change* must be in RAW PRICE UNITS (see calc_ma_slope) so that
+    ma_change / atr is dimensionless and the units cancel.
+
+    The SLOPE_SCALE multiplier maps that ratio onto 0-1. It was measured
+    empirically over 3y of H1 bars across all 8 portfolio symbols: the
+    price_delta/ATR distribution is p50~0.03-0.07, p90~0.29-0.49, p99~0.80-1.12,
+    and is remarkably consistent across instruments, so a single global scale
+    works. At 2.0 only ~6.5% of bars clip at the cap (vs ~35% at the legacy
+    10.0, which destroyed resolution).
     """
-    eps = 1e-10
     adx_norm = min(1.0, adx / 50.0) if adx > 0 else 0.0
     er_score = min(1.0, er) if not np.isnan(er) else 0.0
-    slope_norm = min(1.0, abs(ma_change) / max(atr, eps) * 10.0) if atr > 0 and not np.isnan(ma_change) else 0.0
+    # A non-positive or NaN ATR must contribute NOTHING. The previous
+    # max(atr, 1e-10) guard would instead turn a degenerate ATR into a *full*
+    # 20/20 slope score, which is backwards.
+    if atr > 0 and not np.isnan(atr) and not np.isnan(ma_change):
+        slope_norm = min(1.0, abs(ma_change) / atr * SLOPE_SCALE)
+    else:
+        slope_norm = 0.0
     return 100.0 * (0.45 * adx_norm + 0.35 * er_score + 0.20 * slope_norm)
 
 

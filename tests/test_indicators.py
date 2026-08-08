@@ -340,9 +340,24 @@ class TestMaSlope:
     def test_insufficient(self):
         assert calc_ma_slope(pd.Series([1.0]), period=1) == 0.0
 
-    def test_ratio_relative_to_start(self):
+    def test_returns_raw_price_delta(self):
+        # calc_ma_slope returns the RAW price delta (not a ratio vs start), so
+        # that ma_change / atr in calc_fused_regime_score is dimensionless.
         ma = pd.Series([100.0, 110.0])
-        assert calc_ma_slope(ma, period=1) == pytest.approx(0.10)
+        assert calc_ma_slope(ma, period=1) == pytest.approx(10.0)
+
+    def test_delta_is_scale_dependent_not_normalized(self):
+        # A ratio-based slope would give both series the same value (0.10).
+        # Raw deltas must differ, proving no start-relative normalization.
+        small = calc_ma_slope(pd.Series([1.0, 1.1]), period=1)
+        large = calc_ma_slope(pd.Series([100.0, 110.0]), period=1)
+        assert small == pytest.approx(0.1)
+        assert large == pytest.approx(10.0)
+        assert large != pytest.approx(small)
+
+    def test_multi_period_delta(self):
+        ma = pd.Series([100.0, 102.0, 105.0])
+        assert calc_ma_slope(ma, period=2) == pytest.approx(5.0)
 
 
 class TestFusedRegimeScore:
@@ -372,3 +387,57 @@ class TestFusedRegimeScore:
     def test_zero_atr_slope_ignored(self):
         score = calc_fused_regime_score(adx=0, er=0.0, ma_change=5.0, atr=0.0)
         assert score == 0.0
+
+    # --- Regression guards for the fused-score slope unit mismatch ---
+    # calc_ma_slope used to return a dimensionless ratio which was then divided
+    # by ATR (a price), so the units did not cancel. The slope term therefore
+    # scaled inversely with instrument price: ~0 on high-priced symbols and
+    # saturated at the cap on low-priced FX. The live regime gate stayed shut
+    # on ~100% of bars for 7 of 8 symbols and the bot took zero trades.
+    # These tests fail against that old behaviour.
+
+    def test_slope_term_actually_contributes(self):
+        """A realistic price-unit slope must move the score materially."""
+        flat = calc_fused_regime_score(adx=25, er=0.30, ma_change=0.0, atr=10.0)
+        sloped = calc_fused_regime_score(adx=25, er=0.30, ma_change=5.0, atr=10.0)
+        # 5/10 * SLOPE_SCALE(2.0) = 1.0 -> full 20 points of the slope weight.
+        assert sloped - flat == pytest.approx(20.0)
+
+    def test_slope_scales_with_atr_ratio(self):
+        """Score must depend on slope/ATR, not on absolute price magnitude."""
+        # Same ratio (0.1) at wildly different price scales -> identical score.
+        cheap = calc_fused_regime_score(adx=20, er=0.2, ma_change=0.05, atr=0.5)
+        rich = calc_fused_regime_score(adx=20, er=0.2, ma_change=25.0, atr=250.0)
+        assert cheap == pytest.approx(rich)
+
+    def test_degenerate_atr_contributes_zero_not_maximum(self):
+        """A zero/NaN ATR must yield NO slope credit, never a full 20 points.
+
+        The old implementation divided by max(atr, 1e-10), so a degenerate ATR
+        saturated the slope term and handed the symbol a free 20/20 instead of
+        discounting it.
+        """
+        baseline = calc_fused_regime_score(adx=30, er=0.4, ma_change=0.0, atr=5.0)
+        for bad_atr in (0.0, -1.0, float("nan")):
+            s = calc_fused_regime_score(adx=30, er=0.4, ma_change=5.0, atr=bad_atr)
+            assert s == pytest.approx(baseline)
+
+    def test_nan_ma_change_contributes_zero(self):
+        baseline = calc_fused_regime_score(adx=30, er=0.4, ma_change=0.0, atr=5.0)
+        s = calc_fused_regime_score(adx=30, er=0.4, ma_change=float("nan"), atr=5.0)
+        assert s == pytest.approx(baseline)
+
+    def test_end_to_end_slope_pipeline(self):
+        """calc_ma_slope output must be directly consumable by the fused score.
+
+        Guards the contract between the two functions: a trending MA on a
+        realistic price scale has to produce a non-trivial slope contribution.
+        """
+        ma = pd.Series([2000.0, 2004.0, 2008.0])  # gold-like, +4 per bar
+        slope = calc_ma_slope(ma, period=1)
+        atr = 20.0
+        with_slope = calc_fused_regime_score(adx=25, er=0.3, ma_change=slope, atr=atr)
+        without = calc_fused_regime_score(adx=25, er=0.3, ma_change=0.0, atr=atr)
+        assert with_slope > without
+        # 4/20 * 2.0 = 0.4 -> 8 of the 20 slope points.
+        assert with_slope - without == pytest.approx(8.0)

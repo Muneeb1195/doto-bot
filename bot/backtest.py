@@ -14,7 +14,7 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
 import numpy as np
 import pandas as pd
 from analytics import volume_filter_pass
-from indicators import calc_adx_series, calc_atr_series, calc_ma
+from indicators import SLOPE_SCALE, calc_adx_series, calc_atr_series, calc_ma
 
 from config import validate_config as _validate_config
 
@@ -493,15 +493,16 @@ class Backtest:
                     ch = abs(close[i] - close[i - er_period])
                     mv = np.sum(np.abs(np.diff(close[i - er_period : i + 1])))
                     er_i = ch / mv if mv > 0 else 0.0
+                # Slope in RAW PRICE UNITS so that slope/ATR is dimensionless
+                # (parity with indicators.calc_ma_slope — see the unit-mismatch
+                # note there). Must stay identical to calc_fused_regime_score.
                 ma_slope_i = 0.0
                 if ma_fast_a is not None and i >= 2 and not np.isnan(ma_fast_a[i]) and not np.isnan(ma_fast_a[i - 1]):
-                    diff = ma_fast_a[i] - ma_fast_a[i - 1]
-                    denom = max(abs(ma_fast_a[i - 1]), 1e-10)
-                    ma_slope_i = diff / denom
+                    ma_slope_i = ma_fast_a[i] - ma_fast_a[i - 1]
                 atr_i = atr_a[i] if not np.isnan(atr_a[i]) and atr_a[i] > 0 else 0.0
                 adx_n = min(1.0, adx_i / 50.0) if adx_i > 0 else 0.0
                 er_n = min(1.0, er_i)
-                slope_n = min(1.0, abs(ma_slope_i) * 10.0 / atr_i) if atr_i > 0 else 0.0
+                slope_n = min(1.0, abs(ma_slope_i) / atr_i * SLOPE_SCALE) if atr_i > 0 else 0.0
                 score = 100.0 * (0.45 * adx_n + 0.35 * er_n + 0.20 * slope_n)
                 self.fused_score_a[i] = score
 
@@ -1667,6 +1668,13 @@ class Backtest:
                             "exit_bar": i,
                             "exit_reason": "SCALE_OUT",
                             "regime": pos.get("regime", ""),
+                            # Carry the parent position's entry_type/volume so a
+                            # partial has the same key set as every other trade
+                            # record. Without these, consumers that index into
+                            # self.trades hit a KeyError whenever a scale-out
+                            # happens to be the first trade.
+                            "entry_type": pos.get("entry_type", ""),
+                            "volume": close_vol,
                         }
                         self.trades.append(partial_trade)
                         if step == 0:
@@ -2344,7 +2352,7 @@ def main():
     parser.add_argument("--no-volatility", action="store_true", help="Disable volatility filter")
     parser.add_argument("--no-chandelier", action="store_true", help="Disable chandelier exit")
     parser.add_argument("--no-partial", action="store_true", help="Disable partial TP")
-    parser.add_argument("--risk-percent", type=float, default=1.0, help="Risk per trade (% of balance)")
+    parser.add_argument("--risk-percent", type=float, default=1.0, help="Risk per trade (%% of balance)")
     parser.add_argument(
         "--initial-balance", type=float, default=400000.0, help="Starting balance for position sizing (PKR)"
     )
