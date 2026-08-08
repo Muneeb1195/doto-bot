@@ -31,9 +31,12 @@ SYMBOLS = [
     "XRPUSD.raw", "EURUSD.raw", "US500.raw", "XAUUSD.raw",
 ]
 
+# A single copy_rates_range is capped at ~100k bars by the terminal, which
+# silently truncates any timeframe whose window exceeds that. At 5.1 years only
+# H1 (~45k bars) fits; M15 (~178k) and M1 (~2.7M) must page.
 TF_MAP = {
     "H1": {"tf_attr": "TIMEFRAME_H1", "use_paged": False},
-    "M15": {"tf_attr": "TIMEFRAME_M15", "use_paged": False},
+    "M15": {"tf_attr": "TIMEFRAME_M15", "use_paged": True},
     "M1": {"tf_attr": "TIMEFRAME_M1", "use_paged": True},
 }
 

@@ -171,8 +171,14 @@ def fetch_rates_paged(symbol, timeframe, start, end, chunk_bars=80000):
         df["time"] = pd.to_datetime(df["time"], unit="s")
         frames.append(df)
         oldest = df["time"].iloc[0]
-        if oldest <= start_ts or len(df) < chunk_bars:
+        if oldest <= start_ts:
             break
+        # NOTE: do not stop on a short page. The terminal routinely returns
+        # fewer bars than requested (a 80k M15 request yields ~53k) while still
+        # having deeper history available, so treating a short page as
+        # exhaustion truncated the export to the first page. Lack of progress
+        # is detected by the prev_oldest check below, which is the real
+        # end-of-history signal.
         if prev_oldest is not None and oldest >= prev_oldest:
             break
         prev_oldest = oldest
