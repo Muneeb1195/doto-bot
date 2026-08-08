@@ -1,5 +1,12 @@
 name: Train Models
 
+# Training runs on GitHub runners ONLY -- there is deliberately no systemd
+# timer for it on the home-server, which would otherwise compete with the live
+# bot for CPU. The whole portfolio (8 per-symbol models + the asset-class pool
+# models) completes in ~7 min here, so unlike optimize.yml this does not need
+# to be sharded across a job matrix. doto-download.timer pulls the resulting
+# models.tar.gz back to the home-server.
+
 on:
   schedule:
     - cron: '0 3 * * 0'  # Sun 03:00 UTC
