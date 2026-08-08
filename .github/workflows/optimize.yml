@@ -83,8 +83,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: optimize-${{ matrix.symbol }}
-          path: logs/optimize_*.csv
-          if-no-files-found: warn
+          # Upload ONLY this shard's own CSV. A glob here swept up any other
+          # optimize_*.csv present on the runner, so stale results from earlier
+          # code versions were republished as if they were current.
+          path: logs/optimize_${{ replace(matrix.symbol, '.', '_') }}.csv
+          if-no-files-found: error
           retention-days: 7
 
   # Merge every shard's CSV into one strategy-params.json and publish it.
@@ -100,13 +103,22 @@ jobs:
       - name: Download all shard results
         uses: actions/download-artifact@v4
         with:
+          # run-id + pattern pin this to the CURRENT run's shards only.
+          pattern: optimize-*
+          run-id: ${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           path: /tmp/shards
           merge-multiple: true
       - name: Install merge deps
         run: pip install pandas
       - name: Build strategy-params.json
         run: |
-          mkdir -p logs && cp /tmp/shards/optimize_*.csv logs/ 2>/dev/null || true
+          # Start from an EMPTY logs/ so nothing checked into the repo or left
+          # by a previous step can masquerade as a fresh shard result.
+          rm -rf logs && mkdir -p logs
+          cp /tmp/shards/optimize_*.csv logs/ 2>/dev/null || true
+          echo "Shard CSVs collected from this run:"
+          ls -1 logs/ || echo "  (none)"
           python - <<'PY'
           import glob, json, math, os, configparser
           import pandas as pd
@@ -146,10 +158,22 @@ jobs:
               # Multiple-testing guard: a walk-forward winner drawn from a large
               # search is not evidence of edge on its own. Skip publishing any
               # symbol whose result is indistinguishable from a lucky draw.
+              #
+              # A MISSING diagnostic is a rejection, not a pass. Treating NaN as
+              # "fine" made the gate fail-open: a stale CSV written before these
+              # columns existed sailed straight through ungated.
+              if 'dsr' not in df.columns or 'pbo' not in df.columns:
+                  skipped.append(f'{sym}: no DSR/PBO columns (stale or pre-gate CSV)')
+                  continue
               dsr, pbo = num(rec, 'dsr'), num(rec, 'pbo')
-              if not math.isnan(dsr) and dsr < 0.95:
+              if math.isnan(dsr):
+                  skipped.append(f'{sym}: DSR not computed')
+                  continue
+              if dsr < 0.95:
                   skipped.append(f'{sym}: DSR={dsr:.3f} < 0.95')
                   continue
+              # PBO is legitimately NaN when there are too few candidates to
+              # split, so only a computed value can reject.
               if not math.isnan(pbo) and pbo > 0.5:
                   skipped.append(f'{sym}: PBO={pbo:.2f} > 0.50')
                   continue
@@ -167,9 +191,19 @@ jobs:
                     f"ADX={int(rec['adx'])} score={float(rec['score']):.2f} "
                     f"(plateau pick, DSR={dsr:.3f} PBO={pbo})")
 
+          # A symbol whose shard produced no CSV at all (crash, timeout) must be
+          # reported rather than silently omitted -- otherwise a half-failed run
+          # looks identical to a run where those symbols were simply rejected.
+          seen = {
+              os.path.basename(p).replace('optimize_', '').replace('.csv', '').replace('_', '.')
+              for p in glob.glob('logs/optimize_*.csv')
+          }
+          for sym in sorted(portfolio - seen):
+              skipped.append(f'{sym}: no result CSV (shard failed or timed out)')
+
           with open('strategy-params.json', 'w') as f:
               json.dump(result, f, indent=2)
-          print(f'Published params for {len(result)} symbols')
+          print(f'Published params for {len(result)}/{len(portfolio)} portfolio symbols')
           for s in skipped:
               print(f'  SKIPPED {s}')
 
