@@ -594,10 +594,25 @@ def compute_features(df, symbol=None, m1_df=None):
                     if arr is not None:
                         out[col] = arr
             else:
-                # Live path: single last-bar dict.
+                # Live path. Two shapes arrive here depending on the bridge:
+                #   - native MT5 (copy_ticks_range): scalar per feature;
+                #   - Linux socket/RPyC bridge (_orderflow_live_from_m1_bars):
+                #     a per-H1-bar ARRAY, because it reuses _orderflow_from_m1.
+                # Assigning an array into a single .loc cell raises
+                # "Must have equal len keys and value when setting with an
+                # iterable" and killed every main-loop cycle on the Linux
+                # deployment, so normalise to a scalar last-bar value.
                 idx = out.index[-1]
                 for k, v in of_data.items():
-                    out.loc[idx, k] = v
+                    if k not in of_cols:
+                        continue
+                    arr = np.asarray(v)
+                    if arr.ndim == 0:
+                        out.loc[idx, k] = float(arr)
+                    elif arr.size == len(out):
+                        out[k] = arr
+                    elif arr.size > 0:
+                        out.loc[idx, k] = float(arr[-1])
 
     # --- News sentiment feature (last bar only, 0.5 neutral for historical) ---
     out["news_score"] = 0.5
