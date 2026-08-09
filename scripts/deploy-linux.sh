@@ -205,11 +205,16 @@ After=xvfb-mt5.service
 Requires=xvfb-mt5.service
 
 [Service]
-Type=forking
+# Type=simple + exec in start-mt5.sh: the terminal IS the main process, so
+# systemd tracks a real MainPID. Type=forking left MainPID=0 and the unit
+# reported inactive while the terminal was actually running, which defeated
+# Restart=on-failure. The old ExecStartPre=/bin/sleep 5 was also not enough
+# for Xvfb after a cold boot; the script now polls the display instead.
+Type=simple
+TimeoutStartSec=120
 Environment=DISPLAY=:99
 Environment=WINEPREFIX=$WINEPREFIX
 Environment=WINEARCH=win64
-ExecStartPre=/bin/sleep 5
 ExecStart=$REPO_DIR/scripts/start-mt5.sh
 Restart=on-failure
 RestartSec=10
@@ -347,10 +352,32 @@ if [ ! -f "$MT5_PATH" ]; then
     exit 1
 fi
 
+# A leftover wineserver from the previous terminal (crashed, killed, or still
+# shutting down during a `systemctl restart`) leaves the prefix in a state
+# where the new terminal starts, never binds the EA socket, and exits after a
+# few seconds -- systemd then restart-loops it. Always reap unconditionally and
+# WAIT for the prefix to drain: a conditional reap raced the outgoing terminal
+# on restart and reintroduced the failure.
+echo "Draining wine prefix"
+wineserver -k 2>/dev/null || true
+for _ in $(seq 1 15); do
+    pgrep -x wineserver >/dev/null 2>&1 || break
+    sleep 1
+done
+
+# Wine must not start before the X display exists, otherwise the terminal dies
+# a few seconds in and systemd restart-loops it (observed after a power cut:
+# restart counter hit 10 with SIGTERM/143 every ~20s).
+for _ in $(seq 1 30); do
+    xdpyinfo -display :99 >/dev/null 2>&1 && break
+    sleep 1
+done
+
 # The /portable flag is essential — without it MT5 ignores ini configs.
 # /config: must point at a SPACE-FREE path; a path containing spaces gets
 # mangled by the terminal ("cannot load config ... at start").
-wine "$MT5_PATH" /portable /config:C:\\start_ea.ini
+# exec so the terminal becomes the service MainPID (Type=simple tracks it).
+exec wine "$MT5_PATH" /portable /config:C:\\start_ea.ini
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-mt5.sh"
 
