@@ -82,7 +82,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          # NOT lfs:true. This job is an 8-symbol matrix, and a blanket LFS
+          # checkout would pull all 8 M1 files (~814 MB) into every shard =
+          # ~6.5 GB per run, which blows the 10 GiB/month free-tier bandwidth
+          # quota. Fetch only this shard's own M1 file instead (~100 MB).
+          lfs: false
+      - name: Fetch M1 history for ${{ matrix.symbol }} only
+        run: |
+          # Without an explicit install, 'git lfs pull' prints "Git LFS is not
+          # installed for this repository", skips the checkout, and still exits
+          # 0 -- leaving pointer files behind. Verified locally.
+          git lfs install --local
+          SAFE="$(echo '${{ matrix.symbol }}' | tr '.' '_')"
+          git lfs pull --include="data/history/${SAFE}_M1.csv" --exclude=""
+          F="data/history/${SAFE}_M1.csv"
+          if [ ! -s "$F" ] || head -c 40 "$F" | grep -q 'git-lfs.github.com'; then
+            echo "::error::$F did not materialise (still an LFS pointer)."
+            exit 1
+          fi
+          echo "M1 rows: $(wc -l < "$F")"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

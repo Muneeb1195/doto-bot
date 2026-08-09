@@ -37,6 +37,10 @@ jobs:
           echo "First Sunday confirmed (day=$DOM)."
       - uses: actions/checkout@v4
         with:
+          # Unlike optimize.yml this is a single job (not an 8-way matrix) and
+          # it trains every symbol, so it legitimately needs all M1 files. That
+          # is one ~814 MB LFS pull per run, which fits the free-tier budget;
+          # the matrix job fetches per-symbol instead.
           lfs: true
       - uses: actions/setup-python@v5
         with:
