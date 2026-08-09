@@ -211,6 +211,7 @@ def _simulate_core(
     P_scale_out_f1,
     P_scale_out_tp0,
     P_scale_out_tp1,
+    P_scale_out_be_frac,
     P_mr_enabled,
     P_mr_rsi_period,
     P_mr_rsi_oversold,
@@ -785,7 +786,12 @@ def _simulate_core(
                     closed_entry_type[closed_count] = pos_entry_type
                     closed_count += 1
                     if step == 0:
-                        lock_level = pos_entry + tp_dist * 0.25 if is_long else pos_entry - tp_dist * 0.25
+                        # scale_out_breakeven_fraction (reference default 0.25).
+                        lock_level = (
+                            pos_entry + tp_dist * P_scale_out_be_frac
+                            if is_long
+                            else pos_entry - tp_dist * P_scale_out_be_frac
+                        )
                         pos_sl = lock_level
                     elif is_long:
                         lf = tp_rr[step - 1] if step - 1 < 2 else tp_rr[1]

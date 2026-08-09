@@ -107,9 +107,17 @@ PROFILE_COMMISSION = {
 }
 
 
-def _max_workers():
-    # Leave one core for the OS / MT5 terminal; cap to keep memory reasonable.
-    return max(1, (os.cpu_count() or 4) - 1)
+def _max_workers(csv_mode=False):
+    """Worker count for the backtest pool.
+
+    The -1 reserves a core for the MT5 terminal, which matters on the NUC but
+    not in CSV/CI mode where no terminal is running — there it just idles 25%
+    of a 4-vCPU runner. CI also sets CI=true, so honour either signal.
+    """
+    cpus = os.cpu_count() or 4
+    if csv_mode or os.environ.get("CI", "").lower() == "true":
+        return max(1, cpus)
+    return max(1, cpus - 1)
 
 
 def load_csv_data_optimize(symbol):
@@ -928,7 +936,7 @@ def main():
         dest="fast",
         action="store_true",
         default=None,
-        help="Use the Numba-JIT fast backtest path (default: on if numba available)",
+        help="Use the Numba-JIT fast backtest path (default: OFF; also settable via DOTO_FAST_BACKTEST=1)",
     )
     parser.add_argument(
         "--no-fast", dest="fast", action="store_false", help="Force the pure-Python reference backtest loop"
@@ -939,8 +947,16 @@ def main():
 
     import backtest
 
-    fast_default = backtest._njit_available()
-    fast = fast_default if args.fast is None else args.fast
+    # Opt-IN, not capability-detected. Deriving the default from
+    # _njit_available() meant that merely having numba importable silently
+    # switched every optimization onto the JIT path — including while that path
+    # still disagreed with the reference loop. Requires an explicit --fast (or
+    # DOTO_FAST_BACKTEST=1) so enabling it is always a deliberate act.
+    _env_fast = os.environ.get("DOTO_FAST_BACKTEST", "").lower() in ("1", "true", "yes")
+    fast = _env_fast if args.fast is None else args.fast
+    if fast and not backtest._njit_available():
+        print("  [!] --fast requested but numba is unavailable; using the reference loop")
+        fast = False
 
     import platform
     import subprocess

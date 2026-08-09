@@ -1936,6 +1936,19 @@ class Backtest:
                 return np.full(n, np.nan) if default is None else default
             return np.asarray(x, dtype=float)
 
+        # The njit core carries exactly two scale-out RR targets
+        # (P_scale_out_tp0/tp1) and two close fractions. A longer ladder would be
+        # silently truncated there while _run_reference honours every entry, so
+        # refuse the fast path instead of quietly diverging.
+        _tp_targets = p.get("scale_out_tp_targets_rr", [0.50, 0.75])
+        _close_fracs = p.get("scale_out_close_fractions", [0.20, 0.20])
+        if len(_tp_targets) > 2 or len(_close_fracs) > 2:
+            raise NotImplementedError(
+                f"njit fast path supports at most 2 scale-out steps "
+                f"(got {len(_tp_targets)} rr targets, {len(_close_fracs)} close fractions); "
+                f"use run(fast=False)"
+            )
+
         # --- MR RSI series (bit-exact with reference _get_mean_reversion_signal) ---
         # Reference uses the M30-based RSI (mr_rsi_h1, time-aligned to H1) when
         # available, else falls back to the H1 Wilder RSI. Mirror that exactly.
@@ -2053,6 +2066,7 @@ class Backtest:
                 f(p.get("scale_out_close_fractions", [0.20, 0.20])[1]),
                 f(p.get("scale_out_tp_targets_rr", [0.50, 0.75])[0]),
                 f(p.get("scale_out_tp_targets_rr", [0.50, 0.75])[1]),
+                f(p.get("scale_out_breakeven_fraction", 0.25)),
                 b(p.get("mr_enabled", True)),
                 f(mr_period),
                 f(p.get("mr_rsi_oversold", 30)),
@@ -2180,6 +2194,16 @@ class Backtest:
                 break
             score_a, conf_mult_a = new_score, new_conf
             prev_score = new_score.copy()
+        else:
+            # Exhausted the pass budget without the score array settling. The
+            # loop previously fell through silently and shipped the last pass as
+            # if it were the fixed point, so a non-converging window looked
+            # identical to a converged one.
+            if scoring_on:
+                logging.warning(
+                    "[backtest] fast-path scoring did not converge in 6 passes; "
+                    "entry scores may differ from the reference loop"
+                )
 
         res = _call_core(score_a, conf_mult_a)
         self._conf_mult_a_debug = conf_mult_a.copy()
