@@ -114,6 +114,42 @@ def _mtf_signal_at(
 
 
 @njit(cache=True, fastmath=False)
+def _htf_decision(i, signal, htf_ema_a, htf_close_a, htf_slope_a, bar_close, misalign_mult):
+    """3-state HTF decision mirroring Backtest._check_htf_trend.
+
+    Returns a size multiplier, or -1.0 meaning 'block'.
+      allow -> 1.0
+      soft  -> misalign_mult
+      block -> -1.0
+
+    Parity notes:
+      * A NaN HTF EMA is 'soft' (not a hard allow).
+      * htf_price comes from the time-aligned H4 close when available, falling
+        back to the current H1 close — the reference reads htf_close_aligned,
+        NOT the H1 bar close.
+      * A NaN slope stays NaN so the >=/<= comparisons evaluate False, which is
+        what makes the bar count as misaligned rather than aligned.
+    """
+    if np.isnan(htf_ema_a[i]):
+        return misalign_mult
+    htf_price = bar_close
+    if not np.isnan(htf_close_a[i]):
+        htf_price = htf_close_a[i]
+    slope = htf_slope_a[i]
+    if signal == 0:
+        price_ok = htf_price >= htf_ema_a[i]
+        slope_ok = slope >= 0
+    else:
+        price_ok = htf_price <= htf_ema_a[i]
+        slope_ok = slope <= 0
+    if price_ok and slope_ok:
+        return 1.0
+    if (not price_ok) and (not slope_ok):
+        return -1.0
+    return misalign_mult
+
+
+@njit(cache=True, fastmath=False)
 def _simulate_core(
     n,
     warmup,
@@ -141,6 +177,7 @@ def _simulate_core(
     h4_adx_a,
     d1_adx_a,
     htf_ema_a,
+    htf_close_a,
     htf_slope_a,
     ml_buy_a,
     ml_sell_a,
@@ -185,6 +222,7 @@ def _simulate_core(
     P_pb_enabled,
     P_pb_atr_mult,
     P_pb_vol_threshold,
+    P_pb_vol_sma_period,
     P_pb_structure_lookback,
     P_pb_atr_min_dist,
     P_vol_filter,
@@ -420,7 +458,10 @@ def _simulate_core(
         signal = -1
         entry_type = 0
         entry_atr = cur_atr
-        dbg[6] += 1
+        # dbg[13] = bars reaching signal evaluation. This used to increment
+        # dbg[6], which is the HTF-block counter, making htf_block read ~11.5k
+        # against only ~600 evaluated entries and masking real gate behaviour.
+        dbg[13] += 1
 
         if buy_signal:
             signal = 0
@@ -454,8 +495,22 @@ def _simulate_core(
                         signal_dir = 1
                 if signal_dir != -1:
                     vol_ok = True
-                    if P_pb_vol_threshold > 0 and not np.isnan(vol_sma_a[i - 1]) and vol_sma_a[i - 1] > 0:
-                        vol_ok = vol_a[i - 1] < vol_sma_a[i - 1] * P_pb_vol_threshold
+                    # Parity with _pb_volume_check: the reference computes its OWN
+                    # rolling mean over pb_volume_sma_period ending at the trigger
+                    # bar. Reusing vol_sma_a (built from vf_sma_period, and NaN
+                    # during warm-up) is a different series whenever the two
+                    # periods differ, and mishandles the warm-up window — the
+                    # reference returns True (pass) when trigger_idx < period.
+                    if P_pb_vol_threshold > 0:
+                        pbp = int(P_pb_vol_sma_period)
+                        ti = i - 1
+                        if ti >= pbp:
+                            vsum = 0.0
+                            for k in range(ti - pbp + 1, ti + 1):
+                                vsum += vol_a[k]
+                            pb_sma = vsum / pbp
+                            if pb_sma > 0:
+                                vol_ok = vol_a[ti] < pb_sma * P_pb_vol_threshold
                     struct_ok = True
                     lb = int(P_pb_structure_lookback)
                     start = i - 1 - lb
@@ -467,7 +522,28 @@ def _simulate_core(
                     confirm_ok = (signal_dir == 0 and close_a[i] > high_a[i - 1]) or (
                         signal_dir == 1 and close_a[i] < low_a[i - 1]
                     )
-                    if vol_ok and struct_ok and confirm_ok:
+                    # HTF veto: the reference applies _check_htf_trend INSIDE
+                    # _get_pullback_signal and rejects the signal outright when
+                    # the decision is 'block'. Deferring to the shared gate below
+                    # is NOT equivalent — that path only *resizes* on partial
+                    # misalignment, so a blocked pullback would still be traded.
+                    # The reference has no htf_enabled switch: _check_htf_trend
+                    # returns 'allow' when htf_ema_aligned is None, which the
+                    # wrapper encodes as an all-NaN htf_ema_a.
+                    htf_ok = True
+                    if not np.isnan(htf_ema_a[i]):
+                        htf_dec = _htf_decision(
+                            i,
+                            signal_dir,
+                            htf_ema_a,
+                            htf_close_a,
+                            htf_slope_a,
+                            close_a[i],
+                            P_htf_misalign_size_mult,
+                        )
+                        if htf_dec < 0.0:
+                            htf_ok = False
+                    if vol_ok and struct_ok and confirm_ok and htf_ok:
                         signal = signal_dir
                         entry_type = 1
 
@@ -669,7 +745,11 @@ def _simulate_core(
                     if not hit:
                         break
                     close_frac = close_fracs[step]
-                    close_vol = max(round(pos_volume * close_frac / vol_step, 0) * vol_step, vol_step)
+                    # The reference TRUNCATES here (int(...)), it does not round:
+                    #   close_vol = max(int(volume * frac / step) * step, step)
+                    # Rounding instead pushes e.g. 22.695 -> 22.70 vs 22.69 and
+                    # desynchronises remaining volume for the rest of the trade.
+                    close_vol = max(int(pos_volume * close_frac / vol_step) * vol_step, vol_step)
                     if close_vol > rem_vol:
                         close_vol = rem_vol
                     pnl_part = (
@@ -827,32 +907,19 @@ def _simulate_core(
                 equity[i] = initial_balance + cumulative_pnl
                 continue
 
+            # HTF trend gate. The reference skips this entirely when MTF is on
+            # (backtest.py:1762 `if not p.get("mtf_enabled", False)`), because the
+            # MTF signal already encodes its own H4 bias. Applying it regardless
+            # over-blocks every MTF symbol.
             htf_mult = 1.0
-            if np.isnan(htf_ema_a[i]):
-                # Parity with reference _check_htf_trend: NaN HTF value -> 'soft'
-                # (size reduced via htf_misalign_size_mult), not a hard allow.
-                htf_mult = P_htf_misalign_size_mult
-            else:
-                htf_price = bar_close
-                # Parity with reference _check_htf_trend: a NaN slope is kept as
-                # NaN (the series is not None), so `slope <= 0` / `slope >= 0`
-                # evaluates False -> the bar is treated as misaligned/blocked,
-                # NOT converted to 0.0.
-                slope = htf_slope_a[i]
-                if signal == 0:
-                    price_ok = htf_price >= htf_ema_a[i]
-                    slope_ok = slope >= 0
-                else:
-                    price_ok = htf_price <= htf_ema_a[i]
-                    slope_ok = slope <= 0
-                if price_ok and slope_ok:
-                    htf_mult = 1.0
-                elif (not price_ok) and (not slope_ok):
+            if P_mtf_enabled <= 0:
+                htf_mult = _htf_decision(
+                    i, signal, htf_ema_a, htf_close_a, htf_slope_a, bar_close, P_htf_misalign_size_mult
+                )
+                if htf_mult < 0.0:
                     dbg[6] += 1
                     equity[i] = initial_balance + cumulative_pnl
                     continue
-                else:
-                    htf_mult = P_htf_misalign_size_mult
 
             session_ok = True
             if P_session_enabled > 0:

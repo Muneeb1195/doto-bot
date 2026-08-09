@@ -1953,6 +1953,10 @@ class Backtest:
         h4_adx_a = getattr(self, "h4_adx_aligned", np.full(n, np.nan))
         d1_adx_a = getattr(self, "d1_adx_aligned", np.full(n, np.nan))
         htf_ema_a = _arr(self.htf_ema_aligned)
+        # The reference reads htf_close_aligned (H4 close, ffilled to H1) and
+        # only falls back to the H1 bar close when that series is absent. An
+        # all-NaN array encodes "absent" for the njit twin.
+        htf_close_a = _arr(self.htf_close_aligned)
         htf_slope_a = _arr(self.htf_slope_aligned)
         ml_buy_a = _arr(self.ml_mult_buy)
         ml_sell_a = _arr(self.ml_mult_sell)
@@ -2002,6 +2006,7 @@ class Backtest:
                 h4_adx_a,
                 d1_adx_a,
                 htf_ema_a,
+                htf_close_a,
                 htf_slope_a,
                 ml_buy_a,
                 ml_sell_a,
@@ -2046,6 +2051,7 @@ class Backtest:
                 b(p.get("pb_enabled", True)),
                 f(p.get("pb_atr_mult", 2.0)),
                 f(p.get("pb_volume_threshold", 0.8)),
+                f(p.get("pb_volume_sma_period", 20)),
                 f(p.get("pb_structure_lookback", 5)),
                 f(p.get("pb_atr_min_dist", 0.1)),
                 b(p.get("volume_filter", False)),
