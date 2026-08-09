@@ -122,11 +122,16 @@ def _apply_strategy_params(logger):
     sys.path.insert(0, str(BASE_DIR / "bot"))
     from auto_optimizer import load_portfolio, update_symbol_strategy, write_settings
 
-    _, settings = load_portfolio()
+    # load_portfolio() returns (symbols, settings). `settings` is a
+    # ConfigParser, whose .get() signature is get(section, option) -- calling
+    # settings.get("symbols", []) raised NoSectionError and aborted the whole
+    # download run, so the release tag was never recorded and every hourly
+    # timer re-downloaded the same artifact.
+    portfolio, settings = load_portfolio()
     any_changed = False
     skipped = []
     for symbol, p in params.items():
-        if symbol not in settings.get("symbols", []):
+        if portfolio and symbol not in portfolio:
             skipped.append(symbol)
             continue
         rec = {
