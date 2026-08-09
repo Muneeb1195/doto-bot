@@ -1480,6 +1480,10 @@ class Backtest:
 
             sl = None
             tp = None
+            # Reset per-bar so a value from an earlier iteration can never leak
+            # into this bar's pending_entry (see the chandelier note above).
+            sl_points = None
+            tp_points = 0
             entry_atr = cur_atr
             if signal:
                 if entry_type == "mean_reversion":
@@ -1550,13 +1554,20 @@ class Backtest:
                     )
                     is_partial = pos.get("partial_fired", False)
                     if p.get("ch_two_stage", True) and not is_partial:
-                        sl_points = abs(pos["entry"] - pos["sl"]) / max(self.point, 1e-10)
+                        # NOTE: must NOT be named `sl_points` — that name is also
+                        # the entry-sizing local used to build `pending_entry`
+                        # further down this same bar iteration. Shadowing it here
+                        # leaked this float into a later entry's `sl_points`,
+                        # corrupting that position's stop distance (measured: 3 of
+                        # 328 entries on XAUUSD, e.g. bar 7682 got 0.31*ATR instead
+                        # of the configured 1.5*ATR).
+                        ch_sl_points = abs(pos["entry"] - pos["sl"]) / max(self.point, 1e-10)
                         pnl_points = (
                             (bar["close"] - pos["entry"]) / max(self.point, 1e-10)
                             if is_long
                             else (pos["entry"] - bar["close"]) / max(self.point, 1e-10)
                         )
-                        r_mult = pnl_points / max(sl_points, 1)
+                        r_mult = pnl_points / max(ch_sl_points, 1)
                         if r_mult >= p.get("ch_two_stage_min_r", 3.0):
                             ch_mult = p.get("ch_tight_mult", 1.5)
                         else:
@@ -2121,7 +2132,11 @@ class Backtest:
                 f(p.get("tr_max_dd_pct", 8.0)),
                 f(p.get("cb_dd_pct", 15.0)),
                 f(p.get("daily_loss_pct", 5.0)),
-                f(p.get("max_positions_per_symbol", 1)),
+                # Must match the reference default at _run_reference (999 =
+                # effectively unlimited). Passing 1 here made the fast path
+                # block re-entries the reference allowed whenever the key was
+                # absent from params.
+                f(p.get("max_positions_per_symbol", 999)),
                 f(p.get("corr_size_mult", 1.0)),
                 b(p.get("correlation_enabled", False)),
                 f(p.get("htf_misalign_size_mult", 0.5)),

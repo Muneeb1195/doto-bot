@@ -435,6 +435,10 @@ def _simulate_core(
         # Multi-timeframe fused signal (when enabled) replaces the plain H1
         # crossover as the crossover source. Mirrors Backtest._get_mtf_signal().
         mtf_etype = 0
+        # Reset per bar, mirroring the reference's `mtf_confidence = 0.0`.
+        # Without this the previous bar's confidence leaks into this bar's
+        # position sizing whenever the MTF branch returns early.
+        mtf_conf = 0.0
         if P_mtf_enabled > 0:
             mtf_sig, mtf_etype, mtf_conf = _mtf_signal_at(
                 i,
@@ -515,11 +519,32 @@ def _simulate_core(
                     struct_ok = True
                     lb = int(P_pb_structure_lookback)
                     start = i - 1 - lb
+                    # The reference uses pandas .min()/.max(), which SKIP NaN,
+                    # whereas np.min/np.max PROPAGATE it (and numba returns 0.0
+                    # on an empty slice instead of raising). A single NaN would
+                    # make every comparison False and silently kill the signal.
+                    # Skip NaNs explicitly so both engines agree, and require a
+                    # non-empty window (start < i - 1) as pandas .min() on an
+                    # empty series yields NaN -> comparison False -> no signal.
                     if start >= 0:
-                        if signal_dir == 0:
-                            struct_ok = low_a[i - 1] > np.min(low_a[start : i - 1])
+                        extreme = np.nan
+                        for k in range(start, i - 1):
+                            v = low_a[k] if signal_dir == 0 else high_a[k]
+                            if np.isnan(v):
+                                continue
+                            if np.isnan(extreme):
+                                extreme = v
+                            elif signal_dir == 0:
+                                if v < extreme:
+                                    extreme = v
+                            elif v > extreme:
+                                extreme = v
+                        if np.isnan(extreme):
+                            struct_ok = False
+                        elif signal_dir == 0:
+                            struct_ok = low_a[i - 1] > extreme
                         else:
-                            struct_ok = high_a[i - 1] < np.max(high_a[start : i - 1])
+                            struct_ok = high_a[i - 1] < extreme
                     confirm_ok = (signal_dir == 0 and close_a[i] > high_a[i - 1]) or (
                         signal_dir == 1 and close_a[i] < low_a[i - 1]
                     )
@@ -880,7 +905,16 @@ def _simulate_core(
             equity[i] = initial_balance + cumulative_pnl
             continue
 
-        int(P_max_positions_per_symbol)
+        # Max positions per symbol. The reference `continue`s here whenever a
+        # position is already open, recording REALISED-ONLY equity for the bar.
+        # This statement used to be a no-op (`int(P_max_positions_per_symbol)`),
+        # so the JIT fell through to the end-of-bar write that ADDS open_pnl.
+        # Equity feeds risk_amount -> raw_volume, so the unrealised mark-to-market
+        # silently changed position sizing (XAUUSD bar 322: equity +64.23, which
+        # later sized bar 727 at 0.01 lots instead of 0.02).
+        if pos_open and int(P_max_positions_per_symbol) <= 1:
+            equity[i] = initial_balance + cumulative_pnl
+            continue
 
         if (not pos_open) and signal != -1 and i < n - 1:
             dbg[2] += 1
@@ -957,9 +991,15 @@ def _simulate_core(
                     continue
 
             if P_tr_enabled > 0 and i >= tr_needed:
+                # Reference slices close[i - needed : i + 1] (needed + 1 prices)
+                # and takes np.diff -> exactly `needed` returns starting at
+                # close[i - needed + 1] / close[i - needed]. Looping from
+                # i - tr_needed produced one EXTRA return reaching back to
+                # close[i - tr_needed - 1], which shifted mean/std enough to
+                # flip the 3-sigma decision (EURUSD bar 10030: z 3.09 -> 2.93).
                 mean_r = 0.0
                 cnt_r = 0
-                for k in range(i - tr_needed, i + 1):
+                for k in range(i - tr_needed + 1, i + 1):
                     if close_a[k - 1] != 0:
                         r = (close_a[k] - close_a[k - 1]) / close_a[k - 1]
                         mean_r += r
@@ -967,7 +1007,7 @@ def _simulate_core(
                 if cnt_r > 0:
                     mean_r = mean_r / cnt_r
                     std_r = 0.0
-                    for k in range(i - tr_needed, i + 1):
+                    for k in range(i - tr_needed + 1, i + 1):
                         if close_a[k - 1] != 0:
                             r = (close_a[k] - close_a[k - 1]) / close_a[k - 1]
                             std_r += (r - mean_r) * (r - mean_r)
@@ -1042,13 +1082,26 @@ def _simulate_core(
             kelly_mult = 1.0
             if P_dr_enabled > 0:
                 look = int(P_dr_lookback)
-                start = closed_count - look if closed_count > look else 0
-                pnls_l = np.empty(look)
-                pc = 0
-                for k in range(start, closed_count):
+                # The reference filters partials FIRST and only then slices the
+                # last `lookback` entries:
+                #   closed = [t for t in trades if t.type != "partial"][-lookback:]
+                # Slicing the raw record list first (as this did) yields fewer
+                # than `lookback` real trades whenever partials are interleaved,
+                # so the Kelly window silently shrinks and diverges.
+                n_real = 0
+                for k in range(closed_count):
                     if closed_type[k] == 0:
-                        pnls_l[pc] = closed_pnl[k]
-                        pc += 1
+                        n_real += 1
+                skip = n_real - look if n_real > look else 0
+                pnls_l = np.empty(look if look > 0 else 1)
+                pc = 0
+                seen = 0
+                for k in range(closed_count):
+                    if closed_type[k] == 0:
+                        seen += 1
+                        if seen > skip:
+                            pnls_l[pc] = closed_pnl[k]
+                            pc += 1
                 if pc >= 10:
                     wins = 0
                     sum_w = 0.0
@@ -1059,15 +1112,28 @@ def _simulate_core(
                             sum_w += pnls_l[k]
                         else:
                             sum_l += -pnls_l[k]
-                    win_rate = wins / pc
-                    avg_win = sum_w / wins if wins > 0 else 0.0
-                    avg_loss = sum_l / (pc - wins) if (pc - wins) > 0 else 0.0
-                    b = avg_win / avg_loss if avg_loss > 0 else 1.0
-                    q = 1.0 - win_rate
-                    kelly = (win_rate * b - q) / b if b > 0 else 0.0
-                    kelly = max(0.0, kelly) * P_dr_kelly_fraction
-                    kelly = max(P_dr_min_mult, min(P_dr_max_mult, kelly))
-                    kelly_mult = kelly
+                    # The reference returns 1.0 outright when the window is all
+                    # wins or all losses (`if not wins or not losses`). Without
+                    # this guard avg_loss is 0 -> b falls back to 1.0 -> kelly
+                    # clamps to dr_min_mult (0.25), silently quartering position
+                    # size on an all-winning window (XAUUSD bar 726: JIT sized
+                    # 0.01 lots vs the reference's 0.02).
+                    # Reference: `if not wins or not losses: return 1.0`.
+                    # An all-losing (or all-winning) window must NOT fall through
+                    # to the formula, where avg_loss=0 -> b=1.0 -> kelly clamps to
+                    # dr_min_mult (0.25) and quarters position size. Measured on
+                    # XAUUSD bar 726: window was 12 trades / 0 wins / 12 losses,
+                    # reference returned 1.0 while the JIT returned 0.25.
+                    if wins > 0 and wins < pc:
+                        win_rate = wins / pc
+                        avg_win = sum_w / wins
+                        avg_loss = sum_l / (pc - wins)
+                        b = avg_win / avg_loss if avg_loss > 0 else 1.0
+                        q = 1.0 - win_rate
+                        kelly = (win_rate * b - q) / b if b > 0 else 0.0
+                        kelly = max(0.0, kelly) * P_dr_kelly_fraction
+                        kelly = max(P_dr_min_mult, min(P_dr_max_mult, kelly))
+                        kelly_mult = kelly
             vol_mult = 1.0
             if (
                 P_dr_vol_adjust > 0
