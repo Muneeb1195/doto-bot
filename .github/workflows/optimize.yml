@@ -151,6 +151,15 @@ jobs:
           if [ "$MODE" = "monthly" ]; then FLAG="--cpcv"; else FLAG="--full-grid"; fi
           YEARS=5.1
           python bot/optimize_params.py --symbols "${{ matrix.symbol }}" --csv $FLAG --years $YEARS
+      # optimize_params.py writes logs/optimize_<SYMBOL_WITH_UNDERSCORES>.csv
+      # (symbol.replace('.', '_')), and the publish job maps that name back with
+      # .replace('_', '.'). Interpolating ${{ matrix.symbol }} directly produced
+      # "optimize_US500.raw.csv", which never exists, so the upload failed with
+      # "No files were found". GitHub Actions has no replace() expression, so
+      # derive the safe name in shell and pass it through an output.
+      - name: Resolve result filename
+        id: rf
+        run: echo "safe=$(echo '${{ matrix.symbol }}' | tr '.' '_')" >> "$GITHUB_OUTPUT"
       - name: Upload result
         uses: actions/upload-artifact@v4
         with:
@@ -158,7 +167,7 @@ jobs:
           # Upload ONLY this shard's own CSV. A glob here swept up any other
           # optimize_*.csv present on the runner, so stale results from earlier
           # code versions were republished as if they were current.
-          path: logs/optimize_${{ matrix.symbol }}.csv
+          path: logs/optimize_${{ steps.rf.outputs.safe }}.csv
           if-no-files-found: error
           retention-days: 7
 
