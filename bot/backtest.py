@@ -1960,6 +1960,19 @@ class Backtest:
         htf_slope_a = _arr(self.htf_slope_aligned)
         ml_buy_a = _arr(self.ml_mult_buy)
         ml_sell_a = _arr(self.ml_mult_sell)
+        # Meta-labeler parity: the reference gates every ML decision through
+        # _check_ml_signal, which zeroes the multiplier when the meta-model's
+        # confidence is below ml_meta_threshold. The njit core reads these
+        # arrays directly and has no meta stage, so bake the veto in here —
+        # symbols with a .meta.pkl (EURUSD, GBPJPY, US500) otherwise trade
+        # setups the reference rejects.
+        if self.ml_meta_model is not None and self.ml_meta_features is not None and self.ml_meta_proba is not None:
+            meta_threshold = self.p.get("ml_meta_threshold", 0.50)
+            m = min(n, len(self.ml_meta_proba))
+            meta_block = np.zeros(n, dtype=bool)
+            meta_block[:m] = np.asarray(self.ml_meta_proba[:m], dtype=float) < meta_threshold
+            ml_buy_a = np.where(meta_block, 0.0, ml_buy_a)
+            ml_sell_a = np.where(meta_block, 0.0, ml_sell_a)
         vol_sma_a = _arr(self.vol_sma)
         atr_sma_a = _arr(self.atr_sma)
         atr_sma50_a = _arr(self.atr_sma50)
