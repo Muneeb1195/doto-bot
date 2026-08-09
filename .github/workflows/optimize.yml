@@ -44,15 +44,11 @@ jobs:
       models_tag: ${{ steps.models.outputs.tag }}
     steps:
       - uses: actions/checkout@v7.0.1
+      # No pip install here: every `python -c` in this job uses only the stdlib
+      # (configparser/json), and deps do not survive into the other jobs anyway.
       - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.12'
-          cache: 'pip'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
-          pip install -r /tmp/requirements-ci.txt
       # models/*.pkl is gitignored, so without this the optimizer finds no model,
       # build_params() sets ml_enabled=False, and we tune parameters for a bot
       # with NO ML gate -- then apply them to a live bot that has one.
@@ -156,10 +152,11 @@ jobs:
           # ~6.5 GB per run, which blows the 10 GiB/month free-tier bandwidth
           # quota. Fetch only this shard's own M1 file instead (~100 MB).
           lfs: false
-      # Dependencies and trained models are installed ONCE in the setup job
-      # and published as the "trained-models" artifact. This shard only needs
-      # to fetch its own M1 history (per-symbol to stay within bandwidth quota)
-      # and consume the artifact -- no pip install, no model re-download.
+      # Trained models are downloaded ONCE in the setup job and published as the
+      # "trained-models" artifact, so this shard consumes the artifact instead of
+      # re-downloading the release. Dependencies still have to be installed here:
+      # each job runs on its own fresh runner, so a pip install in the setup job
+      # does NOT carry over. The pip cache below makes the repeat install cheap.
       - name: Fetch M1 history for ${{ matrix.symbol }} only
         run: |
           # Without an explicit install, 'git lfs pull' prints "Git LFS is not
@@ -178,6 +175,11 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt
       - name: Download trained models
         uses: actions/download-artifact@v8.0.1
         with:
