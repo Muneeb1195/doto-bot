@@ -298,6 +298,41 @@ def _orderflow_from_m1(m1_df, h1_times):
         return None
 
 
+def _orderflow_live_from_m1_bars(df, symbol, lookback_hours=3):
+    """Live of_* for the socket/RPyC bridge, using M1 BARS instead of ticks.
+
+    The native MetaTrader5 package (and therefore copy_ticks_range) is not
+    available on the Linux deployment, and the MQL5 socket EA exposes rates but
+    not ticks. Rather than let of_* silently zero-fill at serve time, fetch the
+    recent M1 bars over whichever bridge is active and run them through
+    _orderflow_from_m1 -- the same aggregation used to build the training
+    columns -- so live and training values are produced by identical code.
+
+    Returns a dict of single-element arrays aligned to the last H1 bar, or None.
+    """
+    try:
+        from mt5_connect import get_rates
+        from mt5_connect import mt5 as _mt5
+    except Exception:
+        return None
+    if _mt5 is None or not hasattr(_mt5, "TIMEFRAME_M1"):
+        return None
+    try:
+        last_time = df["time"].iloc[-1]
+        if not isinstance(last_time, pd.Timestamp):
+            return None
+        # A few hours of M1 is plenty to cover the forming H1 bar while keeping
+        # the bridge round-trip small; _orderflow_from_m1 slices per H1 bucket.
+        count = max(120, int(lookback_hours) * 60)
+        m1 = get_rates(symbol, _mt5.TIMEFRAME_M1, count)
+        if m1 is None or len(m1) == 0:
+            return None
+        return _orderflow_from_m1(m1, df["time"].values)
+    except Exception:
+        logging.debug("live M1 orderflow failed for %s", symbol, exc_info=True)
+        return None
+
+
 def compute_orderflow_features(df, symbol, m1_df=None):
     """Compute orderflow features for an H1 frame.
 
@@ -316,7 +351,12 @@ def compute_orderflow_features(df, symbol, m1_df=None):
     try:
         import MetaTrader5 as mt5
     except ImportError:
-        return None
+        # Linux/socket-bridge deployment: the native MetaTrader5 package does
+        # not exist, so the tick path below is unreachable and of_* would be
+        # silently zero-filled at serve time while training saw real values.
+        # Fall back to fetching M1 BARS over the bridge and reusing the exact
+        # same aggregation the training path uses, so there is no skew.
+        return _orderflow_live_from_m1_bars(df, symbol)
     try:
         last_time = df["time"].iloc[-1]
         if not isinstance(last_time, pd.Timestamp):
