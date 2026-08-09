@@ -118,6 +118,11 @@ jobs:
           fi
           echo "Models present: $(ls models/ | wc -l) files"
       - name: Optimize ${{ matrix.symbol }}
+        env:
+          # The JIT fast path is bit-exact with the reference loop and is now
+          # default-on, but set it explicitly so the CI runtime characteristics
+          # are visible in the workflow rather than implied by requirements.txt.
+          DOTO_FAST_BACKTEST: "1"
         run: |
           MODE="${{ needs.setup.outputs.mode }}"
           # 5.1y satisfies two independent constraints: CPCV needs >=3.8y to

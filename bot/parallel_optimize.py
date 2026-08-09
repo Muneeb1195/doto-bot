@@ -610,7 +610,14 @@ def main():
     parser.add_argument("--years", type=float, default=5.1)
     parser.add_argument("--threads", type=int, default=16, help="Parallel backtest threads")
     parser.add_argument(
-        "--fast", action="store_true", help="Use the bit-exact Numba fast path (backtest.run(fast=True))"
+        "--fast",
+        dest="fast",
+        action="store_true",
+        default=None,
+        help="Use the bit-exact Numba fast path (default: ON when numba is installed)",
+    )
+    parser.add_argument(
+        "--no-fast", dest="fast", action="store_false", help="Force the pure-Python reference backtest loop"
     )
     parser.add_argument("--csv", action="store_true", help="Load H1 bars from data/history/<SYMBOL>.csv instead of MT5")
     parser.add_argument(
@@ -701,6 +708,16 @@ def main():
         print("No symbols to optimize.")
         return
 
+    # Default ON (mirrors optimize_params.py). The JIT path is verified
+    # bit-exact against the reference loop, so take the speedup unless the
+    # caller explicitly opts out with --no-fast or numba is missing.
+    import backtest as _bt
+
+    fast = True if args.fast is None else args.fast
+    if fast and not _bt._njit_available():
+        print("  [!] numba unavailable; falling back to the reference loop (slower)")
+        fast = False
+
     print(f"\n{'=' * 70}")
     print(f"Phase 1+2: Running parallel backtests for {len(all_data)} symbols ({args.threads} processes)")
     print(f"{'=' * 70}")
@@ -708,7 +725,7 @@ def main():
     all_best = []
     for symbol, (df, info, windows, df_m15) in all_data.items():
         best = optimize_symbol_parallel(
-            symbol, df, info, windows, max_workers=args.threads, fast=args.fast, df_m15=df_m15
+            symbol, df, info, windows, max_workers=args.threads, fast=fast, df_m15=df_m15
         )
         if best:
             all_best.append(best)

@@ -936,7 +936,7 @@ def main():
         dest="fast",
         action="store_true",
         default=None,
-        help="Use the Numba-JIT fast backtest path (default: OFF; also settable via DOTO_FAST_BACKTEST=1)",
+        help="Use the Numba-JIT fast backtest path (default: ON when numba is installed)",
     )
     parser.add_argument(
         "--no-fast", dest="fast", action="store_false", help="Force the pure-Python reference backtest loop"
@@ -947,15 +947,19 @@ def main():
 
     import backtest
 
-    # Opt-IN, not capability-detected. Deriving the default from
-    # _njit_available() meant that merely having numba importable silently
-    # switched every optimization onto the JIT path — including while that path
-    # still disagreed with the reference loop. Requires an explicit --fast (or
-    # DOTO_FAST_BACKTEST=1) so enabling it is always a deliberate act.
-    _env_fast = os.environ.get("DOTO_FAST_BACKTEST", "").lower() in ("1", "true", "yes")
-    fast = _env_fast if args.fast is None else args.fast
+    # Default ON. The JIT path is verified bit-exact against the reference loop
+    # (36/36 real-data checks + the tests/test_backtest_njit.py parity harness),
+    # so the ~8.4x speedup is taken by default whenever numba is importable.
+    # Precedence: explicit --fast/--no-fast > DOTO_FAST_BACKTEST > numba present.
+    _env = os.environ.get("DOTO_FAST_BACKTEST", "").strip().lower()
+    if args.fast is not None:
+        fast = args.fast
+    elif _env in ("0", "false", "no"):
+        fast = False
+    else:
+        fast = True
     if fast and not backtest._njit_available():
-        print("  [!] --fast requested but numba is unavailable; using the reference loop")
+        print("  [!] numba unavailable; falling back to the reference loop (slower)")
         fast = False
 
     import platform

@@ -1323,10 +1323,13 @@ class Backtest:
         if fast and self.df_m1 is None and _njit_available():
             try:
                 return self._run_fast()
-            except Exception as e:  # pragma: no cover - fast path fallback
+            except Exception:  # pragma: no cover - fast path fallback
                 import logging
 
-                logging.warning(f"[backtest] fast path failed ({e}); using reference loop: {e}")
+                # ERROR, not WARNING: the fast path is bit-exact and default-on,
+                # so a failure here silently costs ~8x runtime. It must be loud
+                # enough to surface in CI logs, while still not aborting the run.
+                logging.error("[backtest] fast path failed; falling back to reference loop", exc_info=True)
         return self._run_reference()
 
     def _run_reference(self):
