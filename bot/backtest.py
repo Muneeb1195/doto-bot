@@ -720,7 +720,7 @@ class Backtest:
                 feat_df = compute_features(self.df, symbol=self.p.get("symbol", ""), m1_df=self.df_m1)
                 missing = [c for c in self.ml_meta_features if c not in feat_df.columns]
                 if not missing:
-                    X = feat_df[self.ml_meta_features].fillna(0).values
+                    X = feat_df[self.ml_meta_features].fillna(0)
                     proba = self.ml_meta_model.predict_proba(X)
                     self.ml_meta_proba = proba[:, 1] if proba.shape[1] > 1 else proba[:, 0]
         except Exception:

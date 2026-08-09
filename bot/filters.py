@@ -178,7 +178,8 @@ def check_ml_signal(cfg, signal, df=None):
         logging.debug(f"[{symbol}] ML: missing features {missing} — pass-through")
         return True, None
     latest = feature_data[model_features].iloc[-1:]
-    latest_arr = np.nan_to_num(latest.values.copy(), nan=0.0)
+    latest_X = latest.fillna(0)
+    latest_arr = np.nan_to_num(latest_X.values, nan=0.0)
     if latest_arr.shape[0] == 0:
         return True, None
     n_expected = None
@@ -219,11 +220,10 @@ def check_ml_signal(cfg, signal, df=None):
         tft_member = getattr(model, "tft", None)
         if tft_member is not None:
             seq_len = getattr(tft_member, "seq_len", 20)
-            window = feature_data[model_features].iloc[-seq_len:]
-            pred_arr = np.nan_to_num(window.values.copy(), nan=0.0)
+            X = feature_data[model_features].iloc[-seq_len:].fillna(0)
         else:
-            pred_arr = latest_arr
-        proba = model.predict_proba(pred_arr)
+            X = latest_X
+        proba = model.predict_proba(X)
         prob_long = proba[-1][1] if proba.shape[1] > 1 else proba[-1][0]
         conf = prob_long if signal == "buy" else 1.0 - prob_long
         opt_threshold = metadata.get("optimal_threshold")

@@ -370,6 +370,18 @@ def optimize_symbol_parallel(symbol, df_full, info, windows, max_workers=8, fast
     w1 = windows[0][0]
     print(f"  First IS: {w1['time'].iloc[0].date()} to {w1['time'].iloc[-1].date()}")
 
+    # Warm the numba JIT cache once in the parent process before the pool starts.
+    # bt_task workers would each recompile _simulate_core from scratch (~65s).
+    if fast and w1.shape[0] > 0:
+        try:
+            warm_params = build_params(
+                symbol, ema_grid[0][0], ema_grid[0][1], 1.5, 2.0, 25,
+                point, tick_value, volume_step, mr_enabled, profile, ma_type
+            )
+            run_bt(w1.head(200) if len(w1) >= 200 else w1, warm_params, df_m15=df_m15, fast=True)
+        except Exception:
+            pass
+
     n_phase1 = min(2, len(windows))
 
     print(f"\n  Phase 1: EMA sweep ({len(ema_grid)} EMAs × {n_phase1} windows)")

@@ -30,13 +30,77 @@ permissions:
 jobs:
   # Resolve the mode once so every shard agrees, and read the portfolio from
   # settings.ini so the matrix stays in sync with the live symbol list.
+  #
+  # Also installs dependencies and downloads the trained models ONCE here,
+  # then publishes them as an artifact for the matrix shards to consume.
+  # Previously every shard pip-installed and re-downloaded models.tar.gz,
+  # wasting ~(N-1) x (~90s pip + ~45s models) and discovering missing models
+  # ~10 min into a shard. Now the early-fail check happens before any shard starts.
   setup:
     runs-on: ubuntu-latest
     outputs:
       mode: ${{ steps.cfg.outputs.mode }}
       symbols: ${{ steps.cfg.outputs.symbols }}
+      models_tag: ${{ steps.models.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt
+      # models/*.pkl is gitignored, so without this the optimizer finds no model,
+      # build_params() sets ml_enabled=False, and we tune parameters for a bot
+      # with NO ML gate -- then apply them to a live bot that has one.
+      # Download ONCE here and publish as an artifact; shards consume it.
+      # The early-fail check verifies ALL portfolio models exist before any
+      # shard starts, instead of discovering a missing model ~10 min in.
+      - name: Fetch trained models
+        id: models
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+                  --json tagName --jq '[.[].tagName | select(startswith("train-"))] | first')
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "::error::No train-* release found; optimizing without ML would" \
+                 "produce parameters that do not match live behaviour."
+            exit 1
+          fi
+          echo "Using models from release $TAG"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'models.tar.gz' --dir /tmp
+          # The tarball already contains a top-level models/ directory.
+          tar xzf /tmp/models.tar.gz -C .
+          # Verify ALL portfolio models exist BEFORE any shard starts.
+          SYMBOLS=$(python -c "
+          import configparser, json
+          c = configparser.ConfigParser(); c.read('config/settings.ini')
+          s = [x.strip() for x in c.get('PORTFOLIO','symbols',fallback='').split(',') if x.strip()]
+          print(' '.join(s))
+          ")
+          MISSING=""
+          for sym in $SYMBOLS; do
+            SAFE="$(echo "$sym" | tr '.' '_')"
+            if [ ! -f "models/model_${SAFE}.pkl" ]; then
+              MISSING="$MISSING $sym"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing models for:$MISSING - refusing to optimize with ML gate silently disabled."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Models present: $(ls models/ | wc -l) files"
+      - name: Publish models artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: trained-models
+          path: models/
+          retention-days: 1
       # POSIX cron ORs day-of-month with day-of-week when both are restricted,
       # so '0 5 1-7 * 0' can fire on every day 1-7 AND every Sunday. Gate on the
       # real condition so a scheduled run only proceeds on the 1st Sunday.
@@ -76,17 +140,26 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
-      max-parallel: 8
+      # 8 shards on shared runners produced a 7x wall-time spread (US30 217 min
+      # vs US500 31 min on identical 216-combo grids). The spread is CPU
+      # contention across concurrent shards, not workload -- reduce to 4 and
+      # measure. The numba cache (change 2) should already reclaim ~4.3 min of
+      # compile per shard, so total wall-clock should drop further.
+      max-parallel: 4
       matrix:
         symbol: ${{ fromJson(needs.setup.outputs.symbols) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           # NOT lfs:true. This job is an 8-symbol matrix, and a blanket LFS
           # checkout would pull all 8 M1 files (~814 MB) into every shard =
           # ~6.5 GB per run, which blows the 10 GiB/month free-tier bandwidth
           # quota. Fetch only this shard's own M1 file instead (~100 MB).
           lfs: false
+      # Dependencies and trained models are installed ONCE in the setup job
+      # and published as the "trained-models" artifact. This shard only needs
+      # to fetch its own M1 history (per-symbol to stay within bandwidth quota)
+      # and consume the artifact -- no pip install, no model re-download.
       - name: Fetch M1 history for ${{ matrix.symbol }} only
         run: |
           # Without an explicit install, 'git lfs pull' prints "Git LFS is not
@@ -101,40 +174,30 @@ jobs:
             exit 1
           fi
           echo "M1 rows: $(wc -l < "$F")"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          grep -vE '^(MetaTrader5|mt5linux)' requirements.txt > /tmp/requirements-ci.txt
-          pip install -r /tmp/requirements-ci.txt
-      # models/*.pkl is gitignored, so without this the optimizer finds no model,
-      # build_params() sets ml_enabled=False, and we tune parameters for a bot
-      # with NO ML gate -- then apply them to a live bot that has one.
-      - name: Fetch trained models
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
-                  --json tagName --jq '[.[].tagName | select(startswith("train-"))] | first')
-          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
-            echo "::error::No train-* release found; optimizing without ML would" \
-                 "produce parameters that do not match live behaviour."
-            exit 1
-          fi
-          echo "Using models from release $TAG"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'models.tar.gz' --dir /tmp
-          # The tarball already contains a top-level models/ directory.
-          tar xzf /tmp/models.tar.gz -C .
-          SAFE="$(echo '${{ matrix.symbol }}' | tr '.' '_')"
-          if [ ! -f "models/model_${SAFE}.pkl" ]; then
-            echo "::error::models/model_${SAFE}.pkl missing from $TAG - refusing to" \
-                 "optimize ${{ matrix.symbol }} with the ML gate silently disabled."
-            exit 1
-          fi
-          echo "Models present: $(ls models/ | wc -l) files"
+      - name: Download trained models
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: trained-models
+          path: models/
+      # Persist the numba JIT cache across runs. bot/backtest_njit.py's 7
+      # @njit(cache=True) kernels write compiled artifacts to
+      # bot/__pycache__/*.nbc/*.nbi; without this each shard rebuilds them from
+      # scratch (~65s per worker, 4 workers = ~4.3 min of pure compile). Key on a
+      # hash of the kernel source AND the Python version -- the local cache
+      # already holds both py312 and py314 artifacts, so an unkeyed cache would
+      # silently miss when CI's Python version differs from a prior run.
+      - name: Cache numba JIT kernels
+        uses: actions/cache@v6.1.0
+        with:
+          path: bot/__pycache__
+          key: numba-jit-${{ runner.os }}-py${{ matrix.python-version || '3.12' }}-${{ hashFiles('bot/backtest_njit.py') }}
+          restore-keys: |
+            numba-jit-${{ runner.os }}-py${{ matrix.python-version || '3.12' }}-
+            numba-jit-${{ runner.os }}-
       - name: Optimize ${{ matrix.symbol }}
         env:
           # The JIT fast path is bit-exact with the reference loop and is now
@@ -161,7 +224,7 @@ jobs:
         id: rf
         run: echo "safe=$(echo '${{ matrix.symbol }}' | tr '.' '_')" >> "$GITHUB_OUTPUT"
       - name: Upload result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: optimize-${{ matrix.symbol }}
           # Upload ONLY this shard's own CSV. A glob here swept up any other
@@ -177,12 +240,12 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.12'
       - name: Download all shard results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           # run-id + pattern pin this to the CURRENT run's shards only.
           pattern: optimize-*

@@ -503,6 +503,19 @@ def _resolve_ma_type(symbol):
     return "kama"
 
 
+def _warm_jit(df_window, params, df_m1=None, df_m15=None):
+    """Run a single minimal backtest to compile the numba kernel in-process.
+
+    ProcessPoolExecutor workers have no shared JIT state, so each would
+    recompile _simulate_core from scratch (~65s per worker). Warm once here,
+    then workers load the compiled kernel from bot/__pycache__/ via cache=True.
+    """
+    from backtest import run
+    tiny = df_window.head(200) if len(df_window) >= 200 else df_window
+    _fixed = _get_fixed(tiny, params)
+    run(tiny, params, df_m1=df_m1, df_m15=df_m15, fast=True, fixed=_fixed)
+
+
 def optimize_symbol(
     symbol, df_full, info, windows, quick=False, cpcv=False, df_m1=None, df_m15=None, no_ml=False, fast=False
 ):
@@ -518,6 +531,20 @@ def optimize_symbol(
     score_vals = PROFILE_SCORE[profile]
     commission = PROFILE_COMMISSION.get(profile, 0.0)
     ma_type = _resolve_ma_type(symbol)
+
+    # Warm the numba JIT cache once in the parent process before the pool starts.
+    # ProcessPoolExecutor workers have no shared JIT state, so each would
+    # recompile _simulate_core from scratch (~65s per worker). Warm once here,
+    # then workers load the compiled kernel from bot/__pycache__/ via cache=True.
+    if fast and windows and windows[0][0].shape[0] > 0:
+        try:
+            _warm_jit(windows[0][0], build_params(
+                symbol, ema_grid[0][0], ema_grid[0][1], sl_vals[0], rr_vals[0],
+                adx_vals[0], point, tick_value, volume_step, mr_enabled, commission,
+                ma_type, no_ml, scoring_min_entry=score_vals[0],
+            ), df_m1=df_m1, df_m15=df_m15)
+        except Exception:
+            pass  # fall through to worker-side compilation if warmup fails
 
     if quick:
         ema_grid = ema_grid[::2]
