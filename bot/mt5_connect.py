@@ -62,15 +62,21 @@ def init_mt5():
         logging.info("MT5 backend: native (Windows)")
         return
 
-    # Linux: try mt5linux first, then socket client
-    try:
-        logging.info("MT5 backend: trying mt5linux...")
-        _mt5_instance = _init_mt5linux()
-        _mt5_backend = "mt5linux"
-        logging.info("MT5 backend: mt5linux (RPyC)")
-        return
-    except Exception as e:
-        logging.warning(f"mt5linux failed ({e}), trying socket client...")
+    # Linux: try mt5linux first (with retries for server warm-up), then socket
+    mt5linux_attempts = 5
+    for _attempt in range(mt5linux_attempts):
+        try:
+            logging.info("MT5 backend: trying mt5linux...")
+            _mt5_instance = _init_mt5linux()
+            _mt5_backend = "mt5linux"
+            logging.info("MT5 backend: mt5linux (RPyC)")
+            return
+        except Exception as e:
+            if _attempt < mt5linux_attempts - 1:
+                logging.info(f"mt5linux not ready ({e}), retrying in 5s...")
+                time.sleep(5)
+            else:
+                logging.warning(f"mt5linux failed after {mt5linux_attempts} attempts ({e}), trying socket client...")
 
     try:
         _mt5_instance = _init_socket_client()
