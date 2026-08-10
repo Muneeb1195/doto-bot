@@ -318,6 +318,20 @@ def _ensure_socket_connected(cfg):
     return False
 
 
+def _mt5linux_ping():
+    """Lightweight direct health check that bypasses the shared executor.
+
+    The shared executor (max_workers=1) is blocked by long-running calls
+    like copy_rates_from, so terminal_info() would queue behind them and
+    time out. This direct call uses a short socket timeout instead.
+    """
+    import socket as _socket
+    try:
+        return mt5.terminal_info()
+    except Exception:
+        return None
+
+
 def _ensure_mt5linux_connected(cfg):
     """Reconnect path for mt5linux backend (systemd owns the terminal).
 
@@ -325,25 +339,28 @@ def _ensure_mt5linux_connected(cfg):
     """
     for attempt in range(5):
         try:
-            mt5_call(mt5.shutdown, _timeout=5)
+            mt5.shutdown()
         except Exception:
             pass
         time.sleep(3)
         try:
-            result = mt5_call(mt5.initialize, _timeout=30)
+            result = mt5.initialize()
         except Exception as e:
             logging.warning(f"mt5linux initialize raised (attempt {attempt+1}): {e}")
             result = False
         if result:
-            acc = mt5_call(mt5.account_info, _timeout=10)
+            try:
+                acc = mt5.account_info()
+            except Exception:
+                acc = None
             if acc is not None:
                 if attempt > 0:
                     logging.info(f"mt5linux reconnected: Balance Rs.{acc.balance:.2f}")
                 for sym in cfg["symbols"]:
-                    mt5_call(mt5.symbol_select, sym, True, _timeout=10)
+                    with suppress(Exception):
+                        mt5.symbol_select(sym, True)
                 return True
-        err = mt5_call(mt5.last_error, _timeout=3)
-        logging.warning(f"mt5linux init failed (attempt {attempt+1}/5): {err}")
+        logging.warning(f"mt5linux init failed (attempt {attempt+1}/5)")
     logging.error("mt5linux reconnection failed after 5 attempts")
     return False
 
@@ -353,12 +370,9 @@ def ensure_mt5_connected(cfg):
     if _mt5_backend == "socket":
         return _ensure_socket_connected(cfg)
     if _mt5_backend == "mt5linux":
-        try:
-            info = mt5_call(mt5.terminal_info, _timeout=5)
-            if info is not None and getattr(info, "connected", True):
-                return True
-        except Exception:
-            logging.debug("mt5linux check failed — initiating reconnection")
+        info = _mt5linux_ping()
+        if info is not None and getattr(info, "connected", True):
+            return True
         logging.warning("mt5linux disconnected. Attempting reconnection...")
         return _ensure_mt5linux_connected(cfg)
     try:
