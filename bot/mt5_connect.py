@@ -93,21 +93,36 @@ def init_mt5():
         raise RuntimeError(f"All MT5 backends failed. Last error: {e}")
 
 
+class _MT5Proxy:
+    """Proxy that delegates attribute access to the live MT5 instance.
+
+    main.py does `from mt5_connect import mt5`, which binds to this proxy.
+    The proxy always resolves attributes on the current `_mt5_instance`, so
+    callers transparently use the fresh connection after a reconnect instead
+    of a stale snapshot. When no instance exists yet (auto-init pending or
+    failed), attribute access raises AttributeError — main.py always calls
+    ensure_mt5_connected() first, which guarantees an instance exists.
+    """
+
+    def __getattr__(self, name):
+        inst = _mt5_instance
+        if inst is not None:
+            return getattr(inst, name)
+        raise AttributeError(f"MT5 not initialized — '{name}' unavailable (call ensure_mt5_connected first)")
+
+    def __repr__(self):
+        inst = _mt5_instance
+        return f"<MT5Proxy ({inst.__class__.__name__ if inst else 'no instance'})>"
+
+
+mt5 = _MT5Proxy()
+
 # Legacy compatibility: auto-init on import (may fail gracefully)
 try:
     init_mt5()
-    mt5 = _mt5_instance
 except Exception as e:
     logging.warning(f"MT5 auto-init failed: {e}")
     logging.warning("MT5 will be unavailable until init_mt5() succeeds")
-    logging.warning("Using fallback MT5 constants module (no trading)")
-    from mt5_socket_client import MT5SocketClient
-    mt5 = MT5SocketClient.__new__(MT5SocketClient)
-    mt5.host = "127.0.0.1"
-    mt5.port = 9000
-    mt5.timeout = 30
-    mt5._sock = None
-    mt5._buf = b""
 
 _mt5_proc: Optional["subprocess.Popen"] = None
 
@@ -400,6 +415,18 @@ def _ensure_mt5linux_connected(cfg):
 
 def ensure_mt5_connected(cfg):
     global _mt5_proc
+    # If auto-init at import time failed (server not ready yet), _mt5_backend
+    # is still "unknown" and `mt5` is a dummy fallback. Attempt a real init now
+    # — the server may be up. Without this the native path below operates on
+    # the dummy and can never recover.
+    if _mt5_backend == "unknown" or _mt5_instance is None:
+        logging.info("MT5 backend not initialized — attempting init_mt5()")
+        try:
+            init_mt5()
+            mt5 = _mt5_instance
+        except Exception as e:
+            logging.warning(f"init_mt5() failed: {e}")
+            return False
     if _mt5_backend == "socket":
         return _ensure_socket_connected(cfg)
     if _mt5_backend == "mt5linux":
