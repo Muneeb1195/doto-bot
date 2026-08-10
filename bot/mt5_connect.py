@@ -27,9 +27,16 @@ _mt5_backend: str = "unknown"
 
 
 def _init_mt5linux():
-    """Try mt5linux RPyC bridge (mt5linux v0.x without Docker)."""
+    """Try mt5linux RPyC bridge (mt5linux v0.x without Docker).
+
+    The MT5 terminal is single-threaded: a long copy_rates_from call blocks
+    all other RPyC requests behind it. The default sync timeout is 5 min,
+    which would hang the bot's health check behind a long call. Set it to
+    15s so blocked calls fail fast and the bot can retry.
+    """
     from mt5linux import MetaTrader5 as _MT5Client
     inst = _MT5Client(host="127.0.0.1", port=18812)
+    inst._MetaTrader5__conn._config["sync_request_timeout"] = 15
     inst.initialize()
     return inst
 
@@ -318,17 +325,27 @@ def _ensure_socket_connected(cfg):
     return False
 
 
-def _mt5linux_ping():
-    """Lightweight direct health check that bypasses the shared executor.
+_ping_inst = None
 
-    The shared executor (max_workers=1) is blocked by long-running calls
-    like copy_rates_from, so terminal_info() would queue behind them and
-    time out. This direct call uses a short socket timeout instead.
+
+def _mt5linux_ping():
+    """Lightweight health check using a persistent dedicated connection.
+
+    The MT5 terminal is single-threaded: a long copy_rates_from call blocks
+    all requests behind it. Using the main mt5 object's connection would
+    queue the ping behind long calls, so we keep a separate persistent
+    connection just for health checks. The 10s sync timeout makes a blocked
+    ping fail fast instead of hanging for the default 5 min.
     """
-    import socket as _socket
+    global _ping_inst
     try:
-        return mt5.terminal_info()
+        if _ping_inst is None:
+            from mt5linux import MetaTrader5 as _MT5Client
+            _ping_inst = _MT5Client(host="127.0.0.1", port=18812)
+            _ping_inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
+        return _ping_inst.terminal_info()
     except Exception:
+        _ping_inst = None
         return None
 
 
