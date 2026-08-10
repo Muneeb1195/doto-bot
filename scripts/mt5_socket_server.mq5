@@ -138,7 +138,7 @@ input int    SocketPort = 9000;
 input int    PollIntervalMs = 50;
 input int    MaxBufferSize = 65536;
 input bool   UseTimer = false;
-input int    StaleTimeoutSec = 10;
+input int    StaleTimeoutSec = 120;
 
 //--- globals
 long   g_serverSocket = WS_INVALID_SOCKET;
