@@ -127,6 +127,14 @@ def _reset_executor():
 
 def mt5_call(func, *args, _timeout=None, **kwargs):
     name = getattr(func, "__name__", "")
+    # Resolve the method on the *current* instance. Callers (e.g. main.py)
+    # import `mt5` once via `from mt5_connect import mt5`, which binds to the
+    # object at import time. After reconnect that reference is stale, so we
+    # look up the method by name on the live instance to always hit the
+    # fresh RPyC connection.
+    current = _mt5_instance
+    if current is not None and name and hasattr(current, name):
+        func = getattr(current, name)
     if _timeout is None or name in _THREAD_BOUND:
         try:
             return func(*args, **kwargs)
@@ -325,34 +333,31 @@ def _ensure_socket_connected(cfg):
     return False
 
 
-_ping_inst = None
 # Sentinel returned when the ping timed out (server busy) vs connection dead.
 _PING_BUSY = object()
 
 
 def _mt5linux_ping():
-    """Lightweight health check using a persistent dedicated connection.
+    """Lightweight health check with a fresh connection each call.
 
     The MT5 terminal is single-threaded: a long copy_rates_from call blocks
-    all requests behind it. Using the main mt5 object's connection would
-    queue the ping behind long calls, so we keep a separate persistent
-    connection just for health checks. The 10s sync timeout makes a blocked
-    ping fail fast instead of hanging for the default 5 min.
+    all requests behind it. A persistent connection degrades after a timeout
+    (the RPyC pipe gets into a bad state), so we create a fresh connection
+    each ping. terminal_info is cheap (~0.0s) so this is not wasteful. The
+    10s sync timeout makes a blocked ping fail fast instead of hanging for
+    the default 5 min.
 
     Returns:
         TerminalInfo on success,
         None on connection error (server dead),
         _PING_BUSY on timeout (server blocked by a long call).
     """
-    global _ping_inst
     try:
-        if _ping_inst is None:
-            from mt5linux import MetaTrader5 as _MT5Client
-            _ping_inst = _MT5Client(host="127.0.0.1", port=18812)
-            _ping_inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
-        return _ping_inst.terminal_info()
+        from mt5linux import MetaTrader5 as _MT5Client
+        inst = _MT5Client(host="127.0.0.1", port=18812)
+        inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
+        return inst.terminal_info()
     except Exception as e:
-        _ping_inst = None
         err = str(e).lower()
         if "timed out" in err or "timeout" in err or "asyncresulttimeout" in err:
             return _PING_BUSY
