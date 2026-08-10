@@ -137,7 +137,7 @@ int WsSend(long sock, uchar &array[], int count)
 input int    SocketPort = 9000;
 input int    PollIntervalMs = 50;
 input int    MaxBufferSize = 65536;
-input bool   UseTimer = false;
+input bool   UseTimer = true;
 input int    StaleTimeoutSec = 120;
 
 //--- globals
