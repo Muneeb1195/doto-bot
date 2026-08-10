@@ -312,10 +312,49 @@ def _ensure_socket_connected(cfg):
     return False
 
 
+def _ensure_mt5linux_connected(cfg):
+    """Reconnect path for mt5linux backend (systemd owns the terminal).
+
+    Never kills or relaunches terminal64.exe — just retries initialize().
+    """
+    for attempt in range(5):
+        try:
+            mt5_call(mt5.shutdown, _timeout=5)
+        except Exception:
+            pass
+        time.sleep(3)
+        try:
+            result = mt5_call(mt5.initialize, _timeout=30)
+        except Exception as e:
+            logging.warning(f"mt5linux initialize raised (attempt {attempt+1}): {e}")
+            result = False
+        if result:
+            acc = mt5_call(mt5.account_info, _timeout=10)
+            if acc is not None:
+                if attempt > 0:
+                    logging.info(f"mt5linux reconnected: Balance Rs.{acc.balance:.2f}")
+                for sym in cfg["symbols"]:
+                    mt5_call(mt5.symbol_select, sym, True, _timeout=10)
+                return True
+        err = mt5_call(mt5.last_error, _timeout=3)
+        logging.warning(f"mt5linux init failed (attempt {attempt+1}/5): {err}")
+    logging.error("mt5linux reconnection failed after 5 attempts")
+    return False
+
+
 def ensure_mt5_connected(cfg):
     global _mt5_proc
     if _mt5_backend == "socket":
         return _ensure_socket_connected(cfg)
+    if _mt5_backend == "mt5linux":
+        try:
+            info = mt5_call(mt5.terminal_info, _timeout=5)
+            if info is not None and getattr(info, "connected", True):
+                return True
+        except Exception:
+            logging.debug("mt5linux check failed — initiating reconnection")
+        logging.warning("mt5linux disconnected. Attempting reconnection...")
+        return _ensure_mt5linux_connected(cfg)
     try:
         info = mt5_call(mt5.terminal_info, _timeout=5)
         if info is not None and getattr(info, "connected", True):
