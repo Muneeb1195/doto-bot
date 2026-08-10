@@ -30,13 +30,15 @@ def _init_mt5linux():
     """Try mt5linux RPyC bridge (mt5linux v0.x without Docker).
 
     The MT5 terminal is single-threaded: a long copy_rates_from call blocks
-    all other RPyC requests behind it. The default sync timeout is 5 min,
-    which would hang the bot's health check behind a long call. Set it to
-    15s so blocked calls fail fast and the bot can retry.
+    all other RPyC requests behind it. The sync timeout must be long enough
+    for those slow calls to complete (80k bars can take 30-60s). Quick calls
+    (terminal_info, account_info) use a separate short-timeout connection
+    for health checks, so a long sync timeout here does not delay detection
+    of a dead server.
     """
     from mt5linux import MetaTrader5 as _MT5Client
     inst = _MT5Client(host="127.0.0.1", port=18812)
-    inst._MetaTrader5__conn._config["sync_request_timeout"] = 15
+    inst._MetaTrader5__conn._config["sync_request_timeout"] = 120
     inst.initialize()
     return inst
 
@@ -126,7 +128,8 @@ except Exception as e:
 
 _mt5_proc: Optional["subprocess.Popen"] = None
 
-_THREAD_BOUND = {"initialize", "shutdown", "login", "order_send"}
+_THREAD_BOUND = {"initialize", "shutdown", "login", "order_send",
+                 "copy_rates_from", "copy_rates_from_pos", "copy_ticks_from", "copy_ticks_range"}
 
 _call_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mt5call")
 _executor_lock = threading.Lock()
@@ -138,6 +141,28 @@ def _reset_executor():
         old = _call_executor
         _call_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mt5call")
     old.shutdown(wait=False)
+
+
+def _recreate_instance():
+    """Replace _mt5_instance with a fresh RPyC connection.
+
+    Called after a timeout or connection error. The old instance's RPyC pipe
+    may be poisoned by an in-flight call that the single-threaded MT5 terminal
+    is still processing. A new MetaTrader5 object opens a fresh connection to
+    the mt5server, which is threaded and can serve the new client even while
+    the terminal drains the old call.
+    """
+    global _mt5_instance, mt5
+    with _executor_lock:
+        try:
+            inst = _init_mt5linux()
+        except Exception as e:
+            logging.warning(f"MT5 instance recreation failed: {e}")
+            return False
+        _mt5_instance = inst
+        mt5 = inst
+        logging.info("MT5 instance recreated (fresh RPyC connection)")
+        return True
 
 
 def mt5_call(func, *args, _timeout=None, **kwargs):
@@ -155,6 +180,7 @@ def mt5_call(func, *args, _timeout=None, **kwargs):
             return func(*args, **kwargs)
         except Exception as e:
             logging.warning(f"MT5 {name or func} raised: {e}")
+            _recreate_instance()
             return None
     try:
         with _executor_lock:
@@ -165,15 +191,18 @@ def mt5_call(func, *args, _timeout=None, **kwargs):
             return func(*args, **kwargs)
         except Exception as e:
             logging.warning(f"MT5 {name or func} raised: {e}")
+            _recreate_instance()
             return None
     try:
         return future.result(timeout=_timeout)
     except FutureTimeout:
-        logging.warning(f"MT5 {name or func} timed out after {_timeout}s — abandoning call")
+        logging.warning(f"MT5 {name or func} timed out after {_timeout}s — recreating instance")
         _reset_executor()
+        _recreate_instance()
         return None
     except Exception as e:
         logging.warning(f"MT5 {name or func} raised: {e}")
+        _recreate_instance()
         return None
 
 
@@ -371,9 +400,16 @@ def _mt5linux_ping():
         from mt5linux import MetaTrader5 as _MT5Client
         inst = _MT5Client(host="127.0.0.1", port=18812)
         inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
+        # initialize() is idempotent and fast (~0.0s). On a freshly (re)started
+        # mt5server the server-side MetaTrader5 object is not yet connected to
+        # the MT5 terminal, so terminal_info() would return None. Calling
+        # initialize() first guarantees the connection is live. If the server
+        # is blocked by a long call, this times out and we return _PING_BUSY.
+        inst.initialize()
         return inst.terminal_info()
     except Exception as e:
         err = str(e).lower()
+        logging.debug(f"mt5linux ping exception: {type(e).__name__}: {str(e)[:120]}")
         if "timed out" in err or "timeout" in err or "asyncresulttimeout" in err:
             return _PING_BUSY
         return None
