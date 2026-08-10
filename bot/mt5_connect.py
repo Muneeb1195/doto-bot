@@ -326,6 +326,8 @@ def _ensure_socket_connected(cfg):
 
 
 _ping_inst = None
+# Sentinel returned when the ping timed out (server busy) vs connection dead.
+_PING_BUSY = object()
 
 
 def _mt5linux_ping():
@@ -336,6 +338,11 @@ def _mt5linux_ping():
     queue the ping behind long calls, so we keep a separate persistent
     connection just for health checks. The 10s sync timeout makes a blocked
     ping fail fast instead of hanging for the default 5 min.
+
+    Returns:
+        TerminalInfo on success,
+        None on connection error (server dead),
+        _PING_BUSY on timeout (server blocked by a long call).
     """
     global _ping_inst
     try:
@@ -344,8 +351,11 @@ def _mt5linux_ping():
             _ping_inst = _MT5Client(host="127.0.0.1", port=18812)
             _ping_inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
         return _ping_inst.terminal_info()
-    except Exception:
+    except Exception as e:
         _ping_inst = None
+        err = str(e).lower()
+        if "timed out" in err or "timeout" in err or "asyncresulttimeout" in err:
+            return _PING_BUSY
         return None
 
 
@@ -390,6 +400,15 @@ def ensure_mt5_connected(cfg):
     if _mt5_backend == "mt5linux":
         info = _mt5linux_ping()
         if info is not None and getattr(info, "connected", True):
+            return True
+        # Ping failed. Distinguish a busy server (timeout — terminal is
+        # single-threaded and blocked behind a long copy_rates_from) from a
+        # dead one (connection refused / RPyC error). When busy we must NOT
+        # reconnect — the in-flight call is still queued on the server and
+        # a reconnect would orphan it. Just skip this cycle; the next ping
+        # will succeed once the long call completes.
+        if info is _PING_BUSY:
+            logging.debug("mt5linux busy (server blocked by long call) — skipping cycle")
             return True
         logging.warning("mt5linux disconnected. Attempting reconnection...")
         return _ensure_mt5linux_connected(cfg)
