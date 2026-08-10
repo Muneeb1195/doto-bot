@@ -137,6 +137,8 @@ int WsSend(long sock, uchar &array[], int count)
 input int    SocketPort = 9000;
 input int    PollIntervalMs = 50;
 input int    MaxBufferSize = 65536;
+input bool   UseTimer = false;
+input int    StaleTimeoutSec = 10;
 
 //--- globals
 long   g_serverSocket = WS_INVALID_SOCKET;
@@ -144,6 +146,7 @@ long   g_clientSocket = WS_INVALID_SOCKET;
 bool   g_initialized  = false;
 bool   g_clientConnected = false;
 string g_readBuffer   = "";
+datetime g_lastDataTime = 0;
 CTrade g_trade;
 CPositionInfo g_posInfo;
 COrderInfo g_orderInfo;
@@ -219,9 +222,9 @@ int OnInit()
       return INIT_FAILED;
    }
 
-   EventSetMillisecondTimer(PollIntervalMs);
-   Print("[MT5Socket] Listening on 127.0.0.1:", SocketPort);
-   return INIT_SUCCEEDED;
+    if(UseTimer) EventSetMillisecondTimer(PollIntervalMs);
+    Print("[MT5Socket] Listening on 127.0.0.1:", SocketPort, "  (OnTick + UseTimer=", UseTimer, ")");
+    return INIT_SUCCEEDED;
 }
 
 //+------------------------------------------------------------------+
@@ -237,63 +240,101 @@ void OnDeinit(const int reason)
 }
 
 //+------------------------------------------------------------------+
+void PollSocket()
+{
+    //--- accept new connection if none
+    if(!g_clientConnected)
+    {
+       long accepted = WsAccept(g_serverSocket);
+       if(accepted != WS_INVALID_SOCKET)
+       {
+          WsSetNonBlocking(accepted);
+          g_clientSocket = accepted;
+          g_clientConnected = true;
+          g_readBuffer = "";
+          g_lastDataTime = TimeCurrent();
+          Print("[MT5Socket] Client connected");
+       }
+       return;
+    }
+
+    //--- stale-client watchdog: drop silent connections so a stuck slot
+    //    never blocks the single-client server indefinitely.
+    if(TimeCurrent() - g_lastDataTime > StaleTimeoutSec)
+    {
+       Print("[MT5Socket] Client stale, closing (timeout)");
+       WsClose(g_clientSocket);
+       g_clientSocket = WS_INVALID_SOCKET;
+       g_clientConnected = false;
+       return;
+    }
+
+    //--- read available data
+    uchar buf[];
+    ArrayResize(buf, MaxBufferSize);
+    int bytes = WsRecv(g_clientSocket, buf, MaxBufferSize);
+    if(bytes < 0)
+    {
+       int err = WSAGetLastError();
+       if(err != WS_EWOULDBLOCK)
+       {
+          Print("[MT5Socket] Client error, closing: ", err);
+          WsClose(g_clientSocket);
+          g_clientSocket = WS_INVALID_SOCKET;
+          g_clientConnected = false;
+       }
+       return;
+    }
+    if(bytes == 0)
+    {
+       // graceful peer shutdown
+       Print("[MT5Socket] Client disconnected");
+       WsClose(g_clientSocket);
+       g_clientSocket = WS_INVALID_SOCKET;
+       g_clientConnected = false;
+       return;
+    }
+
+    g_lastDataTime = TimeCurrent();
+
+     //--- convert to string and append to buffer
+     string chunk = CharArrayToString(buf, 0, bytes, CP_UTF8);
+     g_readBuffer += chunk;
+
+     //--- process complete lines
+     string line;
+     int pos;
+     while((pos = StringFind(g_readBuffer, "\n")) >= 0)
+     {
+        line = StringSubstr(g_readBuffer, 0, pos);
+        StringReplace(line, "\r", "");
+        g_readBuffer = StringSubstr(g_readBuffer, pos + 1);
+        if(StringLen(line) > 0) ProcessCommand(line);
+     }
+}
+
+//+------------------------------------------------------------------+
+//| OnTick — primary poll driver. Fires on every market tick from    |
+//| MT5's internal engine (NOT the Wine message pump), so it works   |
+//| reliably under headless Wine where OnTimer/WM_TIMER never fires. |
+//| Throttled to PollIntervalMs to avoid spinning.                   |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    static datetime lastPoll = 0;
+    datetime now = TimeCurrent();
+    if(now - lastPoll < PollIntervalMs / 1000.0) return;
+    lastPoll = now;
+    PollSocket();
+}
+
+//+------------------------------------------------------------------+
+//| OnTimer — kept as a harmless fallback. Disabled by default via   |
+//| UseTimer=false because WM_TIMER does not dispatch under Wine.    |
+//+------------------------------------------------------------------+
 void OnTimer()
 {
-   //--- accept new connection if none
-   if(!g_clientConnected)
-   {
-      long accepted = WsAccept(g_serverSocket);
-      if(accepted != WS_INVALID_SOCKET)
-      {
-         WsSetNonBlocking(accepted);
-         g_clientSocket = accepted;
-         g_clientConnected = true;
-         g_readBuffer = "";
-         Print("[MT5Socket] Client connected");
-      }
-      return;
-   }
-
-   //--- read available data
-   uchar buf[];
-   ArrayResize(buf, MaxBufferSize);
-   int bytes = WsRecv(g_clientSocket, buf, MaxBufferSize);
-   if(bytes < 0)
-   {
-      int err = WSAGetLastError();
-      if(err != WS_EWOULDBLOCK)
-      {
-         Print("[MT5Socket] Client error, closing: ", err);
-         WsClose(g_clientSocket);
-         g_clientSocket = WS_INVALID_SOCKET;
-         g_clientConnected = false;
-      }
-      return;
-   }
-   if(bytes == 0)
-   {
-      // graceful peer shutdown
-      Print("[MT5Socket] Client disconnected");
-      WsClose(g_clientSocket);
-      g_clientSocket = WS_INVALID_SOCKET;
-      g_clientConnected = false;
-      return;
-   }
-
-    //--- convert to string and append to buffer
-    string chunk = CharArrayToString(buf, 0, bytes, CP_UTF8);
-    g_readBuffer += chunk;
-
-    //--- process complete lines
-    string line;
-    int pos;
-    while((pos = StringFind(g_readBuffer, "\n")) >= 0)
-    {
-       line = StringSubstr(g_readBuffer, 0, pos);
-       StringReplace(line, "\r", "");
-       g_readBuffer = StringSubstr(g_readBuffer, pos + 1);
-       if(StringLen(line) > 0) ProcessCommand(line);
-    }
+    if(UseTimer) PollSocket();
 }
 
 //+------------------------------------------------------------------+
