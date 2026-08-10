@@ -335,32 +335,33 @@ def _mt5linux_ping():
 def _ensure_mt5linux_connected(cfg):
     """Reconnect path for mt5linux backend (systemd owns the terminal).
 
-    Never kills or relaunches terminal64.exe — just retries initialize().
+    Never kills or relaunches terminal64.exe. Creates a fresh MetaTrader5
+    object each attempt because the old object's RPyC connection can go
+    stale (single-threaded server blocked by long calls) and shutdown()/
+    initialize() on a dead connection fail silently.
     """
+    global _mt5_instance, mt5
     for attempt in range(5):
         try:
-            mt5.shutdown()
-        except Exception:
-            pass
-        time.sleep(3)
-        try:
-            result = mt5.initialize()
+            inst = _init_mt5linux()
         except Exception as e:
-            logging.warning(f"mt5linux initialize raised (attempt {attempt+1}): {e}")
-            result = False
-        if result:
-            try:
-                acc = mt5.account_info()
-            except Exception:
-                acc = None
-            if acc is not None:
-                if attempt > 0:
-                    logging.info(f"mt5linux reconnected: Balance Rs.{acc.balance:.2f}")
-                for sym in cfg["symbols"]:
-                    with suppress(Exception):
-                        mt5.symbol_select(sym, True)
-                return True
-        logging.warning(f"mt5linux init failed (attempt {attempt+1}/5)")
+            logging.warning(f"mt5linux connect raised (attempt {attempt+1}): {e}")
+            time.sleep(3)
+            continue
+        try:
+            acc = inst.account_info()
+        except Exception:
+            acc = None
+        if acc is not None:
+            _mt5_instance = inst
+            mt5 = inst
+            logging.info(f"mt5linux reconnected: Balance Rs.{acc.balance:.2f}")
+            for sym in cfg["symbols"]:
+                with suppress(Exception):
+                    inst.symbol_select(sym, True)
+            return True
+        logging.warning(f"mt5linux connect ok but no account (attempt {attempt+1}/5)")
+        time.sleep(3)
     logging.error("mt5linux reconnection failed after 5 attempts")
     return False
 
