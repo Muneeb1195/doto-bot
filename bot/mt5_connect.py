@@ -77,6 +77,14 @@ class _MT5Proxy:
 
 mt5 = _MT5Proxy()
 
+# Auto-init on import (may fail gracefully if the server isn't up yet).
+# Tests rely on _mt5_instance being set so they can patch proxy attributes.
+try:
+    init_mt5()
+except Exception as e:
+    logging.warning(f"MT5 auto-init failed: {e}")
+    logging.warning("MT5 will be unavailable until init_mt5() succeeds")
+
 _THREAD_BOUND = {"initialize", "shutdown", "login", "order_send",
                  "copy_rates_from", "copy_rates_from_pos", "copy_ticks_from", "copy_ticks_range"}
 
