@@ -413,8 +413,8 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     price = tick.ask if signal == "buy" else tick.bid
     stops_level = _min_stop_points(sinfo, tick)
     sl_mult = cfg[sl_mult_key]
-    if not sl_mult or pd.isna(sl_mult) or sl_mult <= 0 or sinfo.point <= 0:
-        logging.warning(f"[{symbol}] order aborted: invalid sl_mult={sl_mult} or point={sinfo.point}")
+    if not sl_mult or pd.isna(sl_mult) or sl_mult <= 0 or sinfo.point <= 0 or pd.isna(atr):
+        logging.warning(f"[{symbol}] order aborted: invalid sl_mult={sl_mult}, point={sinfo.point}, atr={atr}")
         return False
     sl_points = max(int(atr * sl_mult / sinfo.point), stops_level)
     tp_points = int(sl_points * cfg[tp_mult_key])
@@ -471,6 +471,24 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     )
     _update_dynamic_deviation(symbol, False, cfg)
     log_execution_quality(cfg, symbol, price, rejected=True)
+    # The first order may have filled asynchronously (MT5 can return a
+    # transient retcode like TRADE_RETCODE_REQUOTE while the deal completes).
+    # Check positions before retrying to avoid double-placing.
+    try:
+        existing = mt5_call(mt5.positions_get, symbol=symbol, _timeout=5)
+        if existing:
+            logging.info(f"[{symbol}] position already open ({len(existing)}) after transient retcode — skip retry")
+            ticket = existing[0].ticket
+            if cfg["trade_journal"]:
+                journal_open(ticket, symbol, signal, volume, price, sl, tp, atr)
+            if cfg["scale_out_enabled"]:
+                _scale_out_state[ticket] = _init_scale_out_state(
+                    cfg, price, signal, sl_points, sinfo, is_mr=is_mr, volume=volume, atr_entry=atr
+                )
+            save_bot_state()
+            return True
+    except Exception:
+        logging.warning(f"[{symbol}] positions_get dedup check failed — proceeding with retry")
     # NOTE: mt5.order_send mutates the request dict in place; build a fresh
     # dict for the retry so a mutated dict cannot trigger (-2, 'Unnamed
     # arguments not allowed').

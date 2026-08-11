@@ -22,14 +22,15 @@ def _read_todays_trades(path, today):
     """Return closed rows from `path` whose exit_time starts with `today`.
 
     The journal is append-only and sorted ascending by time, so today's rows
-    are at the tail. We read backwards in chunks (newest first) and stop as soon
-    as we reach a row dated before `today`, avoiding a full-file load. Falls back
-    to a full forward scan if the file is small or tail probing fails.
+    are at the tail. We seek to a tail window and parse forward with
+    csv.DictReader (correct column names, no positional assumptions), stopping
+    once we pass today's date. Falls back to a full forward scan for small
+    files.
     """
     try:
         size = path.stat().st_size
-        chunk = 1 << 16  # 64 KB tail window
-        if size <= chunk:
+        tail_window = 1 << 17  # 128 KB tail window
+        if size <= tail_window:
             with open(path, newline="") as f:
                 return [
                     r
@@ -38,54 +39,31 @@ def _read_todays_trades(path, today):
                     and r.get("event") not in ("OPEN", "")
                     and r.get("pnl")
                 ]
-        rows = []
         with open(path, "rb") as fb:
-            # Start at the last byte and walk backwards in `chunk` windows.
-            pos = size
-            sentinel = today.encode()
-            while pos > 0:
-                start = max(0, pos - chunk)
-                fb.seek(start)
-                block = fb.read(pos - start).decode("utf-8", "replace")
-                # Keep partial last line for next iteration by splitting on \n.
-                if start != 0:
-                    nl = block.find("\n")
-                    if nl == -1:
-                        pos = start
-                        continue
-                    block = block[nl + 1:]
-                lines = block.splitlines()
-                # lines are oldest->newest within this window; reverse to newest.
-                stop = False
-                for line in reversed(lines):
-                    if not line:
-                        continue
-                    # exit_time is the 7th CSV column; cheap check before parsing.
-                    if not line.startswith("20"):
-                        # Header or a row with no exit_time -> not today.
-                        if "exit_time" in line:
-                            continue
-                        stop = True
-                        break
-                    if line[:10].encode() != sentinel:
-                        stop = True
-                        break
-                    rows.append(line)
-                if stop or start == 0:
-                    break
-                pos = start
-        if not rows:
+            start = max(0, size - tail_window)
+            fb.seek(start)
+            if start > 0:
+                fb.readline()
+            remainder = fb.read().decode("utf-8", "replace")
+        if not remainder.strip():
             return []
-        # Parse only the handful of tail rows we collected.
-        text = "exit_time,symbol,side,volume,entry,sl,tp,atr,event,pnl\n" + "\n".join(rows)
-        reader = csv.DictReader(text.splitlines())
-        return [
+        rows = [
             r
-            for r in reader
+            for r in csv.DictReader(remainder.splitlines())
             if r.get("exit_time", "").startswith(today)
             and r.get("event") not in ("OPEN", "")
             and r.get("pnl")
         ]
+        if rows:
+            return rows
+        with open(path, newline="") as f:
+            return [
+                r
+                for r in csv.DictReader(f)
+                if r.get("exit_time", "").startswith(today)
+                and r.get("event") not in ("OPEN", "")
+                and r.get("pnl")
+            ]
     except Exception:
         logging.debug("Tail-scan of trades journal failed; returning empty", exc_info=True)
         return []
@@ -423,7 +401,7 @@ def main():
                 # drift handling for the session (agent audit D3).
                 _st._ml_drift_warned.discard(sym)
         try:
-            all_positions = mt5_call(mt5.positions_get)
+            all_positions = mt5_call(mt5.positions_get, _timeout=10)
             positions_valid = all_positions is not None
             if all_positions is None:
                 all_positions = []
@@ -457,7 +435,7 @@ def main():
             # breaker MUST NOT exit with open positions (agent audit C2).
             cb_positions = all_positions
             if not cb_positions:
-                cb_positions = mt5_call(mt5.positions_get) or []
+                cb_positions = mt5_call(mt5.positions_get, _timeout=10) or []
             if cb_positions:
                 for pos in cb_positions:
                     sym = pos.symbol
@@ -501,7 +479,7 @@ def main():
         try:
             if cfg["corr_enabled"]:
                 now = time.time()
-                if now - _last_corr_time > 3600:
+                if now - _st._last_corr_time > 3600:
                     _st._corr_cache = compute_correlation_matrix(cfg["symbols"], cfg.get("corr_lookback_hours", 24))
                     _st._last_corr_time = now
 
@@ -568,6 +546,16 @@ def main():
                 logging.exception("check_limit_orders failed")
                 filled_limits = set()
 
+            if filled_limits:
+                try:
+                    refreshed = mt5_call(mt5.positions_get, _timeout=10)
+                    if refreshed is not None:
+                        all_positions = refreshed
+                        total_positions = len(all_positions)
+                        active_tickets_set = {p.ticket for p in all_positions}
+                except Exception:
+                    logging.warning("positions_get refresh after limit fill failed")
+
             # Initialize scale-out/chandelier state for limit-filled positions
             # immediately, so they have protection on the same cycle they fill
             # (previously state was only initialized on the next cycle when the
@@ -623,11 +611,6 @@ def main():
                     apply_symbol_overrides(sym_cfg, symbol)
                     positions_sym = [p for p in all_positions if p.symbol == symbol]
 
-                    if symbol in _st._pending_limits:
-                        logging.debug(f"[{symbol}] Pending limit active — skipping entry")
-                        _filter_stats[symbol]["no_signal"] += 1
-                        continue
-
                     if symbol not in _filter_stats:
                         _filter_stats[symbol] = {
                             "htf_trend": 0,
@@ -638,6 +621,11 @@ def main():
                             "ml_gate": 0,
                             "sanity": 0,
                         }
+
+                    if symbol in _st._pending_limits:
+                        logging.debug(f"[{symbol}] Pending limit active — skipping entry")
+                        _filter_stats[symbol]["no_signal"] += 1
+                        continue
 
                     # === Gate 1 — Fused Regime ===
                     # Computed on the last CLOSED bar via the shared analytics
@@ -686,6 +674,7 @@ def main():
                     if entry_atr is None:
                         entry_atr = atr
                     regime = "ranging" if not gate_open else "trending"
+                    regimes[symbol] = regime
 
                     if len(positions_sym) > 0:
                         for pos in positions_sym:
@@ -953,7 +942,7 @@ def main():
                                 place_trade(sym_cfg, signal_entry, entry_atr, regime_mult * kelly_mult)
                         else:
                             place_trade(sym_cfg, signal_entry, entry_atr, regime_mult * kelly_mult)
-                    all_positions = mt5_call(mt5.positions_get)
+                    all_positions = mt5_call(mt5.positions_get, _timeout=10)
                     if all_positions is None:
                         all_positions = []
                     total_positions = len(all_positions)
@@ -992,7 +981,7 @@ def main():
                                 pnls = [float(r["pnl"]) for r in rows if r.get("pnl")]
                                 net_realized = sum(pnls)
                                 wins = sum(1 for p in pnls if p > 0)
-                                win_rate = wins / len(pnls) * 100
+                                win_rate = wins / len(pnls) * 100 if pnls else None
                         # True account net for the day (includes external/manual).
                         day_net = net_realized
                         daily_summary(

@@ -140,7 +140,7 @@ def _reset_executor():
     with _executor_lock:
         old = _call_executor
         _call_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mt5call")
-    old.shutdown(wait=False)
+    old.shutdown(wait=False, cancel_futures=True)
 
 
 def _recreate_instance():
@@ -154,6 +154,7 @@ def _recreate_instance():
     """
     global _mt5_instance, mt5
     with _executor_lock:
+        old = _mt5_instance
         try:
             inst = _init_mt5linux()
         except Exception as e:
@@ -161,6 +162,9 @@ def _recreate_instance():
             return False
         _mt5_instance = inst
         mt5 = inst
+        if old is not None:
+            with suppress(Exception):
+                old.shutdown()
         logging.info("MT5 instance recreated (fresh RPyC connection)")
         return True
 
@@ -175,13 +179,18 @@ def mt5_call(func, *args, _timeout=None, **kwargs):
     current = _mt5_instance
     if current is not None and name and hasattr(current, name):
         func = getattr(current, name)
-    if _timeout is None or name in _THREAD_BOUND:
+    # Thread-bound calls (slow data fetches, order_send) run synchronously —
+    # only the RPyC sync_request_timeout (120s) applies. All other calls get
+    # a bounded client-side timeout routed through the executor so a wedged
+    # server cannot block the main loop indefinitely.
+    if name in _THREAD_BOUND:
         try:
             return func(*args, **kwargs)
         except Exception as e:
             logging.warning(f"MT5 {name or func} raised: {e}")
             _recreate_instance()
             return None
+    effective_timeout = _timeout if _timeout is not None else 30
     try:
         with _executor_lock:
             executor = _call_executor
@@ -194,9 +203,9 @@ def mt5_call(func, *args, _timeout=None, **kwargs):
             _recreate_instance()
             return None
     try:
-        return future.result(timeout=_timeout)
+        return future.result(timeout=effective_timeout)
     except FutureTimeout:
-        logging.warning(f"MT5 {name or func} timed out after {_timeout}s — recreating instance")
+        logging.warning(f"MT5 {name or func} timed out after {effective_timeout}s — recreating instance")
         _reset_executor()
         _recreate_instance()
         return None
@@ -406,7 +415,10 @@ def _mt5linux_ping():
         # initialize() first guarantees the connection is live. If the server
         # is blocked by a long call, this times out and we return _PING_BUSY.
         inst.initialize()
-        return inst.terminal_info()
+        info = inst.terminal_info()
+        with suppress(Exception):
+            inst.shutdown()
+        return info
     except Exception as e:
         err = str(e).lower()
         logging.debug(f"mt5linux ping exception: {type(e).__name__}: {str(e)[:120]}")
