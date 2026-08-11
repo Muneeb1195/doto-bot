@@ -1,11 +1,12 @@
 # Doto MT5 Bot — Agent Context
 
 ## Stack
-- **Python 3.12** (originally Wine/Linux, now native Windows)
+- **Python 3.12** (home-server: Linux/Arch under Wine; dev: native)
 - **MetaTrader5** Python package (native MT5 terminal)
 - **scikit-learn** / **XGBoost** / **LightGBM** — ML ensemble
 - **FastAPI** + **uvicorn** — dashboard
-- **Windows Task Scheduler** — daemon management
+- **mt5linux** — MT5 RPyC bridge (mt5server.exe) on the home-server
+- **systemd user units** — daemon management on the home-server
 - **pandas / numpy** — data processing
 
 ## Architecture
@@ -35,7 +36,7 @@
 - **`mc_validation.py`** — Monte Carlo validation of backtest results
 - **`scenario_analysis.py`** — Instantaneous market scenario stress testing
 - **`parallel_optimize.py`** — Multi-process parallel walk-forward optimization
-- **`auto_optimizer.py`** — Scheduled auto-optimizer
+- **`auto_optimizer.py`** — Param-apply helpers (`load_portfolio`/`update_symbol_strategy`/`write_settings`) reused by `scripts/download_models.py`; no local scheduler
 - **`optimize_params.py`** — Shared optimization helpers (two-phase: MA sweep + SL/RR/ADX refinement)
 - **`tune_scaleout.py`** — Scale-out parameter tuning
 - **`screen_symbols.py`** / **`screen_fast.py`** — Symbol screening utilities
@@ -87,30 +88,44 @@ All 4 asset class pool models trained and loaded:
 - Temp dirs cleaned: `test_risk.py` uses `shutil.rmtree` after fixture teardown
 - Risk limits in tests: `basic_cfg` fixture in `conftest.py` provides standard config with `daily_loss_pct=5.0`, `dr_enabled=True`, `kelly_fraction=0.25`
 
-## Windows Service Architecture (Task Scheduler)
+## Environment Boundaries (dev machine ~ home-server ~ GitHub Actions)
 
-| Task | Trigger | Restart | Port |
-|------|---------|---------|------|
-| `DotoBot` | At logon | Restart every 1 min (3x) | — |
-| `DotoDashboard` | At logon | Restart every 1 min (3x) | 8501 |
-| `DotoNewsSentiment` | At logon | Restart every 1 min (3x) | — |
-| `DotoOptimizer` | Daily (e.g. 02:00) | oneshot | — |
-| `DotoRetrain` | Weekly (Sun 03:00) | oneshot | — |
-| `DotoBackup` | Daily (04:00) | oneshot | — |
-| `DotoWeeklySummary` | Weekly (Mon 05:00) | oneshot | — |
-| `DotoTerminal` | At logon (startup folder) | — (MT5 auto-restart setting) | — |
+The project has three roles and they must NOT overlap:
 
-MT5 terminal auto-starts via `shell:startup`, minimized to tray.
+| Role | Location | Owns | Runs |
+|------|----------|------|------|
+| **Dev / CI** | Dev machine + GitHub PRs | code, tests, docs | `ci.yml` on every PR; local pytest/lint only |
+| **Home-server** | 192.168.1.15 (Arch/Wine box) | MT5 terminal, live trading, ops jobs | `mt5`, `mt5server` (RPyC :18812), `doto-bot`, `doto-dashboard` (:8501), `doto-news`, `doto-backup`, `doto-download` (hourly fetch), `doto-orchestrate` (monthly dispatch) |
+| **GitHub Actions** | cloud runners | optimization + ML training | `train.yml`, `optimize.yml` — both dispatched by the home-server, never by cron |
+
+- **Optimization and ML training run ONLY on GitHub Actions.** The home-server does
+  NOT run `auto_optimizer.py`/`train_model.py` locally (the old `doto-optimizer`/
+  `doto-retrain` timers were removed) — it would compete with the live bot for CPU
+  and duplicate CI-owned jobs.
+- The home-server **triggers the workflows and pulls the results back
+  automatically** via `scripts/download_models.py`:
+  - `--dispatch` (run by `doto-orchestrate` timer, 1st of month): uses the `gh`
+    CLI to run `train.yml`, then `optimize.yml --field mode=monthly`, waits for
+    each to complete, downloads `models.tar.gz` + `strategy-params.json`, applies
+    the params to `settings.ini`, and restarts `doto-bot`.
+  - `--fetch-only` (default; run by `doto-download` timer hourly as a safety net):
+    pure URL/urllib download of the latest `train-*`/`optimize-*` releases, no `gh`
+    needed. Tracks progress in `.last_train_tag`/`.last_optimize_tag` (two files —
+    models and params come from separate release streams).
+  - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write) in
+    `config/credentials.ini`, injected as `GITHUB_TOKEN` via the unit EnvironmentFile.
+- The home-server **deploys via scp** (it has no `.git`): copy changed files to
+  `~/doto-mt5-bot/`, clear `bot/__pycache__`, `systemctl --user restart doto-bot`.
 
 ## Clean redeploy
-- `scripts/redeploy.ps1` ends the `DotoBot`/`DotoDashboard` tasks, kills any orphaned previous child via the `svc_launcher` `.child.pid` watchdog file, restarts the tasks, and polls `logs/bot.log` for the `"Bot state loaded"` marker — failing loudly if the bot does not come back healthy (prevention D2).
-- `migration/svc_launcher.py` is the headless launcher; each instance records its child PID to `logs/<service>.child.pid` and kills the prior orphan on startup, so scheduled restarts never leave two copies running.
+- `scripts/redeploy.sh` (Linux) restarts `doto-bot` + `doto-dashboard` and polls
+  `logs/bot.log` for the `"Bot state loaded"` marker — failing loudly if the bot
+  does not come back healthy (prevention D2).
+- Windows-era artifacts (`migration/`, `scripts/redeploy.ps1`, Task Scheduler tasks,
+  `svc_launcher.py`) were removed with the Windows deployment. Do not reintroduce them.
 
 ## CI
 - GitHub Actions (`.github/workflows/ci.yml`): lint (ruff), typecheck (mypy bot/), shellcheck, **secret-scan** (gitleaks + grep fallback for hardcoded `password=`/`api_key=`/`token=` in tracked `.py`/`.ps1`, excluding the git-ignored `config/credentials.ini` via `.gitleaksignore`), and test (pytest).
-
-## CI
-- GitHub Actions (`.github/workflows/ci.yml`): lint (ruff), typecheck (mypy bot/), shellcheck, test (pytest)
 - Pre-commit (`.pre-commit-config.yaml`): ruff, mypy, trailing-whitespace, end-of-file-fixer, check-yaml
 - Pip cache enabled for faster installs
 
@@ -154,10 +169,10 @@ MT5 terminal auto-starts via `shell:startup`, minimized to tray.
 - **Paging helper**: `mt5_connect.fetch_rates_paged(symbol, tf, start, end, chunk_bars=80000)` walks backwards from `end`, each page ending at the prior page's oldest timestamp, deduplicates seams, trims to `[start, end]`. Terminal "Max bars in chart" was raised to Unlimited on the trading box, but the code-side per-request cap (~80k) is the real limiter the pager removes; total depth still bounded by broker server history for that timeframe.
 
 ## Optimizer symbol scope fix (2026-07-23)
-- **Root cause**: `DotoOptimizer` (daily 02:00) ran `optimize_params.py --symbols ALL`, and `ALL` resolved to a hardcoded 24-symbol "universe" in `optimize_params.py`/`parallel_optimize.py` `SYMBOL_PROFILE` — including `ADAUSD.raw` and other symbols not in the live portfolio. This made the bot auto-optimize symbols it never trades.
-- **Fix**: `ALL` now resolves to `[PORTFOLIO] symbols` from `settings.ini` (the real 7-symbol portfolio) instead of the stale hardcoded list. Self-syncing: changing the portfolio in settings.ini automatically updates what the optimizer targets — no more drift.
-- **`SYMBOL_PROFILE` trimmed** in both `optimize_params.py` and `parallel_optimize.py`: removed 6 dead symbols with no model and no pool membership (`AUS200`, `BCHJPY`, `ADBE`, `AMGN`, `AVGO`, `AUDPLN`, `UK100`). Kept the 7 portfolio symbols + pool members that have trained models (ETHUSD, LTCUSD, ADAUSD, AVXUSD, forex/index/commodity pool symbols, etc.) so explicit per-symbol optimization still works.
-- **Net effect**: the nightly `DotoOptimizer` run now optimizes exactly the 7 portfolio symbols; non-portfolio pool members (e.g. ADAUSD) are only optimized if explicitly passed via `--symbols`.
+- **Root cause**: the former `DotoOptimizer` timer ran `optimize_params.py --symbols ALL`, and `ALL` resolved to a hardcoded 24-symbol "universe" in `optimize_params.py`/`parallel_optimize.py` `SYMBOL_PROFILE` — including `ADAUSD.raw` and other symbols not in the live portfolio. The optimizer auto-targeted symbols it never trades.
+- **Fix**: `ALL` now resolves to `[PORTFOLIO] symbols` from `settings.ini` (the real portfolio) instead of the stale hardcoded list. Self-syncing: changing the portfolio in settings.ini automatically updates what the optimizer targets — no more drift. `optimize.yml` reads the same `[PORTFOLIO] symbols` for its matrix, so CI and live stay in sync.
+- **`SYMBOL_PROFILE` trimmed** in both `optimize_params.py` and `parallel_optimize.py`: removed 6 dead symbols with no model and no pool membership (`AUS200`, `BCHJPY`, `ADBE`, `AMGN`, `AVGO`, `AUDPLN`, `UK100`). Kept the portfolio symbols + pool members that have trained models (ETHUSD, LTCUSD, ADAUSD, AVXUSD, forex/index/commodity pool symbols, etc.) so explicit per-symbol optimization still works.
+- **Net effect**: the GitHub `optimize.yml` matrix optimizes exactly the portfolio symbols; non-portfolio pool members (e.g. ADAUSD) are only optimized if explicitly passed via `--symbols`.
 
 ## Scoring Parity (2026-07-22)
 - **`analytics.compute_entry_score()`** — single source of truth for entry scoring. Uses 3-component model: ML (40%), spread (30%), news (30%). Weights from `cfg["scoring_weights"]`.

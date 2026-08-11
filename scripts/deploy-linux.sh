@@ -383,11 +383,12 @@ exec wine "$MT5_PATH" /portable /config:C:\\start_ea.ini
 SCRIPT
 chmod +x "$REPO_DIR/scripts/start-mt5.sh"
 
-# Redeploy script
+# Redeploy script (no git on the box — code lands via scp; this just restarts
+# the user services and checks the bot came back healthy)
 cat > "$REPO_DIR/scripts/redeploy.sh" << 'SCRIPT'
 #!/usr/bin/env bash
 # redeploy.sh — Restart bot + dashboard with health check
-# Called after code changes (git pull)
+# Called after code changes (scp from dev machine)
 set -euo pipefail
 
 log() { echo "[redeploy] $*"; }
@@ -416,17 +417,6 @@ fi
 log "SUCCESS: all services redeployed"
 SCRIPT
 chmod +x "$REPO_DIR/scripts/redeploy.sh"
-
-# Configure git to auto-pull on redeploy
-cat > "$REPO_DIR/scripts/update-and-redeploy.sh" << 'SCRIPT'
-#!/usr/bin/env bash
-# update-and-redeploy.sh — Git pull + redeploy
-set -euo pipefail
-cd "$HOME/doto-mt5-bot"
-git pull
-exec bash scripts/redeploy.sh
-SCRIPT
-chmod +x "$REPO_DIR/scripts/update-and-redeploy.sh"
 
 log "Wrapper scripts created"
 

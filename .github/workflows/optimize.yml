@@ -6,23 +6,20 @@ name: Optimize Strategy
 # ~2x faster per core and, more importantly, the symbols are sharded across a
 # job matrix below so they run concurrently instead of end to end.
 
-# Schedule: CPCV monthly only. CPCV strictly dominates the weekly walk-forward
-# run -- same grid, but validated across overlapping paths with a 25th-pctile
-# OOS PF >= 1.1 floor, versus 4 recency-anchored windows with no robustness
-# gate. The weekly run answered "did this work lately?", a subset of CPCV's
-# "does this work across regimes?" and the more overfit-prone question.
-# Runs 2h after train.yml so CPCV optimizes against freshly published models.
+# Dispatched by the home-server's doto-orchestrate timer
+# (scripts/download_models.py --dispatch), which runs it AFTER train.yml so
+# CPCV optimizes against freshly published models. Default mode is CPCV
+# monthly; 'weekly' remains available via workflow_dispatch for ad-hoc
+# comparison.
 on:
-  schedule:
-    - cron: '0 5 1-7 * 0'     # Monthly CPCV, 1st Sunday 05:00 UTC
   workflow_dispatch:
     inputs:
       mode:
         description: 'Optimization mode (weekly = full-grid, for ad-hoc comparison)'
         required: false
-        default: 'auto'
+        default: 'monthly'
         type: choice
-        options: [auto, weekly, monthly]
+        options: [monthly, weekly]
 
 permissions:
   contents: write
@@ -97,27 +94,11 @@ jobs:
           name: trained-models
           path: models/
           retention-days: 1
-      # POSIX cron ORs day-of-month with day-of-week when both are restricted,
-      # so '0 5 1-7 * 0' can fire on every day 1-7 AND every Sunday. Gate on the
-      # real condition so a scheduled run only proceeds on the 1st Sunday.
-      - name: Guard first-Sunday schedule
-        if: github.event_name == 'schedule'
-        run: |
-          DOM=$(date -u +%d); DOW=$(date -u +%u)
-          if [ "$DOM" -gt 7 ] || [ "$DOW" -ne 7 ]; then
-            echo "Not the first Sunday (day=$DOM dow=$DOW) - skipping."
-            exit 1
-          fi
-          echo "First Sunday confirmed (day=$DOM)."
+      # No cron any more: runs are dispatched by the home-server, so there is
+      # no first-Sunday gate. Mode is taken directly from the dispatch input.
       - id: cfg
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" != "auto" ]; then
-            MODE="${{ inputs.mode }}"
-          else
-            # Scheduled runs are always CPCV; 'weekly' remains reachable only
-            # via workflow_dispatch for ad-hoc comparison against CPCV picks.
-            MODE=monthly
-          fi
+          MODE="${{ inputs.mode }}"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           SYMBOLS=$(python -c "
           import configparser, json
@@ -137,10 +118,11 @@ jobs:
     strategy:
       fail-fast: false
       # 8 shards on shared runners produced a 7x wall-time spread (US30 217 min
-      # vs US500 31 min on identical 216-combo grids). The spread is CPU
-      # contention across concurrent shards, not workload -- reduce to 4 and
-      # measure. The numba cache (change 2) should already reclaim ~4.3 min of
-      # compile per shard, so total wall-clock should drop further.
+      # vs US500 31 min on identical grids). The spread is CPU contention
+      # across concurrent shards, not workload -- reduce to 4. The vectorized
+      # calc_vidya + per-process MA caches (perf commits) plus the numba cache
+      # have since cut the worst shards dramatically (SOLUSD/XRPUSD went from
+      # ~328 min timeouts to ~22 min locally).
       max-parallel: 4
       matrix:
         symbol: ${{ fromJson(needs.setup.outputs.symbols) }}

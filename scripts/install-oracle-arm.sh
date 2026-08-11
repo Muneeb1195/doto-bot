@@ -282,64 +282,12 @@ log "Systemd services created"
 # ──────────────────────────────────────────────
 log "Phase 6: Installing systemd timers"
 
-# Auto-optimizer — weekly Sunday 02:00
-cat > "$SYSTEMD_DIR/doto-optimizer.service" << 'SVC'
-[Unit]
-Description=Doto Auto-Optimizer (weekly)
-
-[Service]
-Type=oneshot
-User=ubuntu
-WorkingDirectory=/home/ubuntu/doto-mt5-bot
-ExecStart=/home/ubuntu/doto-mt5-bot/.venv/bin/python bot/auto_optimizer.py --apply
-StandardOutput=append:/home/ubuntu/doto-mt5-bot/logs/auto_optimizer.log
-StandardError=append:/home/ubuntu/doto-mt5-bot/logs/auto_optimizer.log
-
-[Install]
-WantedBy=multi-user.target
-SVC
-
-cat > "$SYSTEMD_DIR/doto-optimizer.timer" << 'SVC'
-[Unit]
-Description=Run auto-optimizer weekly on Sunday 02:00
-
-[Timer]
-OnCalendar=Sun 02:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
-
-# ML retrain — weekly Sunday 03:00
-cat > "$SYSTEMD_DIR/doto-retrain.service" << 'SVC'
-[Unit]
-Description=Doto ML Model Retraining
-
-[Service]
-Type=oneshot
-User=ubuntu
-WorkingDirectory=/home/ubuntu/doto-mt5-bot
-ExecStartPre=/bin/sleep 3600
-ExecStart=/home/ubuntu/doto-mt5-bot/.venv/bin/python bot/train_model.py --retrain-all --symbols ALL --years 3
-StandardOutput=append:/home/ubuntu/doto-mt5-bot/logs/retrain.log
-StandardError=append:/home/ubuntu/doto-mt5-bot/logs/retrain.log
-
-[Install]
-WantedBy=multi-user.target
-SVC
-
-cat > "$SYSTEMD_DIR/doto-retrain.timer" << 'SVC'
-[Unit]
-Description=Run ML retraining weekly on Sunday 03:00
-
-[Timer]
-OnCalendar=Sun 03:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
+# Optimization + ML training are NOT run on this server any more. They run on
+# GitHub Actions (train.yml + optimize.yml), dispatched by this server's
+# doto-orchestrate timer via scripts/download_models.py --dispatch. This box
+# only downloads the resulting artifacts and applies them. See AGENTS.md.
+# (Legacy doto-optimizer / doto-retrain timers were removed; they competed with
+# the live bot for CPU and duplicated the workflow-owned jobs.)
 
 # Backup — daily 04:00
 cat > "$SYSTEMD_DIR/doto-backup.service" << 'SVC'
@@ -364,35 +312,6 @@ Description=Run daily backup at 04:00
 
 [Timer]
 OnCalendar=04:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-SVC
-
-# Weekly summary — Monday 05:00
-cat > "$SYSTEMD_DIR/doto-weekly-summary.service" << 'SVC'
-[Unit]
-Description=Doto Weekly Summary
-
-[Service]
-Type=oneshot
-User=ubuntu
-WorkingDirectory=/home/ubuntu/doto-mt5-bot
-ExecStart=/home/ubuntu/doto-mt5-bot/.venv/bin/python scripts/weekly_summary.py
-StandardOutput=append:/home/ubuntu/doto-mt5-bot/logs/weekly.log
-StandardError=append:/home/ubuntu/doto-mt5-bot/logs/weekly.log
-
-[Install]
-WantedBy=multi-user.target
-SVC
-
-cat > "$SYSTEMD_DIR/doto-weekly-summary.timer" << 'SVC'
-[Unit]
-Description=Run weekly summary on Monday 05:00
-
-[Timer]
-OnCalendar=Mon 05:00:00
 Persistent=true
 
 [Install]
@@ -477,17 +396,6 @@ log "SUCCESS: all services redeployed"
 SCRIPT
 chmod +x "$REPO_DIR/scripts/redeploy.sh"
 
-# Configure git to auto-pull on redeploy
-cat > "$REPO_DIR/scripts/update-and-redeploy.sh" << 'SCRIPT'
-#!/usr/bin/env bash
-# update-and-redeploy.sh — Git pull + redeploy
-set -euo pipefail
-cd /home/ubuntu/doto-mt5-bot
-git pull
-exec bash scripts/redeploy.sh
-SCRIPT
-chmod +x "$REPO_DIR/scripts/update-and-redeploy.sh"
-
 log "Wrapper scripts created"
 
 # ──────────────────────────────────────────────
@@ -513,10 +421,7 @@ systemctl enable doto-bot.service
 systemctl enable doto-dashboard.service
 systemctl enable doto-news.service
 
-systemctl enable doto-optimizer.timer
-systemctl enable doto-retrain.timer
 systemctl enable doto-backup.timer
-systemctl enable doto-weekly-summary.timer
 
 log "Starting services (this will take ~60s)..."
 systemctl start xvfb-mt5.service
@@ -529,10 +434,7 @@ systemctl start doto-bot.service
 systemctl start doto-dashboard.service
 systemctl start doto-news.service
 
-systemctl start doto-optimizer.timer
-systemctl start doto-retrain.timer
 systemctl start doto-backup.timer
-systemctl start doto-weekly-summary.timer
 
 # ──────────────────────────────────────────────
 # Phase 10: Verify deployment
@@ -547,7 +449,7 @@ done
 
 echo ""
 echo "=== Timer Status ==="
-for timer in doto-optimizer doto-retrain doto-backup doto-weekly-summary; do
+for timer in doto-backup; do
     status=$(systemctl is-active "$timer.timer" 2>/dev/null || echo "inactive")
     next=$(systemctl show "$timer.timer" -p NextElapseUSecRealtime --value 2>/dev/null || echo "unknown")
     echo "  $timer: $status (next: $next)"

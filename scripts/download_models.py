@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Download latest trained models/params from GitHub releases.
+"""Dispatch GitHub workflows and/or download trained models/params.
 
-Runs on the home-server via systemd timer. Checks for new release tags,
-downloads artifacts, updates models + strategy params, and restarts the bot.
+Runs on the home-server via systemd timer. Two modes:
 
-Uses the GitHub REST API via stdlib urllib — no `gh` CLI or stored PAT needed.
-The repo is public, so anonymous API access works (60 req/hr limit).
+- --dispatch  (used by doto-orchestrate timer): triggers train.yml, waits for
+  it, then triggers optimize.yml (mode=monthly), waits for it, then downloads
+  the freshly published models + params, applies them, and restarts the bot.
+- --fetch-only / default: pure download check. Pulls models.tar.gz from the
+  latest train-* release and strategy-params.json from the latest optimize-*
+  release (tracked independently), applies params, restarts the bot if
+  anything changed.
+
+Pure-fetch uses the GitHub REST API via stdlib urllib (no gh needed, works on
+public repos). --dispatch requires the gh CLI (github-cli) authenticated via
+GITHUB_TOKEN.
 
 Environment:
 - GITHUB_REPO = owner/repo (default Muneeb1195/doto-bot)
-- GITHUB_TOKEN optional (needed only if the repo is ever made private)
+- GITHUB_TOKEN optional for REST fetch; REQUIRED for --dispatch (gh uses it)
 - GITHUB_API optional override for the API base (default https://api.github.com)
+- GH_BINARY optional override for the gh CLI path (default 'gh')
 """
 
 from __future__ import annotations
@@ -32,8 +41,22 @@ REPO = os.environ.get("GITHUB_REPO", "Muneeb1195/doto-bot")
 API = os.environ.get("GITHUB_API", "https://api.github.com").rstrip("/")
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
-TAG_FILE = BASE_DIR / ".last_release_tag"
+TRAIN_TAG_FILE = BASE_DIR / ".last_train_tag"
+OPT_TAG_FILE = BASE_DIR / ".last_optimize_tag"
 LOG_FILE = BASE_DIR / "logs" / "download_models.log"
+GH = os.environ.get("GH_BINARY", "gh")
+
+TRAIN_PREFIX = "train-"
+OPT_PREFIX = "optimize-"
+MODEL_ASSET = "models.tar.gz"
+PARAMS_ASSET = "strategy-params.json"
+
+POLL_SECONDS = 30
+# How long to wait for each dispatched run before giving up.
+RUN_TIMEOUTS = {
+    "train.yml": 45 * 60,
+    "optimize.yml": 8 * 3600,
+}
 
 
 def _setup_logging():
@@ -67,13 +90,17 @@ def _api_request(logger, url: str, accept: str = "application/vnd.github+json"):
         raise
 
 
-def _latest_release_tag(logger):
-    """Latest release tag name, or None if no releases yet."""
+def _latest_tag_for_prefix(logger, prefix):
+    """Most recent release tag starting with `prefix`, or None."""
     try:
-        rel = _api_request(logger, f"{API}/repos/{REPO}/releases/latest")
-        return rel.get("tag_name") or None
+        rels = _api_request(logger, f"{API}/repos/{REPO}/releases?per_page=30")
+        for rel in rels:
+            tag = rel.get("tag_name") or ""
+            if tag.startswith(prefix):
+                return tag
     except Exception:
-        return None
+        pass
+    return None
 
 
 def _download_asset(logger, tag, asset_name, dest):
@@ -108,7 +135,7 @@ def _download_asset(logger, tag, asset_name, dest):
 
 
 def _apply_strategy_params(logger):
-    """Apply strategy-params.json to settings.ini via update_symbol_strategy.ini."""
+    """Apply strategy-params.json to settings.ini via update_symbol_strategy."""
     params_path = BASE_DIR / "strategy-params.json"
     if not params_path.exists():
         logger.warning("strategy-params.json not found — skipping param apply")
@@ -123,10 +150,7 @@ def _apply_strategy_params(logger):
     from auto_optimizer import load_portfolio, update_symbol_strategy, write_settings
 
     # load_portfolio() returns (symbols, settings). `settings` is a
-    # ConfigParser, whose .get() signature is get(section, option) -- calling
-    # settings.get("symbols", []) raised NoSectionError and aborted the whole
-    # download run, so the release tag was never recorded and every hourly
-    # timer re-downloaded the same artifact.
+    # ConfigParser, whose .get() signature is get(section, option).
     portfolio, settings = load_portfolio()
     any_changed = False
     skipped = []
@@ -176,64 +200,201 @@ def _restart_bot(logger):
     return True
 
 
-def main():
-    logger = _setup_logging()
+def _extract_models(logger, tar_path):
+    MODELS_DIR.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        extract_dir = Path(tmp) / "extract"
+        extract_dir.mkdir()
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall(extract_dir)
+        # The release tar wraps everything under a "models/" prefix; flatten
+        # so model_*.pkl / model_*.calib.npz land directly in MODELS_DIR
+        # (the path bot/filters.py::load_ml_models actually reads). A nested
+        # models/models/ dir silently keeps the bot on stale models.
+        extracted = 0
+        for member in sorted(extract_dir.rglob("*")):
+            if member.is_file() and member.name.startswith("model_"):
+                shutil.move(str(member), MODELS_DIR / member.name)
+                extracted += 1
+        logger.info(f"Extracted {extracted} model files to {MODELS_DIR}")
+        return extracted > 0
+
+
+def _gh(logger, *args, check=True):
+    """Run gh with the token env inherited. Returns (returncode, stdout)."""
+    env = dict(os.environ)
+    if os.environ.get("GITHUB_TOKEN"):
+        env["GH_TOKEN"] = os.environ["GITHUB_TOKEN"]
+    r = subprocess.run([GH, *args], capture_output=True, text=True, env=env)
+    if r.returncode != 0:
+        logger.error(f"gh {' '.join(args)} failed: {r.stderr.strip()}")
+        if check:
+            raise SystemExit(1)
+    return r.returncode, r.stdout.strip()
+
+
+def _dispatch_run(logger, workflow, fields=None):
+    """Dispatch workflow, wait for completion. Returns True on success."""
+    logger.info(f"Checking for in-flight {workflow} runs...")
+    code, out = _gh(logger, "run", "list", "--workflow", workflow, "--repo", REPO,
+                    "--limit", "5", "--json", "databaseId,status,workflowName")
+    if code == 0 and out:
+        try:
+            in_flight = [r["databaseId"] for r in json.loads(out)
+                         if r.get("status") in ("queued", "in_progress")]
+            if in_flight:
+                logger.warning(f"Duplicate run guard: {workflow} already in flight "
+                               f"(runs {in_flight}) — aborting dispatch")
+                return False
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    pre = None
+    code, out = _gh(logger, "run", "list", "--workflow", workflow, "--repo", REPO,
+                    "--limit", "1", "--json", "databaseId")
+    if code == 0 and out:
+        try:
+            pre = json.loads(out)[0]["databaseId"]
+        except (json.JSONDecodeError, IndexError, KeyError):
+            pre = None
+
+    cmd = ["workflow", "run", workflow, "--repo", REPO, "--ref", "main"]
+    for f in (fields or []):
+        cmd += ["-f", f]
+    _gh(logger, *cmd)
+    logger.info(f"Dispatched {workflow}")
+
+    run_id = None
+    deadline = time.time() + 5 * 60
+    while time.time() < deadline:
+        time.sleep(POLL_SECONDS)
+        code, out = _gh(logger, "run", "list", "--workflow", workflow, "--repo", REPO,
+                        "--limit", "3", "--json", "databaseId")
+        if code == 0 and out:
+            try:
+                ids = [r["databaseId"] for r in json.loads(out)]
+                if pre is None or (ids and ids[0] != pre):
+                    run_id = ids[0]
+                    break
+            except (json.JSONDecodeError, IndexError, KeyError):
+                pass
+        logger.info("Waiting for the dispatched run to appear in the run list...")
+    if not run_id:
+        logger.error(f"Could not observe a new {workflow} run after dispatch")
+        return False
+
+    logger.info(f"Waiting for {workflow} run {run_id} to complete...")
+    deadline = time.time() + RUN_TIMEOUTS.get(workflow, 6 * 3600)
+    while time.time() < deadline:
+        time.sleep(POLL_SECONDS)
+        code, out = _gh(logger, "run", "view", str(run_id), "--repo", REPO,
+                        "--json", "status,conclusion")
+        if code != 0 or not out:
+            continue
+        try:
+            st = json.loads(out)
+        except json.JSONDecodeError:
+            continue
+        status, conclusion = st.get("status"), st.get("conclusion")
+        if status == "completed":
+            if conclusion == "success":
+                logger.info(f"{workflow} run {run_id} completed successfully")
+                return True
+            logger.error(f"{workflow} run {run_id} ended {conclusion}")
+            return False
+        logger.info(f"{workflow} run {run_id}: status={status}")
+    logger.error(f"Timed out waiting for {workflow} run {run_id}")
+    return False
+
+
+def fetch(logger):
+    """Pure download flow. Returns 0 on success (even if nothing to do)."""
     logger.info("=" * 60)
     logger.info("Model/Params Download Check")
     logger.info("=" * 60)
 
-    tag = _latest_release_tag(logger)
-    if not tag:
-        logger.info("No releases found — nothing to do")
-        return 0
-
-    local = TAG_FILE.read_text().strip() if TAG_FILE.exists() else None
-    if local == tag:
-        logger.info(f"Already at latest release {tag} — nothing to do")
-        return 0
-
-    logger.info(f"New release found: {tag} (local: {local})")
-
     changed = False
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
 
-        tar_path = _download_asset(logger, tag, "models.tar.gz", tmp / "models.tar.gz")
-        if tar_path:
-            MODELS_DIR.mkdir(exist_ok=True)
-            extract_dir = tmp / "extract"
-            extract_dir.mkdir()
-            with tarfile.open(tar_path, "r:gz") as tar:
-                tar.extractall(extract_dir)
-            # The release tar wraps everything under a "models/" prefix; flatten
-            # so model_*.pkl / model_*.calib.npz land directly in MODELS_DIR
-            # (the path bot/filters.py::load_ml_models actually reads). A nested
-            # models/models/ dir silently keeps the bot on stale models.
-            extracted = 0
-            for member in sorted(extract_dir.rglob("*")):
-                if member.is_file() and member.name.startswith("model_"):
-                    shutil.move(str(member), MODELS_DIR / member.name)
-                    extracted += 1
-            logger.info(f"Extracted {extracted} model files to {MODELS_DIR}")
-            changed = True
+    train_tag = _latest_tag_for_prefix(logger, TRAIN_PREFIX)
+    if not train_tag:
+        logger.info("No train-* release found — nothing to do")
+    else:
+        local = TRAIN_TAG_FILE.read_text().strip() if TRAIN_TAG_FILE.exists() else None
+        if local == train_tag:
+            logger.info(f"Models already at latest train release {train_tag}")
+        else:
+            logger.info(f"New train release: {train_tag} (local: {local})")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp = Path(tmpdir)
+                tar_path = _download_asset(logger, train_tag, MODEL_ASSET, tmp / MODEL_ASSET)
+                if tar_path and _extract_models(logger, tar_path):
+                    TRAIN_TAG_FILE.write_text(train_tag)
+                    logger.info(f"Updated train tag to {train_tag}")
+                    changed = True
+                else:
+                    logger.warning("Model download/extract failed — not updating train tag")
 
-        params_path = _download_asset(logger, tag, "strategy-params.json", tmp / "strategy-params.json")
-        if params_path:
-            shutil.move(str(params_path), BASE_DIR / "strategy-params.json")
-            logger.info("strategy-params.json downloaded")
-            changed = True
+    opt_tag = _latest_tag_for_prefix(logger, OPT_PREFIX)
+    if not opt_tag:
+        logger.info("No optimize-* release found — nothing to do")
+    else:
+        local = OPT_TAG_FILE.read_text().strip() if OPT_TAG_FILE.exists() else None
+        if local == opt_tag:
+            logger.info(f"Params already at latest optimize release {opt_tag}")
+        else:
+            logger.info(f"New optimize release: {opt_tag} (local: {local})")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp = Path(tmpdir)
+                params_path = _download_asset(logger, opt_tag, PARAMS_ASSET,
+                                              tmp / PARAMS_ASSET)
+                if params_path:
+                    shutil.move(str(params_path), BASE_DIR / PARAMS_ASSET)
+                    logger.info("strategy-params.json downloaded")
+                    OPT_TAG_FILE.write_text(opt_tag)
+                    logger.info(f"Updated optimize tag to {opt_tag}")
+                    changed = True
+                else:
+                    logger.warning("Params download failed — not updating optimize tag")
 
     if changed:
-        # Apply params before restart so the new settings are live immediately.
         _apply_strategy_params(logger)
-        TAG_FILE.write_text(tag)
-        logger.info(f"Updated local tag to {tag}")
         _restart_bot(logger)
     else:
-        logger.warning("No assets downloaded from the new release — not updating tag")
+        logger.info("Nothing new to apply")
 
     logger.info("Download check complete")
     return 0
+
+
+def dispatch(logger):
+    """Train -> optimize -> fetch, via gh. Returns 0 on success."""
+    logger.info("=" * 60)
+    logger.info("Dispatch + Download")
+    logger.info("=" * 60)
+
+    if not os.environ.get("GITHUB_TOKEN"):
+        logger.error("GITHUB_TOKEN not set — required for --dispatch (gh auth)")
+        return 1
+
+    if not _dispatch_run(logger, "train.yml"):
+        logger.error("train.yml failed or already in flight — aborting cycle")
+        return 1
+    if not _dispatch_run(logger, "optimize.yml", fields=["mode=monthly"]):
+        logger.error("optimize.yml failed — aborting cycle")
+        return 1
+
+    logger.info("Workflows finished; fetching artifacts...")
+    return fetch(logger)
+
+
+def main():
+    logger = _setup_logging()
+    flags = {a for a in sys.argv[1:] if a.startswith("-")}
+
+    if "--dispatch" in flags:
+        return dispatch(logger)
+    # Default and --fetch-only both run the pure download flow.
+    return fetch(logger)
 
 
 if __name__ == "__main__":

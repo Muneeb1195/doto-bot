@@ -14,12 +14,11 @@
 set -euo pipefail
 
 SERVICES=(xvfb-mt5 xfce4-mt5 x11vnc-mt5 mt5 mt5server doto-bot doto-dashboard doto-news)
-TIMER_SERVICES=(mt5-watchdog)
+TIMER_SERVICES=()
 LOG_FILE="${LOG_FILE:-$HOME/doto-mt5-bot/logs/bot.log}"
 
 cmd_to_service() {
     case "$1" in
-        mt5-watchdog) echo "mt5-watchdog.timer" ;;
         *) echo "$1.service" ;;
     esac
 }
