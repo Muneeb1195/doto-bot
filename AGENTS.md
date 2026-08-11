@@ -136,7 +136,7 @@ MT5 terminal auto-starts via `shell:startup`, minimized to tray.
 - Two-phase by default: Phase 1 = MA param sweep (6 pairs × 2 windows), Phase 2 = SL/RR/ADX refinement (top 2 MA pairs × all windows)
 - ~4x speedup vs full grid with minimal quality loss
 - `optimize_params.py --symbols X,Y --years 3 --two-phase`
-- Speed comes from `ProcessPoolExecutor` (one worker per CPU, leaving 1 core) + per-process ML model/ML-multiplier caches (`_ML_DATA_CACHE`/`_ML_MULT_CACHE` in `backtest.py`) + precomputed `ml_mult_buy/sell` injected by the optimizer (B). The pandas `Backtest.run()` loop is the ONLY backtest path — a Numba-JIT fast path was prototyped but reverted (could not guarantee bit-exact equivalence with the pandas loop).
+- Speed comes from `ProcessPoolExecutor` (one worker per CPU, leaving 1 core) + per-process ML model/ML-multiplier caches (`_ML_DATA_CACHE`/`_ML_MULT_CACHE` in `backtest.py`) + a Numba-JIT fast path (`backtest_njit._simulate_core`) that is the default when `fast=True`. The pandas loop remains the reference path for parity tests.
 
 ## Phase 3 — Multi-TF Fusion (2026-07-22, daytrading H4/H1/M15)
 - **`get_mtf_fused_signal()`** in `signals.py` — H4 trend bias + H1/H4 agreement gate + M15 MA crossover entry. Returns (signal, atr, entry_type, agreement_ratio). H4 determines bias, H1/H4 must agree on direction; M15 provides entry timing when its MA cross aligns with the H4/H1 consensus. Falls back to H1 pullback entry when M15 produces no crossover but H4/H1 bias exists.
