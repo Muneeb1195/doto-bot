@@ -480,11 +480,12 @@ def load_ml_models(cfg):
         safe_symbol = symbol.replace(".", "_")
         model_path_str = cfg["ml_model_path_template"].format(symbol=safe_symbol)
         model_path = BASE_DIR / model_path_str
+        logging.info(f"DEBUG_LOAD: loading {symbol} from {model_path}")
         if model_path.exists():
             try:
                 data = joblib.load(model_path)
                 _ml_models[symbol] = data
-                logging.info(f"[{symbol}] ML model loaded from {model_path}")
+                logging.info(f"DEBUG_LOAD: {symbol} OK")
             except Exception as e:
                 logging.warning(f"[{symbol}] Failed to load ML model: {type(e).__name__}: {e}", exc_info=True)
         else:
@@ -509,3 +510,4 @@ def load_ml_models(cfg):
                 except Exception as e:
                     _ml_pool_models[asset_class] = None
                     logging.warning(f"[pool] Failed to load {asset_class} model: {e}")
+    logging.info("DEBUG_LOAD: all models done")

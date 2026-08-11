@@ -472,10 +472,10 @@ class TestFailLoud:
         monkeypatch.delattr(mt5, "TIMEFRAME_H11", raising=False)
         with pytest.raises(ValueError):
             config_module._resolve_timeframe("H11", "TRADING")
-        # valid name resolves to the static minute value (no MT5 dependency)
-        assert config_module._resolve_timeframe("H1", "TRADING") == 60
+        # valid name resolves to the static MT5 enum constant (no MT5 dependency)
+        assert config_module._resolve_timeframe("H1", "TRADING") == 16385
         assert config_module._resolve_timeframe("M15", "TRADING") == 15
-        assert config_module._resolve_timeframe("D1", "TRADING") == 1440
+        assert config_module._resolve_timeframe("D1", "TRADING") == 16408
 
     def test_validate_rejects_ema_ordering(self, config_module):
         cfg = config_module.load_config()

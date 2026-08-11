@@ -6,6 +6,7 @@ import logging
 import logging.handlers
 import os
 import signal
+import socket
 import sys
 import threading
 import time
@@ -16,6 +17,22 @@ from datetime import datetime
 # MT5's order_send is sensitive to the calling frame (see execution.py).
 def mt5_order_send(req, _timeout=None):
     return mt5.order_send(req)
+
+
+def _sd_notify(state):
+    """Send a systemd sd_notify state (e.g. WATCHDOG=1). No-op outside a unit."""
+    addr = os.environ.get("NOTIFY_SOCKET")
+    if not addr:
+        return
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        try:
+            sock.connect(addr)
+            sock.sendall(state.encode())
+        finally:
+            sock.close()
+    except OSError:
+        logging.warning("sd_notify failed", exc_info=True)
 
 
 def _read_todays_trades(path, today):
@@ -207,8 +224,11 @@ def _apply_corr_ml_sizing(
 
 
 def main():
+    print("DEBUG: main() started", flush=True)
     LOG_DIR.mkdir(exist_ok=True)
+    print("DEBUG: about to load_config", flush=True)
     cfg = load_config()
+    print(f"DEBUG: load_config done, symbols={cfg.get('symbols', [])[:3]}", flush=True)
     log_level = logging.DEBUG if cfg.get("verbose_debug") else logging.INFO
     log_handler = logging.handlers.TimedRotatingFileHandler(
         LOG_DIR / "bot.log",
@@ -217,7 +237,11 @@ def main():
         utc=True,
     )
     log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-    logging.basicConfig(level=log_level, handlers=[log_handler, logging.StreamHandler()])
+    logging.basicConfig(
+        level=log_level,
+        handlers=[log_handler, logging.StreamHandler()],
+        force=True,
+    )
     # Startup grace period: the MT5 terminal (and the mt5linux bridge) can take well
     # over a minute to come up under Wine, so retry in-process before aborting.
     startup_deadline = time.time() + cfg.get("mt5_startup_grace_sec", 180)
@@ -228,13 +252,11 @@ def main():
         logging.warning("MT5 not ready yet — retrying during startup grace period")
         time.sleep(10)
 
-    account_info = mt5_call(mt5.account_info, _timeout=10)
+    account_info = mt5_call(mt5.account_info, _timeout=30)
     if account_info is None:
         logging.warning("Account info unavailable — retrying with watchdog")
-        if not ensure_mt5_connected(cfg):
-            logging.critical("MT5 unavailable after watchdog — aborting")
-            return
-        account_info = mt5_call(mt5.account_info, _timeout=10)
+        ensure_mt5_connected(cfg)
+        account_info = mt5_call(mt5.account_info, _timeout=30)
     if account_info is not None:
         logging.info(f"Connected: {account_info.name} | Balance: Rs.{account_info.balance:.2f}")
     else:
@@ -268,10 +290,14 @@ def main():
         journal_init()
         logging.info(f"Trade journal: {TRADE_CSV}")
 
+    logging.info("DEBUG: starting load_ml_models")
     load_ml_models(cfg)
+    logging.info("DEBUG: starting load_bot_state")
     load_bot_state()
+    logging.info("DEBUG: starting positions_get")
 
     active_positions = mt5_call(mt5.positions_get, _timeout=10)
+    logging.info(f"DEBUG: positions_get done, count={len(active_positions) if active_positions else 0}")
     if active_positions is None:
         active_positions = []
     active_tickets = {p.ticket for p in active_positions}
@@ -352,6 +378,7 @@ def main():
     regimes = {s: "uncertain" for s in cfg["symbols"]}
     _st._last_cycle_time = time.time()
 
+    logging.info("DEBUG: entering main loop")
     while True:
         if _st._shutdown_requested:
             break
@@ -987,6 +1014,7 @@ def main():
         save_bot_state()
         _st._last_cycle_time = time.time()
         _st._cycle_consecutive_failures = 0
+        _sd_notify("WATCHDOG=1")
         time.sleep(cfg.get("cycle_sleep", 10))
 
 

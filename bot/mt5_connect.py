@@ -330,10 +330,16 @@ def ensure_mt5_connected(cfg):
         except Exception as e:
             logging.warning(f"init_mt5() failed: {e}")
             return False
-    info = _mt5linux_ping()
+    # Verify the main instance works (not just a ping). The ping uses a fresh
+    # connection; the main _mt5_instance may be stale. A quick terminal_info
+    # call (with a bounded timeout) confirms the live instance is healthy.
+    try:
+        info = mt5_call(_mt5_instance.terminal_info, _timeout=10)
+    except Exception:
+        info = None
     if info is not None and getattr(info, "connected", True):
         return True
-    if info is _PING_BUSY:
+    if _mt5linux_ping() is _PING_BUSY:
         logging.debug("mt5linux busy (server blocked by long call) - skipping cycle")
         return True
     logging.warning("mt5linux disconnected. Attempting reconnection...")

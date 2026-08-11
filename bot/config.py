@@ -85,23 +85,30 @@ _TF_MINUTES = {
     "H12": 720, "D1": 1440, "W1": 10080, "MN1": 43200,
 }
 
+# MT5 timeframe enum constants (identical across all modern builds).
+_TF_CONSTANTS = {
+    "M1": 1, "M2": 2, "M3": 3, "M4": 4, "M5": 5, "M6": 6, "M10": 10,
+    "M12": 12, "M15": 15, "M20": 20, "M30": 30,
+    "H1": 16385, "H2": 16386, "H3": 16387, "H4": 16388, "H6": 16390,
+    "H8": 16392, "H12": 16396, "D1": 16408, "W1": 32769, "MN1": 49153,
+}
+
 
 def _resolve_timeframe(tf_name, ctx):
     """Resolve an MT5 timeframe by name, failing loud on an unknown value.
 
-    Uses a static mapping (these constants never change) so config load does
-    not require a live MT5 connection — otherwise a cold-box boot would crash
-    before the startup-grace retry loop can bring MT5 up.
+    Returns the MT5 enum constant (e.g. 16385 for H1) — this is what
+    mt5.copy_rates_* expects. Uses a static mapping (these constants never
+    change) so config load does not require a live MT5 connection — otherwise
+    a cold-box boot would crash before the startup-grace retry loop can bring
+    MT5 up.
     """
-    tf = _TF_MINUTES.get(tf_name)
+    tf = _TF_CONSTANTS.get(tf_name)
     if tf is None:
         raise ValueError(
-            f"Invalid {ctx} timeframe '{tf_name}' — not in {_TF_MINUTES}. "
+            f"Invalid {ctx} timeframe '{tf_name}' — not in {_TF_CONSTANTS}. "
             f"Fix settings.ini instead of silently defaulting."
         )
-    mt5_tf = getattr(mt5, f"TIMEFRAME_{tf_name}", None)
-    if mt5_tf is not None and mt5_tf != tf:
-        logging.warning(f"Timeframe {tf_name}: static {tf} != mt5 constant {mt5_tf} — using static")
     return tf
 
 

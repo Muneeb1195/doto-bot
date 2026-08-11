@@ -115,10 +115,11 @@ class TestEnsureMt5Connected:
         """If _mt5_instance is None, it attempts init_mt5()."""
         import mt5_connect as mc
         monkeypatch.setattr(mc, "_mt5_instance", None)
-        monkeypatch.setattr(mc, "init_mt5", lambda: None)
+        fake_inst = MagicMock()
         fake_info = MagicMock()
         fake_info.connected = True
-        monkeypatch.setattr(mc, "_mt5linux_ping", lambda: fake_info)
+        fake_inst.terminal_info.return_value = fake_info
+        monkeypatch.setattr(mc, "init_mt5", lambda: setattr(mc, "_mt5_instance", fake_inst))
         ok = mc.ensure_mt5_connected({"symbols": ["EURUSD.raw"]})
         assert ok is True
 

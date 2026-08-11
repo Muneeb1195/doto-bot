@@ -9,8 +9,10 @@ import pandas as pd
 from mt5_connect import mt5_call
 
 
-def fetch_returns_for_symbols(symbols, lookback_hours=24, tf=mt5.TIMEFRAME_H1):
+def fetch_returns_for_symbols(symbols, lookback_hours=24, tf=None):
     datetime.now()
+    if tf is None:
+        tf = mt5.TIMEFRAME_H1
     rates_dict = {}
     for symbol in symbols:
         rates = mt5_call(mt5.copy_rates_from_pos, symbol, tf, 0, lookback_hours, _timeout=10)
