@@ -573,9 +573,33 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
             journal_close(ticket, close_price, close_pnl, close_pips, close_event)
         logging.warning(f"[{symbol}] {close_cmt} closed (pnl={close_pnl:.2f})")
     else:
-        logging.warning(
-            f"[{symbol}] {close_cmt} failed: {getattr(close_result, 'retcode', 'None')}; will be managed by exit logic"
+        # Close failed — the position is live with no SL/TP and no
+        # scale-out/chandelier state. Set an emergency wide SL as a last
+        # resort so the position is not completely unprotected.
+        em_sl = (
+            fill_price - sl_points * 4 * sinfo.point
+            if order_type == mt5.ORDER_TYPE_BUY
+            else fill_price + sl_points * 4 * sinfo.point
         )
+        em_req = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": symbol,
+            "position": ticket,
+            "sl": em_sl,
+            "tp": 0.0,
+        }
+        em_result = mt5_order_send(em_req, _timeout=5)
+        if em_result and em_result.retcode == mt5.TRADE_RETCODE_DONE:
+            logging.warning(f"[{symbol}] Emergency SL {em_sl:.5f} set on naked position")
+            if cfg["trade_journal"]:
+                journal_open(ticket, symbol, signal, volume, fill_price, em_sl, 0.0, atr)
+        else:
+            logging.error(
+                f"[{symbol}] Naked position ticket={ticket} unprotected — "
+                f"close failed and emergency SL failed ({getattr(em_result, 'retcode', 'None')}). "
+                f"Manual intervention required."
+            )
+            save_bot_state()
     return False
 
 
