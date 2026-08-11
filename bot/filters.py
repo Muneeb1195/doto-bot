@@ -100,8 +100,8 @@ def check_spread_filter(cfg):
     sym = cfg["symbol"]
     tick = mt5_call(mt5.symbol_info_tick, sym, _timeout=5)
     if tick is None:
-        logging.debug(f"[{sym}] Spread filter: no tick")
-        return True
+        logging.warning(f"[{sym}] Spread filter: no tick — failing closed")
+        return False
     spread = tick.ask - tick.bid
     atr = get_current_atr(cfg)
     if atr is None or atr <= 0:
@@ -360,8 +360,8 @@ def check_capital_eligibility(cfg, symbol):
         return True
     acc = mt5_call(mt5.account_info, _timeout=5)
     if acc is None:
-        logging.debug(f"[{symbol}] Capital eligibility: no account info")
-        return True
+        logging.warning(f"[{symbol}] Capital eligibility: no account info — failing closed")
+        return False
     if acc.equity < min_equity:
         logging.debug(f"[{symbol}] Capital eligibility: equity {acc.equity} < {min_equity}")
         return False
