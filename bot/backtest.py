@@ -239,9 +239,25 @@ def precompute_fixed(df, params):
             h4_ma = calc_ma(h4_df, htf_slow, p.get("ma_type", "kama"))
             slope_window = min(12, max(2, len(h4_df) // 10))
             h4_slope = h4_ma.diff(slope_window)
-            fixed["htf_ema_aligned"] = h4_ma.reindex(df["time"], method="ffill")
-            fixed["htf_slope_aligned"] = h4_slope.reindex(df["time"], method="ffill")
-            fixed["htf_close_aligned"] = h4_df["close"].reindex(df["time"], method="ffill")
+            # Align H4 indicators to H1 bars using the last CLOSED H4 bar
+            # (matching the h4_adx_aligned i//4-1 convention). reindex(ffill)
+            # would pick the forming (incomplete) H4 bar, introducing up to
+            # 4h of lookahead.
+            h4_ma_arr = h4_ma.values if hasattr(h4_ma, "values") else np.array(h4_ma)
+            h4_slope_arr = h4_slope.values if hasattr(h4_slope, "values") else np.array(h4_slope)
+            h4_close_arr = h4_df["close"].values
+            fixed["htf_ema_aligned"] = np.array(
+                [h4_ma_arr[i // 4 - 1] if i >= 4 and i // 4 - 1 < len(h4_ma_arr) else np.nan for i in range(n)],
+                dtype=float,
+            )
+            fixed["htf_slope_aligned"] = np.array(
+                [h4_slope_arr[i // 4 - 1] if i >= 4 and i // 4 - 1 < len(h4_slope_arr) else np.nan for i in range(n)],
+                dtype=float,
+            )
+            fixed["htf_close_aligned"] = np.array(
+                [h4_close_arr[i // 4 - 1] if i >= 4 and i // 4 - 1 < len(h4_close_arr) else np.nan for i in range(n)],
+                dtype=float,
+            )
 
         if fixed["h4_adx"] is not None and len(fixed["h4_adx"]) > 0:
             fixed["h4_adx_aligned"] = np.array(
@@ -473,11 +489,24 @@ class Backtest:
             if "mtf_h4_ema" in f and f["mtf_h4_ema"] is not None:
                 self.mtf_h4_ema = f["mtf_h4_ema"]
             elif self.h4_df is not None and len(self.h4_df) > h4_ema_period:
-                self.mtf_h4_ema = calc_ma(self.h4_df, h4_ema_period, self.ma_type).reindex(df["time"], method="ffill")
+                h4_ema_ma = calc_ma(self.h4_df, h4_ema_period, self.ma_type)
+                if len(h4_ema_ma) > 1:
+                    h4_shift = h4_ema_ma.index[1] - h4_ema_ma.index[0]
+                    h4_ema_ma.index = h4_ema_ma.index + h4_shift
+                self.mtf_h4_ema = h4_ema_ma.reindex(df["time"], method="ffill")
             if self.df_m15 is not None and len(self.df_m15) > 0:
                 m15 = self.df_m15.set_index("time").sort_index()
-                self.mtf_m15_fast = calc_ma(m15, m15_fast, self.ma_type).reindex(df["time"], method="ffill")
-                self.mtf_m15_slow = calc_ma(m15, m15_slow, self.ma_type).reindex(df["time"], method="ffill")
+                m15_fast_ma = calc_ma(m15, m15_fast, self.ma_type)
+                m15_slow_ma = calc_ma(m15, m15_slow, self.ma_type)
+                if len(m15_fast_ma) > 1:
+                    m15_shift = m15_fast_ma.index[1] - m15_fast_ma.index[0]
+                    m15_fast_ma.index = m15_fast_ma.index + m15_shift
+                    m15_slow_ma.index = m15_slow_ma.index + m15_shift
+                # Shift index forward by one M15 period so reindex(ffill) picks
+                # the last CLOSED M15 bar (not the forming one) — otherwise the
+                # entry trigger sees up to 15min of future data.
+                self.mtf_m15_fast = m15_fast_ma.reindex(df["time"], method="ffill")
+                self.mtf_m15_slow = m15_slow_ma.reindex(df["time"], method="ffill")
 
         self.fused_score_a = np.full(n, np.nan)
         adx_a = np.asarray(self.adx_series) if self.adx_series is not None else None
