@@ -33,6 +33,58 @@ LOG_DIR.mkdir(exist_ok=True)
 _ML_DATA_CACHE: dict = {}
 _ML_MULT_CACHE: dict = {}
 
+# Per-process cache of the shifted M15 fast/slow MAs used by the MTF entry path.
+# The full M15 frame is identical for every backtest in an optimization run, so
+# the two expensive calc_ma calls (one per M15 fast/slow period) are recomputed
+# per combo x window x IS/OOS. Keyed by (frame fingerprint, periods, ma_type).
+_MTF_M15_MA_CACHE: dict = {}
+
+# Per-process cache of the primary-frame (H1) MAs. These are recomputed for every
+# backtest instance even though only a handful of distinct (period, ma_type)
+# pairs occur across a grid run. Keyed by (frame fingerprint, period, ma_type).
+_H1_MA_CACHE: dict = {}
+
+
+def _get_ma_cached(df, period, ma_type):
+    """Compute (and cache) calc_ma on a window slice of the primary frame.
+
+    The MAs in Backtest.__init__ depend only on the window content, period and
+    ma_type. During grid search the same (window, period, ma_type) recurs many
+    times, so cache by frame fingerprint to avoid re-running calc_ma.
+    """
+    if df is None or len(df) < 2:
+        return calc_ma(df, period, ma_type)
+    t0 = df["time"].iloc[0]
+    t1 = df["time"].iloc[-1]
+    key = (len(df), t0, t1, period, ma_type)
+    if key not in _H1_MA_CACHE:
+        _H1_MA_CACHE[key] = calc_ma(df, period, ma_type)
+    return _H1_MA_CACHE[key]
+
+
+def _get_mtf_m15_mas(df_m15, m15_fast, m15_slow, ma_type):
+    """Compute (and cache) the shifted M15 fast/slow MAs for MTF.
+
+    Every backtest in an optimization run receives the SAME full M15 frame, and
+    the M15 MA periods derive from the candidate EMA pair, so the two expensive
+    calc_ma calls are recomputed for every combo x window x IS/OOS. Cache by
+    (frame fingerprint, periods, ma_type); callers only pay the cheap
+    reindex(ffill) to their own H1 bar times.
+    """
+    t0 = df_m15["time"].iloc[0]
+    t1 = df_m15["time"].iloc[-1]
+    key = (len(df_m15), t0, t1, m15_fast, m15_slow, ma_type)
+    if key not in _MTF_M15_MA_CACHE:
+        m15 = df_m15.set_index("time").sort_index()
+        m15_fast_ma = calc_ma(m15, m15_fast, ma_type)
+        m15_slow_ma = calc_ma(m15, m15_slow, ma_type)
+        if len(m15_fast_ma) > 1:
+            m15_shift = m15_fast_ma.index[1] - m15_fast_ma.index[0]
+            m15_fast_ma.index = m15_fast_ma.index + m15_shift
+            m15_slow_ma.index = m15_slow_ma.index + m15_shift
+        _MTF_M15_MA_CACHE[key] = (m15_fast_ma, m15_slow_ma)
+    return _MTF_M15_MA_CACHE[key]
+
 # Numba availability probe (lazy import so the module imports even without numba).
 _NJIT_OK = None
 
@@ -350,8 +402,8 @@ class Backtest:
         f = self._fixed or {}
 
         self.ma_type = p.get("ma_type", "kama")
-        self.ema_fast = calc_ma(df, p["ema_fast"], self.ma_type)
-        self.ema_slow = calc_ma(df, p["ema_slow"], self.ma_type)
+        self.ema_fast = _get_ma_cached(df, p["ema_fast"], self.ma_type)
+        self.ema_slow = _get_ma_cached(df, p["ema_slow"], self.ma_type)
         if p.get("ch_accelerate_enabled", False):
             self.ch_accel_ema = calc_ma(df, p.get("ch_accelerate_period", 14), self.ma_type)
         else:
@@ -495,13 +547,9 @@ class Backtest:
                     h4_ema_ma.index = h4_ema_ma.index + h4_shift
                 self.mtf_h4_ema = h4_ema_ma.reindex(df["time"], method="ffill")
             if self.df_m15 is not None and len(self.df_m15) > 0:
-                m15 = self.df_m15.set_index("time").sort_index()
-                m15_fast_ma = calc_ma(m15, m15_fast, self.ma_type)
-                m15_slow_ma = calc_ma(m15, m15_slow, self.ma_type)
-                if len(m15_fast_ma) > 1:
-                    m15_shift = m15_fast_ma.index[1] - m15_fast_ma.index[0]
-                    m15_fast_ma.index = m15_fast_ma.index + m15_shift
-                    m15_slow_ma.index = m15_slow_ma.index + m15_shift
+                m15_fast_ma, m15_slow_ma = _get_mtf_m15_mas(
+                    self.df_m15, m15_fast, m15_slow, self.ma_type
+                )
                 # Shift index forward by one M15 period so reindex(ffill) picks
                 # the last CLOSED M15 bar (not the forming one) — otherwise the
                 # entry trigger sees up to 15min of future data.

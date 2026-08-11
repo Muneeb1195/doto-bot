@@ -35,17 +35,6 @@ def calc_kama(df, er_period, sc_fast_period=2, sc_slow_period=30):
     return pd.Series(kama, index=df.index)
 
 
-def _vidya_cmo(close, period):
-    deltas = np.diff(close)
-    gains = np.where(deltas > 0, deltas, 0)
-    losses = np.where(deltas < 0, -deltas, 0)
-    sum_g = np.sum(gains[-period:]) if len(gains) >= period else np.sum(gains)
-    sum_l = np.sum(losses[-period:]) if len(losses) >= period else np.sum(losses)
-    if sum_g + sum_l == 0:
-        return 0
-    return 100 * (sum_g - sum_l) / (sum_g + sum_l)
-
-
 def calc_vidya(df, period, sc_fast_period=2, sc_slow_period=30):
     if period < 1 or df is None or len(df) < period + 1:
         return (
@@ -55,10 +44,19 @@ def calc_vidya(df, period, sc_fast_period=2, sc_slow_period=30):
         )
     close = df["close"].values
     n = len(close)
+    deltas = np.diff(close)
+    gains = np.where(deltas > 0, deltas, 0.0)
+    losses = np.where(deltas < 0, -deltas, 0.0)
     vidya = np.full(n, np.nan)
     vidya[period] = np.mean(close[: period + 1])
     for i in range(period + 1, n):
-        cmo = abs(_vidya_cmo(close[: i + 1], period)) / 100
+        sum_g = np.sum(gains[i - period : i])
+        sum_l = np.sum(losses[i - period : i])
+        denom = sum_g + sum_l
+        if denom != 0:
+            cmo = abs(100.0 * (sum_g - sum_l) / denom) / 100.0
+        else:
+            cmo = 0.0
         sc = _kama_sc(cmo, sc_fast_period, sc_slow_period)
         vidya[i] = vidya[i - 1] + sc * (close[i] - vidya[i - 1])
     return pd.Series(vidya, index=df.index)
