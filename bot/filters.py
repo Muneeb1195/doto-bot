@@ -164,7 +164,10 @@ def check_ml_signal(cfg, signal, df=None):
     metadata = model_entry.get("metadata", {})
     model_features = metadata.get("features", FEATURE_COLS)
     model_type = metadata.get("model_type", "ensemble")
-    needed = 250
+    # Need >=30 days of H1 bars for d1_* features (d1_kama_ratio needs 51 daily
+    # bars, d1_ret_20pct needs 20). 250 bars (~10 days) left those as NaN->0.0,
+    # causing train/serve skew.
+    needed = 720
     if df is None:
         df = get_rates(symbol, cfg["timeframe"], needed)
     if df is None or len(df) < needed:

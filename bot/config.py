@@ -55,6 +55,7 @@ SYMBOL_STRATEGY_MAP = {
     "mtf_m15_ema_fast": int,
     "mtf_m15_ema_slow": int,
     "mtf_enabled": lambda v: v.lower() == "true" if isinstance(v, str) else bool(v),
+    "scoring_min_entry": float,
 }
 
 KEY_MAP = {
@@ -73,22 +74,34 @@ KEY_MAP = {
     "max_risk_ratio": "max_risk_ratio",
     "volatility_min_ratio": "volatility_min_ratio",
     "deviation": "deviation",
+    "scoring_min_entry": "scoring_min_entry",
+}
+
+
+_TF_MINUTES = {
+    "M1": 1, "M2": 2, "M3": 3, "M4": 4, "M5": 5, "M6": 6, "M10": 10,
+    "M12": 12, "M15": 15, "M20": 20, "M30": 30,
+    "H1": 60, "H2": 120, "H3": 180, "H4": 240, "H6": 360, "H8": 480,
+    "H12": 720, "D1": 1440, "W1": 10080, "MN1": 43200,
 }
 
 
 def _resolve_timeframe(tf_name, ctx):
     """Resolve an MT5 timeframe by name, failing loud on an unknown value.
 
-    Previously an invalid/typo timeframe (e.g. "H11") silently fell back to H1,
-    so the bot would trade on the wrong timeframe without any warning (agent
-    audit M12). Fail at startup instead so the misconfiguration is caught.
+    Uses a static mapping (these constants never change) so config load does
+    not require a live MT5 connection — otherwise a cold-box boot would crash
+    before the startup-grace retry loop can bring MT5 up.
     """
-    tf = getattr(mt5, f"TIMEFRAME_{tf_name}", None)
+    tf = _TF_MINUTES.get(tf_name)
     if tf is None:
         raise ValueError(
-            f"Invalid {ctx} timeframe '{tf_name}' — no mt5.TIMEFRAME_{tf_name}. "
+            f"Invalid {ctx} timeframe '{tf_name}' — not in {_TF_MINUTES}. "
             f"Fix settings.ini instead of silently defaulting."
         )
+    mt5_tf = getattr(mt5, f"TIMEFRAME_{tf_name}", None)
+    if mt5_tf is not None and mt5_tf != tf:
+        logging.warning(f"Timeframe {tf_name}: static {tf} != mt5 constant {mt5_tf} — using static")
     return tf
 
 

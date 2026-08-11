@@ -61,9 +61,11 @@ def warmstart_model(symbol, cfg=None, max_hold=12):
         cfg = configparser.ConfigParser()
         cfg.read(BASE_DIR / "config" / "settings.ini")
 
+    from mt5_connect import mt5_call
+
     end = pd.Timestamp.now()
     start = end - pd.Timedelta(hours=_RETRAIN_BARS)
-    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_H1, start.to_pydatetime(), end.to_pydatetime())
+    rates = mt5_call(mt5.copy_rates_range, symbol, mt5.TIMEFRAME_H1, start.to_pydatetime(), end.to_pydatetime(), _timeout=60)
     if rates is None or len(rates) < _RETRAIN_BARS // 2:
         logging.warning(f"[{symbol}] Insufficient data for warm-start ({len(rates) if rates is not None else 0})")
         return False
@@ -71,7 +73,18 @@ def warmstart_model(symbol, cfg=None, max_hold=12):
     df = pd.DataFrame(rates)
     df["time"] = pd.to_datetime(df["time"], unit="s")
 
-    feature_data, full_df = prepare_features(df, symbol=symbol)
+    m1_df = None
+    try:
+        m1_end = end
+        m1_start = end - pd.Timedelta(hours=min(_RETRAIN_BARS, 720))
+        m1_rates = mt5_call(mt5.copy_rates_range, symbol, mt5.TIMEFRAME_M1, m1_start.to_pydatetime(), m1_end.to_pydatetime(), _timeout=120)
+        if m1_rates is not None and len(m1_rates) > 0:
+            m1_df = pd.DataFrame(m1_rates)
+            m1_df["time"] = pd.to_datetime(m1_df["time"], unit="s")
+    except Exception:
+        logging.debug(f"[{symbol}] M1 fetch for warm-start failed — of_* will be 0.0")
+
+    feature_data, full_df = prepare_features(df, symbol=symbol, m1_df=m1_df)
     tp_atr, sl_atr = _resolve_label_params(cfg, symbol)
     labels = triple_barrier_labels(full_df, tp_atr, sl_atr, max_hold)
 

@@ -393,9 +393,18 @@ def train_fold_ensemble(X_tr, y_tr, X_te, y_te, sw, tune_params=None, use_tft=Fa
         try:
             from tft_model import train_tft
 
-            X_val_flat = X_te if len(X_te) >= 50 else None
-            y_val_flat = y_te if len(X_te) >= 50 else None
-            tft_model = train_tft(X_tr_final, y_tr_final, X_val=X_val_flat, y_val=y_val_flat)
+            # Carve a temporal validation slice from the training fold — using
+            # X_te/y_te here would tune the TFT on the evaluation set.
+            tft_cal_n = max(50, len(X_tr_final) // 5)
+            if len(X_tr_final) > tft_cal_n * 2:
+                X_val_flat = X_tr_final[-tft_cal_n:]
+                y_val_flat = y_tr_final[-tft_cal_n:]
+                X_tr_tft = X_tr_final[:-tft_cal_n]
+                y_tr_tft = y_tr_final[:-tft_cal_n]
+            else:
+                X_val_flat, y_val_flat = None, None
+                X_tr_tft, y_tr_tft = X_tr_final, y_tr_final
+            tft_model = train_tft(X_tr_tft, y_tr_tft, X_val=X_val_flat, y_val=y_val_flat)
         except Exception as e:
             print(f"  TFT training skipped: {e}")
     raw_importances = xgb_model.feature_importances_.copy() if hasattr(xgb_model, "feature_importances_") else None
@@ -836,8 +845,13 @@ def train_model_for_symbol(
         xgb_m, _ = train_xgb(X_train, y_train, tune_params=tuned_params)
         sw_small = (y_train == 0).sum() / max((y_train == 1).sum(), 1)
         lgb_m = train_lgb(X_train, y_train, scale_pos_weight=sw_small, tune_params=tuned_params)
-        xgb_m = calibrate_model(xgb_m, X_test, y_test)
-        lgb_m = calibrate_model(lgb_m, X_test, y_test)
+        # Calibrate on a train-side holdout, not the test split (which would
+        # leak evaluation data into the calibration mapping).
+        n_cal_small = max(30, len(X_train) // 5)
+        X_cal_small = X_train[-n_cal_small:]
+        y_cal_small = y_train[-n_cal_small:]
+        xgb_m = calibrate_model(xgb_m, X_cal_small, y_cal_small)
+        lgb_m = calibrate_model(lgb_m, X_cal_small, y_cal_small)
         model = EnsembleModel(xgb_m, lgb_m)
 
         y_pred = model.predict(X_test)
@@ -919,8 +933,11 @@ def train_model_for_symbol(
             sw = neg_count / max(pos_count, 1)
             xgb_p, _ = train_xgb(X_k_tr, y_k_tr, scale_pos_weight=sw, tune_params=tuned_params)
             lgb_p = train_lgb(X_k_tr, y_k_tr, scale_pos_weight=sw, tune_params=tuned_params)
-            xgb_p = calibrate_model(xgb_p, X_k_te, y_k_te)
-            lgb_p = calibrate_model(lgb_p, X_k_te, y_k_te)
+            n_cal_prune = max(30, len(X_k_tr) // 5)
+            X_k_cal = X_k_tr[-n_cal_prune:]
+            y_k_cal = y_k_tr[-n_cal_prune:]
+            xgb_p = calibrate_model(xgb_p, X_k_cal, y_k_cal)
+            lgb_p = calibrate_model(lgb_p, X_k_cal, y_k_cal)
             final_model = EnsembleModel(xgb_p, lgb_p)
             y_k_pred = final_model.predict(X_k_te)
             print("\nPruned Model Holdout Report:")

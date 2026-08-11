@@ -55,13 +55,15 @@ def calibrate_model_file(model_path):
     if len(X_calib) < 10:
         print(f"  SKIP {model_path.name}: calibration set too small ({len(X_calib)} samples)")
         return False
-    # Unwrap pre-calibration so CalibratedClassifierCV gets a fit-capable estimator
+    # Base models are already fit — use cv="prefit" so the calibrator only
+    # learns the probability mapping instead of cloning+refitting on the small
+    # holdout (default cv=5 would refit XGB/LGB on ~160 samples each).
     raw_xgb = _unwrap(model.xgb)
     raw_lgb = _unwrap(model.lgb)
     try:
-        xgb_cal = CalibratedClassifierCV(estimator=raw_xgb, method="isotonic")
+        xgb_cal = CalibratedClassifierCV(estimator=raw_xgb, method="isotonic", cv="prefit")
         xgb_cal.fit(X_calib, y_calib)
-        lgb_cal = CalibratedClassifierCV(estimator=raw_lgb, method="isotonic")
+        lgb_cal = CalibratedClassifierCV(estimator=raw_lgb, method="isotonic", cv="prefit")
         lgb_cal.fit(X_calib, y_calib)
     except Exception as e:
         print(f"  FAIL {model_path.name}: calibration error ({e})")
