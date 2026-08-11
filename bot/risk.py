@@ -3,6 +3,7 @@
 import contextlib
 import csv
 import logging
+import time
 
 try:
     import MetaTrader5 as mt5
@@ -13,6 +14,10 @@ import pandas as pd
 import state as _st
 from mt5_connect import get_rates, mt5_call
 from state import TRADE_CSV
+
+_TRADE_STATS_CACHE = None
+_TRADE_STATS_CACHE_KEY = None
+_TRADE_STATS_TTL = 30
 
 
 def calc_position_size(cfg, sl_points, regime_mult=1.0):
@@ -80,10 +85,20 @@ def get_recent_trade_stats(cfg):
         volume/entry/sl and the live symbol tick parameters (avoids a schema
         change to the journal).
     """
+    global _TRADE_STATS_CACHE, _TRADE_STATS_CACHE_KEY
     if not TRADE_CSV.exists():
         return None, None, None
     symbol = cfg["symbol"]
     lookback = int(cfg["dr_lookback"])
+    try:
+        st = TRADE_CSV.stat()
+        # Bucket time into _TRADE_STATS_TTL-second windows so the cache
+        # invalidates shortly after new trades are journaled.
+        cache_key = (st.st_mtime, st.st_size, lookback, int(time.time() // _TRADE_STATS_TTL))
+        if _TRADE_STATS_CACHE is not None and _TRADE_STATS_CACHE_KEY == cache_key:
+            return _TRADE_STATS_CACHE
+    except Exception:
+        pass
     try:
         with open(TRADE_CSV, "r", newline="") as f:
             reader = csv.DictReader(f)
@@ -165,8 +180,11 @@ def get_recent_trade_stats(cfg):
 
         if rs:
             rs.sort(key=lambda x: x[0])
-            return stats_from([r for _, r in rs])
-        return stats_from(cur)
+            result = stats_from([r for _, r in rs])
+        else:
+            result = stats_from(cur)
+        _TRADE_STATS_CACHE = result
+        return result
     except Exception:
         logging.warning("get_recent_trade_stats failed", exc_info=True)
         return None, None, None
