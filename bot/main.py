@@ -76,7 +76,7 @@ os.environ["JOBLIB_PARALLEL_BACKEND"] = "threading"
 
 try:
     import MetaTrader5 as mt5  # noqa: E402
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
+except ImportError:  # Linux: no native package, use the mt5linux RPyC bridge
     from mt5_connect import mt5  # noqa: E402
 import numpy as np  # noqa: E402
 import state as _st  # noqa: E402
@@ -218,7 +218,7 @@ def main():
     )
     log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logging.basicConfig(level=log_level, handlers=[log_handler, logging.StreamHandler()])
-    # Startup grace period: the MT5 terminal (and its socket EA) can take well
+    # Startup grace period: the MT5 terminal (and the mt5linux bridge) can take well
     # over a minute to come up under Wine, so retry in-process before aborting.
     startup_deadline = time.time() + cfg.get("mt5_startup_grace_sec", 180)
     while not ensure_mt5_connected(cfg):

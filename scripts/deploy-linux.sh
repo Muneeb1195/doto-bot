@@ -18,10 +18,8 @@
 # Notes:
 #   - Requires the [multilib] repo enabled in /etc/pacman.conf for Wine.
 #   - MT5 terminal runs under Wine on the Xvfb :99 virtual display.
-#   - The native venv talks to MT5 through the mt5_socket_server MQL5 EA,
-#     which runs inside the terminal and listens on 127.0.0.1:9000.
-#     (Wine's named pipes are broken, so the MetaTrader5 Python package and
-#     every RPyC bridge built on it cannot work here — hence the EA.)
+#   - The native venv talks to MT5 through the mt5linux RPyC bridge
+#     (mt5server.exe running in Wine, exposing MetaTrader5 via port 18812).
 
 set -euo pipefail
 
@@ -444,37 +442,20 @@ if [ -f "$REPO_DIR/config/settings.ini" ]; then
 fi
 
 # ──────────────────────────────────────────────
-# Phase 8b: MT5 socket-server EA wiring
+# Phase 8b: MT5 startup config (mt5linux bridge)
 # ──────────────────────────────────────────────
-# Wine's named pipes are broken, so the MetaTrader5 Python package can never
-# reach the terminal. Instead an MQL5 EA runs inside the terminal and exposes
-# the MT5 API over TCP 127.0.0.1:9000; bot/mt5_socket_client.py speaks to it.
-log "Phase 8b: Wiring the MT5 socket-server EA"
+# mt5server.exe (standalone, bundled with mt5linux) runs in Wine and exposes
+# the MetaTrader5 API via RPyC on port 18812. The bot's venv talks to it
+# through the mt5linux Python package. No MQL5 EA needed.
+log "Phase 8b: Writing MT5 startup config"
 
-# 1. EA source into MQL5/Experts/
-mkdir -p "$MT5_DIR/MQL5/Experts"
-cp "$REPO_DIR/scripts/mt5_socket_server.mq5" "$MT5_DIR/MQL5/Experts/mt5_socket_server.mq5"
-
-# 2. Enable DLL imports (the EA calls ws2_32.dll). common.ini is UTF-16LE.
-if [ -f "$MT5_DIR/Config/common.ini" ]; then
-    cp "$MT5_DIR/Config/common.ini" "$MT5_DIR/Config/common.ini.bak"
-    python3 - "$MT5_DIR/Config/common.ini" <<'PY' || warn "Could not patch AllowDllImport"
-import sys
-p = sys.argv[1]
-d = open(p, "rb").read().decode("utf-16")
-d = d.replace("AllowDllImport=0", "AllowDllImport=1")
-open(p, "wb").write(d.encode("utf-16"))
-PY
-fi
-
-# 3. Startup ini: broker login + EA auto-attach. Must be UTF-16 and live at a
-#    space-free path. The chart symbol MUST exist on the broker after sync —
-#    this broker uses .raw suffixes, so plain "EURUSD" silently never inits.
+# Startup ini: broker login only (no EA). Must be UTF-16 and live at a
+# space-free path.
 python3 - "$REPO_DIR/config/credentials.ini" "$WINEPREFIX/drive_c/start_ea.ini" <<'PY' || \
     warn "Could not write start_ea.ini — MT5 will not auto-login"
 import configparser, sys
 cred, out = sys.argv[1], sys.argv[2]
-c = configparser.ConfigParser(strict=False)  # duplicate 'password' key in file
+c = configparser.ConfigParser(strict=False)
 c.read(cred)
 s = c["LOGIN"]
 open(out, "wb").write((
@@ -484,24 +465,8 @@ open(out, "wb").write((
     f"Server={s['server']}\n"
     "KeepPrivate=1\n"
     "NewsEnable=0\n"
-    "\n"
-    "[StartUp]\n"
-    "Expert=mt5_socket_server\n"
-    "Symbol=EURUSD.raw\n"
-    "Period=H1\n"
 ).encode("utf-16"))
 PY
-
-# 4. Compile the EA headlessly. Note the capital E in MetaEditor64.exe, and
-#    that it exits non-zero even on success — verify via compile.log.
-( cd "$MT5_DIR" && DISPLAY=:99 timeout 200 wine MetaEditor64.exe \
-    /compile:"MQL5\\Experts\\mt5_socket_server.mq5" \
-    /log:"MQL5\\Experts\\compile.log" ) || true
-if [ -f "$MT5_DIR/MQL5/Experts/mt5_socket_server.ex5" ]; then
-    log "EA compiled: $(du -h "$MT5_DIR/MQL5/Experts/mt5_socket_server.ex5" | cut -f1)"
-else
-    warn "EA did not compile — check $MT5_DIR/MQL5/Experts/compile.log (UTF-16LE)"
-fi
 
 # ──────────────────────────────────────────────
 # Phase 9: Enable lingering + start services

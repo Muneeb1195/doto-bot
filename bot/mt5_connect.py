@@ -1,14 +1,9 @@
 """MT5 connectivity, rate fetching, and symbol checks.
 
-Auto-detects the MT5 backend:
- - Windows dev: native MetaTrader5 C extension
- - Linux VPS:   mt5linux RPyC bridge (connects to MT5 running under Wine)
+Linux VPS: mt5linux RPyC bridge (connects to MT5 running under Wine).
 """
 
 import logging
-import os
-import platform
-import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -20,14 +15,11 @@ import pandas as pd
 import state as _st
 from state import _RATE_CACHE_TTL, _rate_cache
 
-_is_linux = platform.system() == "Linux"
-
 _mt5_instance: Optional[object] = None
-_mt5_backend: str = "unknown"
 
 
 def _init_mt5linux():
-    """Try mt5linux RPyC bridge (mt5linux v0.x without Docker).
+    """Connect to mt5linux RPyC bridge.
 
     The MT5 terminal is single-threaded: a long copy_rates_from call blocks
     all other RPyC requests behind it. The sync timeout must be long enough
@@ -43,56 +35,23 @@ def _init_mt5linux():
     return inst
 
 
-def _init_socket_client():
-    """Fallback: MQL5 socket server (works when Wine IPC is broken)."""
-    from mt5_socket_client import MT5SocketClient
-    inst = MT5SocketClient(host="127.0.0.1", port=9000)
-    inst.connect()
-    return inst
-
-
-def _get_mt5():
+def init_mt5():
+    """Initialize the mt5linux connection."""
     global _mt5_instance
     if _mt5_instance is not None:
-        return _mt5_instance
-    raise RuntimeError("MT5 not initialized — call init_mt5() first")
-
-
-def init_mt5():
-    """Initialize MT5 connection with fallback chain."""
-    global _mt5_instance, _mt5_backend
-    if _mt5_instance is not None:
         return
-
-    if not _is_linux:
-        import MetaTrader5 as _mt5_impl
-        _mt5_instance = _mt5_impl
-        _mt5_backend = "native"
-        logging.info("MT5 backend: native (Windows)")
-        return
-
-    # Linux: try mt5linux first (with retries for server warm-up), then socket
-    mt5linux_attempts = 5
-    for _attempt in range(mt5linux_attempts):
+    for attempt in range(5):
         try:
             logging.info("MT5 backend: trying mt5linux...")
             _mt5_instance = _init_mt5linux()
-            _mt5_backend = "mt5linux"
             logging.info("MT5 backend: mt5linux (RPyC)")
             return
         except Exception as e:
-            if _attempt < mt5linux_attempts - 1:
+            if attempt < 4:
                 logging.info(f"mt5linux not ready ({e}), retrying in 5s...")
                 time.sleep(5)
             else:
-                logging.warning(f"mt5linux failed after {mt5linux_attempts} attempts ({e}), trying socket client...")
-
-    try:
-        _mt5_instance = _init_socket_client()
-        _mt5_backend = "socket"
-        logging.info("MT5 backend: socket (MQL5 EA)")
-    except Exception as e:
-        raise RuntimeError(f"All MT5 backends failed. Last error: {e}")
+                raise RuntimeError(f"mt5linux failed after 5 attempts: {e}")
 
 
 class _MT5Proxy:
@@ -102,31 +61,21 @@ class _MT5Proxy:
     The proxy always resolves attributes on the current `_mt5_instance`, so
     callers transparently use the fresh connection after a reconnect instead
     of a stale snapshot. When no instance exists yet (auto-init pending or
-    failed), attribute access raises AttributeError — main.py always calls
-    ensure_mt5_connected() first, which guarantees an instance exists.
+    failed), attribute access raises AttributeError.
     """
 
     def __getattr__(self, name):
         inst = _mt5_instance
         if inst is not None:
             return getattr(inst, name)
-        raise AttributeError(f"MT5 not initialized — '{name}' unavailable (call ensure_mt5_connected first)")
+        raise AttributeError(f"MT5 not initialized - '{name}' unavailable")
 
     def __repr__(self):
         inst = _mt5_instance
-        return f"<MT5Proxy ({inst.__class__.__name__ if inst else 'no instance'})>"
+        return f"<MT5Proxy ({inst.__class__.__name__} if inst else 'no instance')>"
 
 
 mt5 = _MT5Proxy()
-
-# Legacy compatibility: auto-init on import (may fail gracefully)
-try:
-    init_mt5()
-except Exception as e:
-    logging.warning(f"MT5 auto-init failed: {e}")
-    logging.warning("MT5 will be unavailable until init_mt5() succeeds")
-
-_mt5_proc: Optional["subprocess.Popen"] = None
 
 _THREAD_BOUND = {"initialize", "shutdown", "login", "order_send",
                  "copy_rates_from", "copy_rates_from_pos", "copy_ticks_from", "copy_ticks_range"}
@@ -144,14 +93,7 @@ def _reset_executor():
 
 
 def _recreate_instance():
-    """Replace _mt5_instance with a fresh RPyC connection.
-
-    Called after a timeout or connection error. The old instance's RPyC pipe
-    may be poisoned by an in-flight call that the single-threaded MT5 terminal
-    is still processing. A new MetaTrader5 object opens a fresh connection to
-    the mt5server, which is threaded and can serve the new client even while
-    the terminal drains the old call.
-    """
+    """Replace _mt5_instance with a fresh RPyC connection."""
     global _mt5_instance, mt5
     with _executor_lock:
         old = _mt5_instance
@@ -171,18 +113,11 @@ def _recreate_instance():
 
 def mt5_call(func, *args, _timeout=None, **kwargs):
     name = getattr(func, "__name__", "")
-    # Resolve the method on the *current* instance. Callers (e.g. main.py)
-    # import `mt5` once via `from mt5_connect import mt5`, which binds to the
-    # object at import time. After reconnect that reference is stale, so we
-    # look up the method by name on the live instance to always hit the
-    # fresh RPyC connection.
-    current = _mt5_instance
-    if current is not None and name and hasattr(current, name):
-        func = getattr(current, name)
-    # Thread-bound calls (slow data fetches, order_send) run synchronously —
-    # only the RPyC sync_request_timeout (120s) applies. All other calls get
-    # a bounded client-side timeout routed through the executor so a wedged
-    # server cannot block the main loop indefinitely.
+    # The module-level `mt5` is a _MT5Proxy whose __getattr__ resolves on the
+    # live _mt5_instance at attribute-access time, so bound methods obtained
+    # via `mt5.some_method` always hit the current connection.
+    # Thread-bound calls (slow data fetches, order_send) run synchronously.
+    # All other calls get a bounded client-side timeout via the executor.
     if name in _THREAD_BOUND:
         try:
             return func(*args, **kwargs)
@@ -205,7 +140,7 @@ def mt5_call(func, *args, _timeout=None, **kwargs):
     try:
         return future.result(timeout=effective_timeout)
     except FutureTimeout:
-        logging.warning(f"MT5 {name or func} timed out after {effective_timeout}s — recreating instance")
+        logging.warning(f"MT5 {name or func} timed out after {effective_timeout}s - recreating")
         _reset_executor()
         _recreate_instance()
         return None
@@ -247,12 +182,6 @@ def fetch_rates_paged(symbol, timeframe, start, end, chunk_bars=80000):
         oldest = df["time"].iloc[0]
         if oldest <= start_ts:
             break
-        # NOTE: do not stop on a short page. The terminal routinely returns
-        # fewer bars than requested (a 80k M15 request yields ~53k) while still
-        # having deeper history available, so treating a short page as
-        # exhaustion truncated the export to the first page. Lack of progress
-        # is detected by the prev_oldest check below, which is the real
-        # end-of-history signal.
         if prev_oldest is not None and oldest >= prev_oldest:
             break
         prev_oldest = oldest
@@ -283,7 +212,6 @@ def get_filling_mode(symbol, default=None):
             if sinfo.filling_mode & mt5.ORDER_FILLING_FOK:
                 return 0
     except (TypeError, AttributeError):
-        # sinfo.filling_mode is not an int (e.g. MagicMock in tests)
         pass
     return default or mt5.ORDER_FILLING_IOC
 
@@ -302,7 +230,7 @@ def _update_dynamic_deviation(symbol, succeeded, cfg):
     new_dev = max(base, int(cur * 0.9)) if succeeded else min(max_dev, int(cur * 1.5))
     if new_dev != cur:
         _st._dynamic_deviation[symbol] = new_dev
-        logging.info(f"[{symbol}] Deviation adjusted: {cur} -> {new_dev} ({'success' if succeeded else 'rejection'})")
+        logging.info(f"[{symbol}] Deviation adjusted: {cur} -> {new_dev}")
     return new_dev
 
 
@@ -334,86 +262,15 @@ def can_trade_symbol(symbol):
     return sinfo.trade_mode == mt5.SYMBOL_TRADE_MODE_FULL
 
 
-def _kill_process(name):
-    if _is_linux:
-        subprocess.run(["pkill", "-f", name], capture_output=True, timeout=5)
-    else:
-        subprocess.run(["taskkill", "/F", "/IM", name], capture_output=True, timeout=5)
-
-
-def _ensure_socket_connected(cfg):
-    """Reconnect path for the socket backend (MQL5 EA inside the terminal).
-
-    systemd owns the MT5 terminal here, so we must never kill or relaunch it.
-    We only re-establish the TCP session and re-send INIT, which the EA
-    answers idempotently.
-    """
-    attempts = int(cfg.get("mt5_socket_attempts", 5))
-    for attempt in range(attempts):
-        try:
-            ok = mt5_call(
-                mt5.initialize,
-                login=cfg.get("account"),
-                password=cfg.get("password"),
-                server=cfg.get("server"),
-                timeout=60000,
-                _timeout=65,
-            )
-        except Exception as e:
-            logging.warning(f"MT5 socket initialize raised: {e}")
-            ok = False
-
-        if ok:
-            acc = mt5_call(mt5.account_info, _timeout=10)
-            if acc is not None:
-                if attempt > 0:
-                    logging.info(f"MT5 reconnected: {acc.name} | Balance: Rs.{acc.balance:.2f}")
-                for sym in cfg["symbols"]:
-                    mt5_call(mt5.symbol_select, sym, True, _timeout=10)
-                return True
-            logging.warning("MT5 socket INIT ok but account_info unavailable")
-
-        err = mt5_call(mt5.last_error, _timeout=3)
-        logging.warning(f"MT5 socket init failed (attempt {attempt + 1}/{attempts}): {err}")
-
-        with suppress(Exception):
-            mt5.disconnect()
-        time.sleep(int(cfg.get("mt5_socket_retry_sleep", 10)))
-        with suppress(Exception):
-            mt5.connect()
-
-    logging.error("MT5 socket bridge unavailable — terminal/EA not ready (systemd owns the terminal)")
-    return False
-
-
-# Sentinel returned when the ping timed out (server busy) vs connection dead.
 _PING_BUSY = object()
 
 
 def _mt5linux_ping():
-    """Lightweight health check with a fresh connection each call.
-
-    The MT5 terminal is single-threaded: a long copy_rates_from call blocks
-    all requests behind it. A persistent connection degrades after a timeout
-    (the RPyC pipe gets into a bad state), so we create a fresh connection
-    each ping. terminal_info is cheap (~0.0s) so this is not wasteful. The
-    10s sync timeout makes a blocked ping fail fast instead of hanging for
-    the default 5 min.
-
-    Returns:
-        TerminalInfo on success,
-        None on connection error (server dead),
-        _PING_BUSY on timeout (server blocked by a long call).
-    """
+    """Lightweight health check with a fresh connection each call."""
     try:
         from mt5linux import MetaTrader5 as _MT5Client
         inst = _MT5Client(host="127.0.0.1", port=18812)
         inst._MetaTrader5__conn._config["sync_request_timeout"] = 10
-        # initialize() is idempotent and fast (~0.0s). On a freshly (re)started
-        # mt5server the server-side MetaTrader5 object is not yet connected to
-        # the MT5 terminal, so terminal_info() would return None. Calling
-        # initialize() first guarantees the connection is live. If the server
-        # is blocked by a long call, this times out and we return _PING_BUSY.
         inst.initialize()
         info = inst.terminal_info()
         with suppress(Exception):
@@ -421,20 +278,13 @@ def _mt5linux_ping():
         return info
     except Exception as e:
         err = str(e).lower()
-        logging.debug(f"mt5linux ping exception: {type(e).__name__}: {str(e)[:120]}")
         if "timed out" in err or "timeout" in err or "asyncresulttimeout" in err:
             return _PING_BUSY
         return None
 
 
 def _ensure_mt5linux_connected(cfg):
-    """Reconnect path for mt5linux backend (systemd owns the terminal).
-
-    Never kills or relaunches terminal64.exe. Creates a fresh MetaTrader5
-    object each attempt because the old object's RPyC connection can go
-    stale (single-threaded server blocked by long calls) and shutdown()/
-    initialize() on a dead connection fail silently.
-    """
+    """Reconnect path for mt5linux backend (systemd owns the terminal)."""
     global _mt5_instance, mt5
     for attempt in range(5):
         try:
@@ -462,125 +312,21 @@ def _ensure_mt5linux_connected(cfg):
 
 
 def ensure_mt5_connected(cfg):
-    global _mt5_proc
-    # If auto-init at import time failed (server not ready yet), _mt5_backend
-    # is still "unknown" and `mt5` is a dummy fallback. Attempt a real init now
-    # — the server may be up. Without this the native path below operates on
-    # the dummy and can never recover.
-    if _mt5_backend == "unknown" or _mt5_instance is None:
-        logging.info("MT5 backend not initialized — attempting init_mt5()")
+    """Ensure the mt5linux connection is alive, reconnect if needed."""
+    global _mt5_instance
+    if _mt5_instance is None:
+        logging.info("MT5 not initialized - attempting init_mt5()")
         try:
             init_mt5()
             mt5 = _mt5_instance
         except Exception as e:
             logging.warning(f"init_mt5() failed: {e}")
             return False
-    if _mt5_backend == "socket":
-        return _ensure_socket_connected(cfg)
-    if _mt5_backend == "mt5linux":
-        info = _mt5linux_ping()
-        if info is not None and getattr(info, "connected", True):
-            return True
-        # Ping failed. Distinguish a busy server (timeout — terminal is
-        # single-threaded and blocked behind a long copy_rates_from) from a
-        # dead one (connection refused / RPyC error). When busy we must NOT
-        # reconnect — the in-flight call is still queued on the server and
-        # a reconnect would orphan it. Just skip this cycle; the next ping
-        # will succeed once the long call completes.
-        if info is _PING_BUSY:
-            logging.debug("mt5linux busy (server blocked by long call) — skipping cycle")
-            return True
-        logging.warning("mt5linux disconnected. Attempting reconnection...")
-        return _ensure_mt5linux_connected(cfg)
-    try:
-        info = mt5_call(mt5.terminal_info, _timeout=5)
-        if info is not None and getattr(info, "connected", True):
-            return True
-    except Exception:
-        logging.debug("MT5 check failed — initiating reconnection")
-
-    logging.warning("MT5 disconnected. Attempting reconnection...")
-    try:
-        mt5_call(mt5.shutdown, _timeout=5)
-    except Exception:
-        logging.debug("MT5 shutdown during reconnect failed (expected)")
-    time.sleep(3)
-
-    terminal = cfg["mt5_path"]
-    if not terminal or not os.path.exists(terminal):
-        if _is_linux:
-            terminal = os.path.expanduser(
-                "~/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe"
-            )
-        else:
-            terminal = r"C:\Program Files\MetaTrader 5\terminal64.exe"
-
-    for attempt in range(5):
-        try:
-            if _mt5_proc is not None and _mt5_proc.pid:
-                if _is_linux:
-                    subprocess.run(["kill", "-9", str(_mt5_proc.pid)], capture_output=True, timeout=5)
-                else:
-                    subprocess.run(
-                        ["taskkill", "/F", "/PID", str(_mt5_proc.pid)], capture_output=True, timeout=5
-                    )
-            else:
-                _kill_process("terminal64.exe")
-        except subprocess.TimeoutExpired:
-            logging.warning("kill terminal64.exe timed out")
-        except Exception:
-            logging.debug("kill terminal64.exe failed")
-        _kill_process("metaeditor64.exe")
-
-        try:
-            real_terminal = terminal if os.path.exists(terminal) else (
-                os.path.expanduser("~/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe")
-                if _is_linux
-                else r"C:\Program Files\MetaTrader 5\terminal64.exe"
-            )
-            if os.path.exists(real_terminal):
-                logging.info(f"Launching MT5 terminal: {real_terminal}")
-                if _mt5_proc is not None:
-                    try:
-                        _mt5_proc.terminate()
-                        _mt5_proc.wait(timeout=5)
-                    except Exception:
-                        logging.debug("Failed to terminate previous MT5 process", exc_info=True)
-                launch = ["wine", real_terminal] if _is_linux else [real_terminal]
-                _mt5_proc = subprocess.Popen(launch, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                logging.warning("MT5 terminal not found at %s; relying on mt5.initialize()", real_terminal)
-        except Exception as e:
-            logging.error(f"Failed to start MT5 terminal: {e}")
-        time.sleep(2)
-
-        wait = 5 + attempt * 10
-        logging.info(f"Waiting {wait}s for MT5 terminal (attempt {attempt + 1}/5)...")
-        time.sleep(wait)
-
-        result = mt5_call(
-            mt5.initialize,
-            login=cfg.get("account"),
-            password=cfg.get("password"),
-            server=cfg.get("server"),
-            timeout=60000,
-            _timeout=65,
-        )
-        if result:
-            acc = mt5_call(mt5.account_info, _timeout=5)
-            if acc is not None:
-                logging.info(f"MT5 reconnected: {acc.name} | Balance: Rs.{acc.balance:.2f}")
-                for sym in cfg["symbols"]:
-                    mt5_call(mt5.symbol_select, sym, True, _timeout=10)
-                return True
-            else:
-                err = mt5_call(mt5.last_error, _timeout=3)
-                logging.error(f"Login failed: {err}")
-                mt5_call(mt5.shutdown, _timeout=5)
-        else:
-            err = mt5_call(mt5.last_error, _timeout=3)
-            logging.error(f"MT5 init failed (attempt {attempt + 1}): {err}")
-            mt5_call(mt5.shutdown, _timeout=5)
-
-    logging.critical("MT5 reconnection failed after 5 attempts. Circuit breaker active.")
-    return False
+    info = _mt5linux_ping()
+    if info is not None and getattr(info, "connected", True):
+        return True
+    if info is _PING_BUSY:
+        logging.debug("mt5linux busy (server blocked by long call) - skipping cycle")
+        return True
+    logging.warning("mt5linux disconnected. Attempting reconnection...")
+    return _ensure_mt5linux_connected(cfg)

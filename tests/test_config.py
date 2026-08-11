@@ -467,13 +467,15 @@ class TestFailLoud:
 
     def test_resolve_timeframe_rejects_unknown(self, config_module, monkeypatch):
         import MetaTrader5 as mt5
-        # Force the bogus name to be absent so _resolve_timeframe returns None
-        # and raises (MagicMock would otherwise auto-vivify the attribute).
+        # Force the bogus name to be absent so _resolve_timeframe raises
+        # (MagicMock would otherwise auto-vivify the attribute).
         monkeypatch.delattr(mt5, "TIMEFRAME_H11", raising=False)
         with pytest.raises(ValueError):
             config_module._resolve_timeframe("H11", "TRADING")
-        # valid name resolves to a real mt5 constant
-        assert config_module._resolve_timeframe("H1", "TRADING") == mt5.TIMEFRAME_H1
+        # valid name resolves to the static minute value (no MT5 dependency)
+        assert config_module._resolve_timeframe("H1", "TRADING") == 60
+        assert config_module._resolve_timeframe("M15", "TRADING") == 15
+        assert config_module._resolve_timeframe("D1", "TRADING") == 1440
 
     def test_validate_rejects_ema_ordering(self, config_module):
         cfg = config_module.load_config()

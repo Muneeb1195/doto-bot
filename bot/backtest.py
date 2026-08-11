@@ -2352,10 +2352,12 @@ class Backtest:
         if len(pnls) > 1:
             eq_daily = eq_arr[::6]
             if len(eq_daily) > 1:
-                daily_ret = np.diff(eq_daily)
-                std_daily = np.std(daily_ret) if len(daily_ret) > 1 else 1
+                # Percentage returns, not money differences.
+                daily_ret = np.diff(eq_daily) / eq_daily[:-1]
+                std_daily = np.std(daily_ret, ddof=1) if len(daily_ret) > 1 else 1
                 mean_daily = np.mean(daily_ret) if len(daily_ret) > 1 else 0
-                stats["sharpe"] = (mean_daily / std_daily) * np.sqrt(252) if std_daily > 0 else 0
+                # 4 samples per day (24 H1 bars / 6), so 4*252 periods per year.
+                stats["sharpe"] = (mean_daily / std_daily) * np.sqrt(252 * 4) if std_daily > 0 else 0
             else:
                 stats["sharpe"] = 0
             stats["calmar"] = abs(total_pnl / max_dd) if max_dd > 0 else 0

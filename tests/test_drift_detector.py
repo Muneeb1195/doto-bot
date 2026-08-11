@@ -45,24 +45,6 @@ class TestComputePsi:
         assert abs(psi_ab - psi_ba) < 2.0
 
 
-class TestCheckConfidenceDrift:
-    def test_no_drift_when_confidence_stable(self):
-        from drift_detector import check_confidence_drift
-        assert check_confidence_drift("TEST", 0.50, 0.48) is False
-
-    def test_drift_when_confidence_drops(self):
-        from drift_detector import check_confidence_drift
-        assert check_confidence_drift("TEST", 0.50, 0.30) is True
-
-    def test_zero_baseline_returns_false(self):
-        from drift_detector import check_confidence_drift
-        assert check_confidence_drift("TEST", 0.0, 0.30) is False
-
-    def test_negative_baseline_returns_false(self):
-        from drift_detector import check_confidence_drift
-        assert check_confidence_drift("TEST", -1.0, 0.30) is False
-
-
 class TestWarmstartQueue:
     def test_schedule_and_pending(self):
         from drift_detector import has_pending_warmstart, schedule_warmstart

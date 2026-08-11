@@ -218,9 +218,11 @@ class TestCheckSpreadFilter:
         monkeypatch.setattr(filters, "get_current_atr", lambda cfg: 50.0)
         assert filters.check_spread_filter(basic_cfg) is False
 
-    def test_no_tick_passes(self, basic_cfg, monkeypatch):
+    def test_no_tick_fails_closed(self, basic_cfg, monkeypatch):
+        # No tick data (MT5 disconnected / symbol not subscribed) must
+        # fail-closed: never allow an entry when the spread is unknowable.
         monkeypatch.setattr(filters, "mt5_call", lambda fn, *a, _timeout=5, **kw: None)
-        assert filters.check_spread_filter(basic_cfg) is True
+        assert filters.check_spread_filter(basic_cfg) is False
 
     def test_no_atr_passes(self, basic_cfg, monkeypatch):
         monkeypatch.setattr(filters, "mt5_call", lambda fn, *a, _timeout=5, **kw: FakeTick())

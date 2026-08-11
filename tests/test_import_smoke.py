@@ -60,12 +60,6 @@ class TestMcValidation:
         assert hasattr(mc_validation, "compute_mc_report")
 
 
-class TestOptimizer:
-    def test_module_importable(self):
-        import optimizer
-        assert hasattr(optimizer, "walk_forward")
-
-
 class TestScenarioAnalysis:
     def test_module_importable(self):
         import scenario_analysis
