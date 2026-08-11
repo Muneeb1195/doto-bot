@@ -731,7 +731,7 @@ def optimize_symbol(
     }
 
 
-def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=None, no_ml=False):
+def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=None, no_ml=False, fast=False):
     from concurrent.futures import ProcessPoolExecutor, as_completed
 
     point, tick_value, volume_step = info["point"], info["tick_value"], info["volume_step"]
@@ -776,7 +776,7 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
         futures = {}
         for idx, (ef, es) in enumerate(phase1_combos):
             w1_windows = windows[:n_phase1]
-            future = executor.submit(run_walk_forward, w1_windows, phase1_params[idx], df_m1=df_m1, df_m15=df_m15)
+            future = executor.submit(run_walk_forward, w1_windows, phase1_params[idx], df_m1=df_m1, df_m15=df_m15, fast=fast)
             futures[future] = (ef, es)
 
         for future in as_completed(futures):
@@ -847,7 +847,7 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
     phase2_results = {}
     with ProcessPoolExecutor(max_workers=_max_workers()) as executor:
         futures = {
-            executor.submit(run_bt, df, params, df_m15=df_m15): k for (df, params), k in zip(phase2_combos, phase2_keys)
+            executor.submit(run_bt, df, params, df_m15=df_m15, fast=fast): k for (df, params), k in zip(phase2_combos, phase2_keys)
         }
         for done, future in enumerate(as_completed(futures), 1):
             k = futures[future]
@@ -1137,7 +1137,7 @@ def main():
         if use_twophase:
             print("  Using two-phase optimization (EMA sweep + SL/RR/ADX refinement)")
             best = optimize_symbol_twophase(
-                symbol, df, info, windows, df_m1=df_m1_sim, df_m15=df_m15, no_ml=args.no_ml
+                symbol, df, info, windows, df_m1=df_m1_sim, df_m15=df_m15, no_ml=args.no_ml, fast=fast
             )
         else:
             best = optimize_symbol(

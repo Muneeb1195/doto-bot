@@ -205,15 +205,6 @@ def fetch_data(symbol, years=5.1, csv_only=False):
         f"  {symbol}: {len(df)} bars ({df['time'].iloc[0].date()} to {df['time'].iloc[-1].date()}) "
         f"point={point} tick_val={tick_value}"
     )
-    acc_info = mt5_mod.account_info()
-    if acc_info and acc_info.currency.upper() != "USD":
-        base_cur = acc_info.currency.upper()
-        fx_pair = f"{base_cur}USD"
-        mt5_mod.symbol_select(fx_pair, True)
-        fx_rates = mt5_mod.copy_rates_from_pos(fx_pair, mt5_mod.TIMEFRAME_H1, 0, 3)
-        if fx_rates is not None and len(fx_rates) > 0:
-            rate = float(fx_rates[-1]["close"])
-            tick_value /= rate
     return df, {"point": point, "tick_value": tick_value, "volume_step": volume_step}
 
 
