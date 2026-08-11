@@ -192,7 +192,7 @@ def _handle_shutdown(signum, frame):  # noqa: ARG001
 
 
 def _apply_corr_ml_sizing(
-    sym_cfg, symbol, all_positions, kelly_mult, ml_conf, confidence_mult=1.0, scoring_enabled=True
+    sym_cfg, symbol, all_positions, kelly_mult, ml_conf, confidence_mult=1.0
 ):
     if sym_cfg["corr_enabled"]:
         existing_syms = [p.symbol for p in all_positions if p.symbol != symbol]
@@ -202,22 +202,6 @@ def _apply_corr_ml_sizing(
     else:
         corr_reduction = 1.0
     kelly_mult *= corr_reduction
-    if not scoring_enabled and ml_conf is not None and not np.isnan(ml_conf):
-        model_entry = _st._ml_models.get(symbol)
-        opt_threshold = model_entry.get("metadata", {}).get("optimal_threshold") if model_entry else None
-        threshold = sym_cfg["ml_threshold_overrides"].get(symbol)
-        if threshold is None:
-            threshold = opt_threshold if opt_threshold is not None else sym_cfg["ml_confidence"]
-        if (
-            opt_threshold is not None
-            and threshold == opt_threshold
-            and ml_conf is not None
-            and ml_conf < threshold
-            and ml_conf >= sym_cfg["ml_confidence"]
-        ):
-            threshold = sym_cfg["ml_confidence"]
-        ml_size_mult = max(0.5, min(ml_conf / max(threshold, 0.001), 2.0))
-        kelly_mult *= ml_size_mult
     kelly_mult *= confidence_mult
     return kelly_mult
 
