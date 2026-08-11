@@ -33,10 +33,21 @@ log_handler = logging.handlers.TimedRotatingFileHandler(
 log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logging.basicConfig(level=logging.INFO, handlers=[log_handler, logging.StreamHandler()])
 
-SYMBOLS = [
-    "XAU500.raw", "BTCUSD.raw", "NZDUSD.raw", "US30.raw", "GBPJPY.raw",
-    "SOLUSD.raw", "XRPUSD.raw", "DOGUSD.raw",
-]
+def _load_portfolio_symbols():
+    """Derive watched symbols from [PORTFOLIO] in settings.ini so the news
+    service stays in sync with what the bot actually trades."""
+    try:
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg.read(BASE_DIR / "config" / "settings.ini")
+        raw = cfg.get("PORTFOLIO", "symbols", fallback="")
+        return [s.strip() for s in raw.split(",") if s.strip()]
+    except Exception:
+        logging.warning("Could not load [PORTFOLIO] symbols from settings.ini; using fallback")
+        return ["BTCUSD.raw", "US30.raw", "GBPJPY.raw", "SOLUSD.raw", "XRPUSD.raw"]
+
+
+SYMBOLS = _load_portfolio_symbols()
 
 MARKETAUX_SYMBOL_MAP = {
     "XAU500.raw": "XAUUSD",

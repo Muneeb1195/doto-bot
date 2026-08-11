@@ -58,11 +58,10 @@ jobs:
         env:
           GITLEAKS_ENABLE_UPLOAD: "false"
           GITLEAKS_CONFIG: ""
-        continue-on-error: true
       - name: Grep fallback for obvious secrets
         run: |
-          echo "Scanning tracked .py/.ps1 for hardcoded secret assignments..."
-          matches=$(git ls-files '*.py' '*.ps1' | grep -vE 'tests/' | xargs grep -RIinE '(password|DASHBOARD_PASS|api_key|apikey|secret|token)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{4,}' 2>/dev/null || true)
+          echo "Scanning tracked .py/.ps1/.sh for hardcoded secret assignments..."
+          matches=$(git ls-files '*.py' '*.ps1' '*.sh' | grep -vE 'tests/' | xargs grep -RIinE '(password|DASHBOARD_PASS|api_key|apikey|secret|token)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{4,}' 2>/dev/null || true)
           if [ -n "$matches" ]; then
             echo "::error::Possible hardcoded secret found:"
             echo "$matches"
