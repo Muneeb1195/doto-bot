@@ -367,13 +367,18 @@ def fetch(logger):
 
 
 def dispatch(logger):
-    """Train -> optimize -> fetch, via gh. Returns 0 on success."""
+    """Export+push data -> train -> optimize -> fetch, via gh.
+    Returns 0 on success."""
     logger.info("=" * 60)
     logger.info("Dispatch + Download")
     logger.info("=" * 60)
 
     if not os.environ.get("GITHUB_TOKEN"):
         logger.error("GITHUB_TOKEN not set — required for --dispatch (gh auth)")
+        return 1
+
+    if not _push_market_data(logger):
+        logger.error("Data export/push failed — aborting cycle")
         return 1
 
     if not _dispatch_run(logger, "train.yml"):
@@ -385,6 +390,29 @@ def dispatch(logger):
 
     logger.info("Workflows finished; fetching artifacts...")
     return fetch(logger)
+
+
+def _push_market_data(logger):
+    """Run export_mt5_data.py then push_data.py so the fresh M1 data is on
+    GitHub before train.yml starts. Best-effort: a failure here aborts the
+    cycle so we never train on stale data."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import push_data
+
+    logger.info("Step 0/3: exporting market data from MT5...")
+    export_script = Path(__file__).resolve().parent / "export_mt5_data.py"
+    env = dict(os.environ)
+    r = subprocess.run(
+        [sys.executable, str(export_script), "--no-git"],
+        capture_output=True, text=True, env=env,
+    )
+    if r.returncode != 0:
+        logger.error(f"export_mt5_data.py failed: {r.stderr.strip()[-2000:]}")
+        return False
+    logger.info("Export complete; pushing M1 data to GitHub release...")
+    push_logger = logging.getLogger("push_data")
+    push_logger.setLevel(logging.INFO)
+    return push_data.push(logging.getLogger("push_data")) == 0
 
 
 def main():

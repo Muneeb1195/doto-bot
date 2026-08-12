@@ -1,3 +1,5 @@
-# H1/M15 history CSVs are ~41 MB total and commit fine as plain files.
-# Only M1 (~90 MB per symbol) needs Git LFS, and it is not committed today.
-data/history/*_M1.csv filter=lfs diff=lfs merge=lfs -text
+# M1 market-data CSVs are NOT stored in git (previously git-lfs). They are
+# exported on the home-server and uploaded as individual assets to a data-*
+# GitHub release by scripts/push_data.py; train.yml and the optimize.yml
+# shards download the assets they need via gh release download. H1/M15 CSVs
+# stay in plain git.

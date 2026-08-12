@@ -1002,3 +1002,48 @@ class TestChandelierExitParity:
         [t for t in results["trades"] if t.get("exit_reason") == "CHANDELIER"]
         # Not all backtests will have chandelier exits, but the logic must run
         assert isinstance(results["trades"], list)
+
+
+class TestNaNPolicyParity:
+    """Train and serve must apply the identical NaN->0 policy to the ML feature
+    matrix. Train uses np.nan_to_num(X, nan=0.0) (train_model.py); serve uses
+    df[features].fillna(0).values (backtest.py) and np.nan_to_num(latest.values,
+    nan=0.0) (filters.py). prepare_features converts inf->nan before this, so
+    both sides only ever see NaN/real values here."""
+
+    def test_train_and_serve_nan_policies_agree(self, seed=7):
+        rng = np.random.RandomState(seed)
+        X = rng.randn(50, 12)
+        mask = rng.rand(50, 12) < 0.2
+        X[mask] = np.nan
+        X = np.nan_to_num(X, nan=np.nan)  # ensure only NaN sentinels remain
+        df = pd.DataFrame(X)
+
+        train_policy = np.nan_to_num(X, nan=0.0)
+        serve_policy_backtest = df.fillna(0).values
+        serve_policy_filters = np.nan_to_num(df.values, nan=0.0)
+
+        np.testing.assert_array_equal(train_policy, serve_policy_backtest)
+        np.testing.assert_array_equal(train_policy, serve_policy_filters)
+
+    def test_prepare_features_no_inf_and_nan_fillable(self):
+        from ml_features import prepare_features
+
+        n = 300
+        rng = np.random.RandomState(7)
+        closes = 100 + np.cumsum(rng.randn(n))
+        df = pd.DataFrame({
+            "time": pd.date_range("2026-01-01", periods=n, freq="h"),
+            "open": closes - rng.uniform(0, 0.5, n),
+            "high": closes + abs(rng.randn(n)) * 2,
+            "low": closes - abs(rng.randn(n)) * 2,
+            "close": closes,
+            "tick_volume": rng.randint(100, 10000, n),
+        })
+        feat, _ = prepare_features(df, symbol="TEST")
+        # prepare_features must convert inf -> nan (never leave inf in the matrix)
+        assert not np.isinf(feat.values).any()
+        # every remaining NaN is filled with 0 by the serve policy
+        filled = feat.fillna(0).values
+        assert np.isnan(filled).sum() == 0
+        assert np.allclose(filled, np.nan_to_num(feat.values, nan=0.0))

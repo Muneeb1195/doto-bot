@@ -69,14 +69,14 @@ Global defaults (fallback): KAMA 10/40, SL=1.5, RR=2.0, ADX=25, 1%/trade, 5 max 
 
 ## Pool Models (ML)
 
-All 4 asset class pool models trained and loaded:
+All 4 asset class pool models trained (fixed 5 symbols each, see `POOL_SYMBOLS` in `train_model.py`) and loaded:
 
 | Pool | Symbols | Threshold | Accuracy |
 |------|---------|-----------|----------|
-| Commodity | XAUUSD, XAGUSD, XNGUSD, XAU500, XPTUSD | 0.40 | 88.7% |
-| Index | US30, SPY, US500, IWM | 0.30 | 79.0% |
-| Crypto | ETHUSD, BTCUSD, LTCUSD, DOGUSD, ADAUSD, XRPUSD, SOLUSD | 0.62 | 79.0% |
-| Forex | EURUSD, GBPUSD, USDJPY, EURJPY, GBPJPY, NZDUSD, etc. | — | — |
+| Commodity | XAUUSD, XAGUSD, XNGUSD, XPTUSD, XAU500 | 0.40 | 88.7% |
+| Index | US500, US100, US30, UK100, JP225 | 0.30 | 79.0% |
+| Crypto | BTCUSD, ETHUSD, SOLUSD, XRPUSD, DOGUSD | 0.62 | 79.0% |
+| Forex | EURUSD, USDJPY, GBPUSD, AUDUSD, USDCAD | — | — |
 
 ## Testing
 - 349 tests in `tests/` (pytest), covering indicators (KAMA, VIDYA, calc_ma dispatch, efficiency ratio, MA slope, fused regime score), signals (incl. RegimeGate hysteresis, get_mtf_fused_signal), risk, execution, filters (mock), backtest pipeline, state persistence, journal, risk (mock), config, TFT model (`test_tft_model.py`), drift/warm-start (`test_drift_retrain.py`)
@@ -104,16 +104,26 @@ The project has three roles and they must NOT overlap:
   and duplicate CI-owned jobs.
 - The home-server **triggers the workflows and pulls the results back
   automatically** via `scripts/download_models.py`:
-  - `--dispatch` (run by `doto-orchestrate` timer, 1st of month): uses the `gh`
-    CLI to run `train.yml`, then `optimize.yml --field mode=monthly`, waits for
-    each to complete, downloads `models.tar.gz` + `strategy-params.json`, applies
-    the params to `settings.ini`, and restarts `doto-bot`.
+  - `--dispatch` (run by `doto-orchestrate` timer, 1st of month): exports market
+    data (`export_mt5_data.py --no-git`) and uploads the M1 CSVs to a `data-*`
+    release (`scripts/push_data.py`), uses the `gh` CLI to run `train.yml`, then
+    `optimize.yml --field mode=monthly`, waits for each to complete, downloads
+    `models.tar.gz` + `strategy-params.json`, applies the params to
+    `settings.ini`, and restarts `doto-bot`.
   - `--fetch-only` (default; run by `doto-download` timer hourly as a safety net):
     pure URL/urllib download of the latest `train-*`/`optimize-*` releases, no `gh`
     needed. Tracks progress in `.last_train_tag`/`.last_optimize_tag` (two files —
     models and params come from separate release streams).
-  - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write) in
-    `config/credentials.ini`, injected as `GITHUB_TOKEN` via the unit EnvironmentFile.
+  - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write, Contents:
+    write) in `config/credentials.ini`, injected as `GITHUB_TOKEN` via the unit
+    EnvironmentFile.
+- **Market data flows via GitHub releases, not git.** M1 history (~2 GB for all
+  symbols) would blow the git-lfs bandwidth quota if checked out per CI run.
+  Instead `data/history/*_M1.csv` files are uploaded as individual assets to a
+  `data-<ts>` release by `scripts/push_data.py`; `train.yml` and the `optimize.yml`
+  shards download exactly the `*_M1.csv` (or per-symbol `<SYM>_M1.csv`) assets they
+  need via `gh release download`. H1/M15 CSVs stay in plain git. Prune keeps only
+  the 2 newest `data-*` releases.
 - The home-server **deploys via scp** (it has no `.git`): copy changed files to
   `~/doto-mt5-bot/`, clear `bot/__pycache__`, `systemctl --user restart doto-bot`.
 

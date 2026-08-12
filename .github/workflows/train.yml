@@ -22,11 +22,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          # Unlike optimize.yml this is a single job (not an 8-way matrix) and
-          # it trains every symbol, so it legitimately needs all M1 files. That
-          # is one ~814 MB LFS pull per run, which fits the free-tier budget;
-          # the matrix job fetches per-symbol instead.
-          lfs: true
+          # M1 market data is NOT in git (git-lfs). It flows via a `data-*`
+          # GitHub release published by the home-server's scripts/push_data.py
+          # after each export, so this job pulls it from the release instead
+          # of a multi-GB LFS checkout.
+          lfs: false
+      - name: Fetch M1 market data
+        run: |
+          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName --jq 'map(select(startswith("data-"))) | .[0]')
+          if [ -z "$TAG" ]; then echo "No data-* release found"; exit 1; fi
+          echo "Fetching M1 data from release $TAG"
+          mkdir -p data/history
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*_M1.csv' --dir data/history
+          echo "M1 files: $(ls data/history/*_M1.csv 2>/dev/null | wc -l)"
+          # Sanity check: files must be real CSVs, not LFS pointer files.
+          if head -c 40 "$(ls data/history/*_M1.csv | head -1)" | grep -q 'git-lfs.github.com'; then
+            echo "ERROR: downloaded file is a git-lfs pointer"; exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.12'

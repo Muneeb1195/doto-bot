@@ -85,6 +85,9 @@ ASSET_CLASS_MAP = {
     "SPY.raw": "index",
     "US500.raw": "index",
     "IWM.raw": "index",
+    "US100.raw": "index",
+    "UK100.raw": "index",
+    "JP225.raw": "index",
 }
 
 _exec_bias: dict[str, dict] = {}  # symbol -> {"bias": str, "since": float, "date": date}

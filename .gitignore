@@ -24,4 +24,7 @@ scripts/mt5server.exe
 # MT5 socket server compiled binary
 scripts/*.ex5
 data/history/.export_meta.json
+# M1 market data flows via data-* GitHub releases (scripts/push_data.py),
+# not git. Keep the local files for offline dev/backtest but never commit them.
+data/history/*_M1.csv
 .venv_windows_stale/

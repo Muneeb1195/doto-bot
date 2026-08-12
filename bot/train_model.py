@@ -61,6 +61,16 @@ ASSET_CLASS_MAP = {
     "SPY.raw": "index",
     "US500.raw": "index",
     "IWM.raw": "index",
+    "US100.raw": "index",
+    "UK100.raw": "index",
+    "JP225.raw": "index",
+}
+
+POOL_SYMBOLS = {
+    "commodity": ["XAUUSD.raw", "XAGUSD.raw", "XNGUSD.raw", "XPTUSD.raw", "XAU500.raw"],
+    "index": ["US500.raw", "US100.raw", "US30.raw", "UK100.raw", "JP225.raw"],
+    "crypto": ["BTCUSD.raw", "ETHUSD.raw", "SOLUSD.raw", "XRPUSD.raw", "DOGUSD.raw"],
+    "forex": ["EURUSD.raw", "USDJPY.raw", "GBPUSD.raw", "AUDUSD.raw", "USDCAD.raw"],
 }
 
 
@@ -223,6 +233,24 @@ LGB_FIXED_PARAMS = {
 }
 
 
+def _as_named_frame(X, model):
+    """Return X as a DataFrame with LGBM feature names to silence the
+    'X does not have valid feature names' warning (LGBM 4.x fitted with names).
+
+    Reaches through _CalibratedWrapper to the underlying estimator. Column
+    order is preserved, so predictions are unchanged. If the model has no
+    feature_names_in_ (e.g. XGB) or X is already a DataFrame, X is returned
+    as-is.
+    """
+    if X is None or isinstance(X, pd.DataFrame):
+        return X
+    base = getattr(model, "base_model", model)
+    names = getattr(base, "feature_names_in_", None)
+    if names is None or len(names) != X.shape[1]:
+        return X
+    return pd.DataFrame(X, columns=list(names))
+
+
 class EnsembleModel:
     def __init__(self, xgb_model, lgb_model, tft_model=None):
         self.xgb = xgb_model
@@ -236,7 +264,7 @@ class EnsembleModel:
 
     def predict(self, X):
         xgb_pred = self.xgb.predict(X)
-        lgb_pred = self.lgb.predict(X)
+        lgb_pred = self.lgb.predict(_as_named_frame(X, self.lgb))
         n_models = 2
         tft_model = self.tft
         if tft_model is not None:
@@ -249,7 +277,7 @@ class EnsembleModel:
 
     def predict_proba(self, X):
         xgb_proba = self.xgb.predict_proba(X)
-        lgb_proba = self.lgb.predict_proba(X)
+        lgb_proba = self.lgb.predict_proba(_as_named_frame(X, self.lgb))
         n_models = 2
         tft_model = self.tft
         if tft_model is not None:
@@ -275,7 +303,7 @@ class EnsembleRegressor:
 
     def predict(self, X):
         xgb_pred = self.xgb.predict(X)
-        lgb_pred = self.lgb.predict(X)
+        lgb_pred = self.lgb.predict(_as_named_frame(X, self.lgb))
         return (xgb_pred.astype(float) + lgb_pred.astype(float)) / 2
 
     def get_params(self, deep=True):  # noqa: ARG002
@@ -436,11 +464,11 @@ class _CalibratedWrapper:
         self.isotonic_reg = isotonic_reg
 
     def predict(self, X):
-        raw = self.base_model.predict(X)
+        raw = self.base_model.predict(_as_named_frame(X, self.base_model))
         return raw
 
     def predict_proba(self, X):
-        raw = self.base_model.predict_proba(X)
+        raw = self.base_model.predict_proba(_as_named_frame(X, self.base_model))
         cal = self.isotonic_reg.predict(raw[:, 1])
         cal = np.clip(cal, 0, 1)
         out = np.zeros_like(raw)
@@ -479,12 +507,12 @@ def calibrate_model(model, X_calib, y_calib, method="isotonic"):  # noqa: ARG001
             iso_xgb = IsotonicRegression(out_of_bounds="clip").fit(xgb_raw, y_calib)
             model.xgb = _CalibratedWrapper(model.xgb, iso_xgb)
 
-            lgb_raw = model.lgb.predict_proba(X_calib)[:, 1]
+            lgb_raw = model.lgb.predict_proba(_as_named_frame(X_calib, model.lgb))[:, 1]
             iso_lgb = IsotonicRegression(out_of_bounds="clip").fit(lgb_raw, y_calib)
             model.lgb = _CalibratedWrapper(model.lgb, iso_lgb)
             logging.info(f"Calibrated ensemble (isotonic) on {len(X_calib)} holdout samples")
         else:
-            raw = model.predict_proba(X_calib)[:, 1]
+            raw = model.predict_proba(_as_named_frame(X_calib, model))[:, 1]
             iso = IsotonicRegression(out_of_bounds="clip").fit(raw, y_calib)
             model = _CalibratedWrapper(model, iso)
             logging.info(f"Calibrated model (isotonic) on {len(X_calib)} holdout samples")
@@ -1057,25 +1085,23 @@ def main():
         return
 
     if args.pool:
-        classes = set(ASSET_CLASS_MAP.get(s) for s in symbols if s in ASSET_CLASS_MAP)
-        for cls in classes:
-            class_syms = [s for s in symbols if ASSET_CLASS_MAP.get(s) == cls]
-            if len(class_syms) >= 2:
-                try:
-                    train_pool_model(
-                        class_syms,
-                        args.years,
-                        args.tp_atr,
-                        args.sl_atr,
-                        args.max_hold,
-                        tft=args.tft,
-                        csv_mode=args.csv,
-                    )
-                except Exception as e:
-                    import traceback
+        for cls in sorted(POOL_SYMBOLS):
+            class_syms = POOL_SYMBOLS[cls]
+            try:
+                train_pool_model(
+                    class_syms,
+                    args.years,
+                    args.tp_atr,
+                    args.sl_atr,
+                    args.max_hold,
+                    tft=args.tft,
+                    csv_mode=args.csv,
+                )
+            except Exception as e:
+                import traceback
 
-                    print(f"Error training pool for {cls}: {e}")
-                    traceback.print_exc()
+                print(f"Error training pool for {cls}: {e}")
+                traceback.print_exc()
 
     for symbol in symbols:
         try:

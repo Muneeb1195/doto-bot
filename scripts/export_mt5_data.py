@@ -26,9 +26,17 @@ CONFIG_DIR = BASE_DIR / "config"
 HISTORY_DIR = BASE_DIR / "data" / "history"
 LOG_FILE = BASE_DIR / "logs" / "export_mt5_data.log"
 
+# 8 live-portfolio symbols + 13 asset-class pool symbols. The home-server
+# dispatches export_mt5_data.py (no args) each monthly cycle and uploads the
+# M1 files to a data-* release; train.yml trains the pools on ALL symbols, so
+# the pool symbols must be exported too even though the bot does not trade them.
 SYMBOLS = [
     "BTCUSD.raw", "US30.raw", "GBPJPY.raw", "SOLUSD.raw",
     "XRPUSD.raw", "EURUSD.raw", "US500.raw", "XAUUSD.raw",
+    "XAGUSD.raw", "XNGUSD.raw", "XPTUSD.raw", "XAU500.raw",
+    "US100.raw", "UK100.raw", "JP225.raw",
+    "ETHUSD.raw", "DOGUSD.raw", "USDJPY.raw", "GBPUSD.raw",
+    "AUDUSD.raw", "USDCAD.raw",
 ]
 
 # A single copy_rates_range is capped at ~100k bars by the terminal, which
