@@ -41,12 +41,13 @@ Discord webhook for CI notifications.
 
 ### scripts/export_mt5_data.py
 - Export H1 + M15 + M1 bars from MT5 terminal → data/history/<symbol>_<tf>.csv
-- Reference: bot/parallel_optimize.py:_fetch_csv_mode() for MT5→CSV logic
+- Reference: scripts/export_mt5_data.py for MT5→CSV export logic
+- On-demand harvest: `bot/optimize_params.py --fetch-csv` — same `<symbol>_<TF>.csv` convention, harvests the `[PORTFOLIO]` symbols then exits; this replaces the deleted `parallel_optimize.py` harvest (which wrote the unreadable `<symbol>.csv`)
 - CSV columns: time,open,high,low,close,tick_volume,spread (epoch seconds for time)
 - Portfolio symbols: BTCUSD.raw, US30.raw, GBPJPY.raw, SOLUSD.raw, XRPUSD.raw, EURUSD.raw, US500.raw, XAUUSD.raw
 - For each symbol, export 3 files: <symbol>_H1.csv, <symbol>_M15.csv, <symbol>_M1.csv
 - Graceful no-op if MT5 not connected (don't crash the timer)
-- Use mt5.copy_rates_range() for H1/M15, mt5_connect.fetch_rates_paged() for M1
+- Use mt5.copy_rates_range() for H1; mt5_connect.fetch_rates_paged() for M15/M1 (single calls cap at ~100k bars)
 - Save point/tick_value/vstep to settings.ini [SYMBOL_POINTS] for offline reconstruction
 
 ### scripts/download_models.py
@@ -59,13 +60,13 @@ Discord webhook for CI notifications.
 - Exit cleanly if no new release or no gh auth
 
 ### bot/train_model.py (--csv flag)
-- When `--csv`: use `load_csv_data()` from parallel_optimize instead of `mt5.copy_rates_range()`
+- When `--csv`: use `load_csv_data_train()` (defined in this module) instead of `mt5.copy_rates_range()`
 - Load M15 from `data/history/<symbol>_M15.csv` for MTF features
 - Load M1 from `data/history/<symbol>_M1.csv` for orderflow feature backfill
 - Rest of training pipeline unchanged
 
 ### bot/optimize_params.py (--csv flag)
-- Add `--csv` flag, thread through `fetch_data()` → `load_csv_data()`
+- Add `--csv` flag: `fetch_data(symbol, years, csv_mode=True)` reads `data/history/<symbol>_H1.csv` via `_load_csv_data()` (optimizer_common.py); M1/M15 load via `load_csv_data_train(symbol, tf_name='M1'/'M15')` (train_model.py)
 - When `--csv`: no MT5 connection needed
 
 ### .github/workflows/train.yml
@@ -192,9 +193,11 @@ data/history/*.csv filter=lfs diff=lfs merge=lfs -text
 - `update_symbol_strategy(symbol, rec, settings)` — bot/auto_optimizer.py:114
   - Maps CSV keys → settings.ini: ema_fast→ema_fast_period, sl→atr_sl_multiplier, etc.
   - Uses `write_settings()` for atomic write
-- `load_csv_data(symbol)` — bot/parallel_optimize.py:124
-  - CSV → DataFrame parser
-- `_fetch_csv_mode(args)` — bot/parallel_optimize.py:542
+- `_load_csv_data(symbol)` — bot/optimizer_common.py
+  - CSV → DataFrame parser for optimization runs (reads data/history/<symbol>_H1.csv)
+- `load_csv_data_train(symbol, tf_name)` — bot/train_model.py
+  - CSV → DataFrame parser for training runs
+- `scripts/export_mt5_data.py`
   - Reference for MT5→CSV export logic
 
 ## Param Mapping (existing)

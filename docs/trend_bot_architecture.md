@@ -488,19 +488,14 @@ Set via `Environment=` in systemd service file. All routes require valid credent
 
 ```json
 {
-  "timestamp": "2026-07-10T00:06:05",
   "balance": 55123.45,
   "equity": 55234.56,
   "profit": 111.11,
-  "margin": 0,
   "margin_free": 55123.45,
   "positions": 0,
-  "equity_history": [{"time": "...", "balance": 55123.45, "equity": 55150.00}, ...],
   "regimes": {"EURUSD.raw": "uncertain", "NZDUSD.raw": "strong_trend", ...},
-  "exec_quality": {"EURUSD.raw": {"avg_slippage_pct": 0.001, "rejections": 0, "trades": 3}},
   "positions_detail": [{"symbol": "XAU500.raw", "type": "sell", ...}],
   "filters": {"EURUSD.raw": {"exec": 0, "volume": 0, ...}},
-  "correlation": {"EURUSD.raw-EURJPY.raw": 0.623, ...},  # refreshed hourly via _corr_cache
   "health": {"connected": true, "server": "MetaQuotes-Demo"}
 }
 ```

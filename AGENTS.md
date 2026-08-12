@@ -1,11 +1,10 @@
 # Doto MT5 Bot — Agent Context
 
 ## Stack
-- **Python 3.12** (home-server: Linux/Arch under Wine; dev: native)
-- **MetaTrader5** Python package (native MT5 terminal)
+- **Python 3.12** (dev/CI; the home-server venv is Python **3.14** — see Key Conventions)
+- **mt5linux 0.1.10** — SOLE MT5 backend via the RPyC bridge (mt5server.exe, :18812) on the home-server; no native MetaTrader5 package on Linux (mt5linux ≥1.0.0 uses a Docker-backed client — CI mocks it in tests/conftest.py)
 - **scikit-learn** / **XGBoost** / **LightGBM** — ML ensemble
 - **FastAPI** + **uvicorn** — dashboard
-- **mt5linux** — MT5 RPyC bridge (mt5server.exe) on the home-server
 - **systemd user units** — daemon management on the home-server
 - **pandas / numpy** — data processing
 
@@ -18,7 +17,7 @@
 - **`risk.py`** — Position sizing, Kelly, volatility mult
 - **`indicators.py`** — Pure pandas technical indicators (KAMA, VIDYA, calc_ma dispatch, EMA kept for MACD, ATR, RSI, ADX)
 - **`ml_features.py`** — Feature engineering for ML models (KAMA ratios, not EMA ratios; MACD stays EMA-based)
-- **`train_model.py`** — RandomForest/XGB/LGBM ensemble training
+- **`train_model.py`** — XGB+LGBM ensemble training (optional TFT member; no RandomForest — `EnsembleModel(xgb, lgb, tft_model=...)` averages calibrated XGB + LGBM)
 - **`calibrate_models.py`** — Isotonically calibrate trained models via holdout set
 - **`backtest.py`** — Vectorized backtesting engine
 - **`config.py`** — INI-based config loader with per-symbol strategy overrides (supports `ma_type: kama|vidya`). MTF config keys: `mtf_enabled`, `mtf_agreement_threshold`.
@@ -35,9 +34,8 @@
 - **`mc_ruin.py`** — Monte Carlo ruin estimation (bootstrap trade sequences)
 - **`mc_validation.py`** — Monte Carlo validation of backtest results
 - **`scenario_analysis.py`** — Instantaneous market scenario stress testing
-- **`parallel_optimize.py`** — Multi-process parallel walk-forward optimization
 - **`auto_optimizer.py`** — Param-apply helpers (`load_portfolio`/`update_symbol_strategy`/`write_settings`) reused by `scripts/download_models.py`; no local scheduler
-- **`optimize_params.py`** — Shared optimization helpers (two-phase: MA sweep + SL/RR/ADX refinement)
+- **`optimize_params.py`** — the **single optimizer entry point** (the former `parallel_optimize.py` was merged in; shared helpers live in `optimizer_common.py`). Flags: `--two-phase` (default), `--full-grid`, `--cpcv`, `--quick`, `--fast`/`--no-fast`, `--no-ml`, `--m1-sim`, `--auto-train`, `--cpcv-paths`, `--years`, `--symbols` (default `ALL` = `[PORTFOLIO]`), `--csv` (offline from `data/history/*_<TF>.csv`), `--fetch-csv` (harvest H1/M15/M1 from MT5 → `data/history/<SYMBOL>_<TF>.csv`, then exit; mutually exclusive with `--csv`)
 - **`tune_scaleout.py`** — Scale-out parameter tuning
 - **`screen_symbols.py`** / **`screen_fast.py`** — Symbol screening utilities
 
@@ -50,22 +48,41 @@
 - PKR account: balance displayed as `Rs.`, no USD conversion
 - MA dispatch: `cfg['ma_type']` — `kama` for non-crypto (XAU500, NZDUSD, US30, GBPJPY), `vidya` for crypto (BTCUSD, SOLUSD, XRPUSD, DOGUSD)
 - M1 entry simulation via `_simulate_m1()` in backtest
+- **Python version split**: home-server venv is Python **3.14** (cpython-314 .pyc), dev + CI use **3.12**. Don't assume version parity when reproducing live behaviour locally; numba JIT cache keys in optimize.yml are already py-version-keyed
+- **Live env (verified 2026-08-12)**: MT5 terminal **build 6101** under Wine; broker reports `trade_stops_level = 0` on all symbols, so `_min_stop_points` in `execution.py` enforces **spread + 10 pts** as the stop floor
 
-## Portfolio (7 symbols) — MTF-Optimized (H4/H1/M15 day-trading, Jul 2026)
+## Portfolio (8 symbols) — MTF-Optimized (H4/H1/M15 day-trading, Aug 2026)
 
-| Symbol | MA | Fast | Slow | SL | RR | ADX | WF | Notes |
-|--------|----|------|------|----|----|-----|-----|-------|
-| XAU500 | KAMA | 12 | 48 | 2.0 | 2.5 | 25 | 0.9 | MTF on |
-| US30 | KAMA | 6 | 24 | 1.5 | 2.0 | 25 | 2.0 | MTF on |
-| GBPJPY | KAMA | 6 | 24 | 1.0 | 2.0 | 25 | 3.0 | MTF on |
-| BTCUSD | VIDYA | 12 | 36 | 1.5 | 2.0 | 30 | 1.2 | MTF off, no-ML |
-| SOLUSD | VIDYA | 10 | 30 | 1.5 | 2.0 | 28 | 5.7 | MTF on |
-| XRPUSD | VIDYA | 3 | 12 | 1.0 | 2.0 | 25 | 2.4 | MTF on |
-| DOGUSD | VIDYA | 6 | 18 | 1.5 | 2.0 | 30 | 0.4 | MTF on |
+Params below are the **live-applied** state as of the `optimize-20260812-1348` cycle
+(plateau pick, gated DSR ≥ 0.95 / PBO ≤ 0.50; `score` = `scoring_min_entry`).
+The repo `config/settings.ini` was synced to this exact state on 2026-08-12;
+it will drift again after the next optimize cycle (CI writes, the box applies,
+the repo is only the seed — see Deployment drift below).
+
+| Symbol | MA | Fast | Slow | SL | RR | ADX | score | MTF | Gate |
+|--------|----|------|------|----|----|-----|-------|-----|------|
+| BTCUSD | VIDYA | 3 | 12 | 1.5 | 3.0 | 30 | 0.60 | off | PASS |
+| US30 | KAMA | 10 | 40 | 2.0 | 2.0 | 25 | 0.60 | on | PASS |
+| GBPJPY | KAMA | 6 | 24 | 2.0 | 2.5 | 22 | 0.55 | on | PASS |
+| SOLUSD | VIDYA | 6 | 18 | 1.5 | 2.0 | 25 | 0.60 | on | PASS |
+| XRPUSD | VIDYA | 8 | 24 | 1.5 | 3.0 | 30 | 0.55 | on | PASS |
+| EURUSD | KAMA | 12 | 48 | 1.0 | 1.5 | 22 | 0.70* | off | FAIL x1 |
+| US500 | KAMA | 10 | 40 | 1.0 | 2.0 | 22 | 0.55 | off | PASS |
+| XAUUSD | KAMA | 10 | 40 | 2.0 | 2.5 | 25 | 0.75* | on | FAIL x1 |
+
+\* EURUSD (PBO=0.92 > 0.50) and XAUUSD (DSR=0.934 < 0.95) failed the gate on
+this cycle; per the hybrid policy both are at **failure strike 1**: best params
+re-applied with a TIGHTENED entry (`scoring_min_entry` + 0.15), still trading.
+`.symbol_streaks.json` tracks the streaks; a 2nd consecutive failure pauses new
+entries (`trading_enabled = false`), a fresh pass resets the streak.
 
 Global defaults (fallback): KAMA 10/40, SL=1.5, RR=2.0, ADX=25, 1%/trade, 5 max positions.
 
-**MTF notes**: BTCUSD gets 0 trades with MTF enabled (M15 crossover too rare for this symbol); `mtf_enabled = false` in `[STRATEGY:BTCUSD.raw]`. Other 6 symbols use H4 trend gate + H1/H4 agreement + M15 MA crossover entry with `agreement_threshold = 0.67`.
+**MTF notes**: BTCUSD, EURUSD and US500 get 0 trades with MTF enabled (M15
+crossover too rare for those symbols); `mtf_enabled = false` in their
+`[STRATEGY:*]` sections. The other 5 symbols (US30, GBPJPY, SOLUSD, XRPUSD,
+XAUUSD) use H4 trend gate + H1/H4 agreement + M15 MA crossover entry with
+`agreement_threshold = 0.67`.
 
 ## Pool Models (ML)
 
@@ -126,8 +143,10 @@ The project has three roles and they must NOT overlap:
   re-enables the symbol. `trading_enabled` is a per-symbol `SYMBOL_STRATEGY_MAP`
   key (bool-converted, defaults true).
   - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write, Contents:
-    write) in `config/credentials.ini`, injected as `GITHUB_TOKEN` via the unit
-    EnvironmentFile.
+    write), injected as `GITHUB_TOKEN` via the unit EnvironmentFile
+    `~/.config/doto-orchestrate.env` — the file systemd actually reads. A token
+    pasted into `config/credentials.ini` (which holds only the MT5 login +
+    Discord webhook) is silently ignored.
 - **Market data flows via GitHub releases, not git.** M1 history (~2 GB for all
   symbols) would blow the git-lfs bandwidth quota if checked out per CI run.
   Instead `data/history/*_M1.csv` files are uploaded as individual assets to a
@@ -137,6 +156,40 @@ The project has three roles and they must NOT overlap:
   the 2 newest `data-*` releases.
 - The home-server **deploys via scp** (it has no `.git`): copy changed files to
   `~/doto-mt5-bot/`, clear `bot/__pycache__`, `systemctl --user restart doto-bot`.
+- **systemd user units are NOT in the repo** (`git ls-files` finds zero `.service`/
+  `.timer`). They live only at `~/.config/systemd/user/` on the server: the MT5
+  display stack (`xvfb-mt5`/`fluxbox-mt5`/`x11vnc-mt5`/`xfce4-mt5`/`mt5`/`mt5server`)
+  is generated by `scripts/deploy-linux.sh` (Phases 5-6); the `doto-*` units
+  (`doto-bot`, `doto-dashboard`, `doto-dashboard-publish`, `doto-backup`,
+  `doto-download`, `doto-news`, `doto-orchestrate`, + timers) were hand-added. A
+  previously referenced `failure-alert` unit no longer exists (verified
+  2026-08-13). Editing a unit in git changes nothing until it is
+  regenerated/edited on the server.
+
+## Deployment drift (verified 2026-08-12)
+
+Because the box has no git and is updated by manual scp, the live copy can lag
+`main`. Known at the last audit:
+
+- Live `bot/execution.py` was **behind main** at audit: missing commit `27427c1`'s
+  emergency stop-loss for naked positions (when a close fails, the position is
+  live with no SL/TP — set a wide emergency SL via `TRADE_ACTION_SLTP`) and the
+  post-`TRADE_RETCODE_REQUOTE` position-dedup check (verify with
+  `mt5.positions_get` before retrying to avoid double-placing). Deployed and
+  verified live on 2026-08-12 — future deploys: push the file, clear
+  `bot/__pycache__`, restart `doto-bot`.
+- Live `bot/optimize_params.py` / `bot/train_model.py` also differed, but those
+  files **never run on the home-server** (optimization + training run only on
+  GitHub Actions), so their drift does not affect live trading.
+- After every deploy, verify parity: `md5sum bot/*.py scripts/*.py` on both
+  sides. `main.py`, `signals.py`, `filters.py`, `scripts/download_models.py`,
+  `scripts/push_data.py` were in sync at the audit.
+- **Never scp `config/settings.ini` from dev to the server.** The server's copy
+  is the live source of truth: `scripts/download_models.py` mutates it with the
+  CI-applied params (`scoring_min_entry`, `trading_enabled`, hybrid-policy
+  changes). Overwriting it with the repo's copy reverts the applied params. The
+  repo's `settings.ini` is the seed used by CI for the symbol matrix and
+  naturally lags the live-applied state after each cycle.
 
 ## Clean redeploy
 - `scripts/redeploy.sh` (Linux) restarts `doto-bot` + `doto-dashboard` and polls
@@ -151,13 +204,19 @@ The project has three roles and they must NOT overlap:
 - Pip cache enabled for faster installs
 
 ## Data Files
-- `data/bot_state.json` — Trade state (atomic write, crash-safe)
+- `data/bot_state.json` — Trade state (atomic write, crash-safe). `tail_risk_cooldown`
+  values are epoch **expiry** timestamps (`now + tr_cooldown*60` in `risk.py`) — the
+  cooldown is active while `now < value`, not a "triggered at" clock
 - `data/dashboard_state.json` — Dashboard snapshot (atomic write, 5000 equity history entries)
 - `data/news_sentiment.json` — News sentiment cache
 - `logs/trades.csv` — Trade journal (O(1) append on close)
 - `logs/bot.log` — Active log (TimedRotatingFileHandler, midnight UTC rotation; rotated files named `bot.log.YYYY-MM-DD`)
 - `models/model_{symbol}.pkl` — ML ensemble models (per-symbol + pool: model_pool_{commodity,index,crypto,forex}.pkl)
 - `models/model_{symbol}.calib.npz` — Calibration holdout files
+- `models/` **accumulates stale model files across cycles**: `download_models.py::_extract_models`
+  only MOVES files in (flatten from the tar), never prunes. Strays (old symbols,
+  retired pools) must be archived manually (e.g. `models/_archive/`) + verified
+  against the running bot before deletion
 - `backups/doto_backup_YYYYMMDD_HHMMSS.tar.gz` — Daily backup archive (7-day rotation via `backup.py`)
 
 ## Risk Limits
@@ -169,10 +228,18 @@ The project has three roles and they must NOT overlap:
 - Correlation: sizing reduced up to 50% when symbols correlate
 
 ## Optimization
-- Two-phase by default: Phase 1 = MA param sweep (6 pairs × 2 windows), Phase 2 = SL/RR/ADX refinement (top 2 MA pairs × all windows)
-- ~4x speedup vs full grid with minimal quality loss
-- `optimize_params.py --symbols X,Y --years 3 --two-phase`
+- `optimize_params.py` is the **single optimizer entry point** — `parallel_optimize.py` is deleted (its `optimize_symbol_parallel` was the same algorithm as `--two-phase`); shared helpers live in `optimizer_common.py`. Symbol default `ALL` resolves to `[PORTFOLIO] symbols` from settings.ini (never a hardcoded list).
+- Two-phase by default: Phase 1 = MA param sweep (6 pairs × 2 windows), Phase 2 = SL/RR/ADX refinement (top 2 MA pairs × all windows). ~4x speedup vs full grid with minimal quality loss.
+- **Flag surface**: `--two-phase` (default) · `--full-grid` (weekly CI) · `--cpcv` (monthly CI) · `--quick` · `--fast`/`--no-fast` (Numba-JIT vs reference loop) · `--no-ml` · `--m1-sim` · `--auto-train` · `--cpcv-paths N` · `--years N` · `--symbols S1,S2` · `--csv` (offline: reads `data/history/*_<TF>.csv`, no MT5 terminal — how CI runs it) · `--fetch-csv` (harvest H1/M15/M1 from MT5 into `data/history/<SYMBOL>_<TF>.csv` then exit; requires the live terminal, so it is mutually exclusive with `--csv`; replaces the deleted `parallel_optimize._fetch_csv_mode`, which wrote the unreadable `<SYMBOL>.csv`)
+- Example: `optimize_params.py --symbols X,Y --years 3 --two-phase` (live MT5) or `... --csv` (offline)
 - Speed comes from `ProcessPoolExecutor` (one worker per CPU, leaving 1 core) + per-process ML model/ML-multiplier caches (`_ML_DATA_CACHE`/`_ML_MULT_CACHE` in `backtest.py`) + a Numba-JIT fast path (`backtest_njit._simulate_core`) that is the default when `fast=True`. The pandas loop remains the reference path for parity tests.
+- The pre-CI local sweepers (`scripts/_archive/sweep_symbols.py`, `sweep_remaining.py`) are **archived** (2026-08-13): superseded by `optimize.yml` (CI-only), hardcoded Windows venv path, and `sweep_remaining.py` parses an optimizer output format that no longer exists. See `scripts/_archive/README.md` — only the resume/WF-ranking pattern is worth porting to CI.
+
+## Manual tools (maintained — dev-side, not CI-owned)
+- `bot/validate_entry_config.py` — pre-flight settings.ini sanity check before an optimization run: `python -m bot.validate_entry_config [--symbols X,Y] [--min-entry-score 0.55]`. Exits non-zero on missing `[STRATEGY:<sym>]` sections, out-of-range params, or missing ML model files, so a long grid run never fails midway. Sole kept copy — the former `tools/validate_entry_config.py` was removed (it needed the native MetaTrader5 package and imported `compute_entry_score` from the old signals location).
+- `tools/parity_check.py` — dev-side guard that `Backtest.run(fast=False)` (pandas reference) and `fast=True` (Numba JIT) produce identical trades/equity on synthetic data; prints `PNL MATCH`/`EQ MATCH`.
+- `tools/trace_parity.py` — same fast-vs-reference comparison, but stops at the FIRST diverging trade and dumps both trade streams around it (entry/exit bars, exit reason, type, PNL) to debug JIT drift.
+- `tools/diagnose_entry_rate.py` — replays the live entry pipeline (fused-regime gate → MTF/MR signal → htf trend → entry score → exec sanity) on historical data to diagnose why signals fail (`python tools/diagnose_entry_rate.py --symbol X --years 1`); mirrors `backtest.py` bar-for-bar (parity-verified), MR replay assumes a flat book (lower bound), requires a live MT5 terminal.
 
 ## Phase 3 — Multi-TF Fusion (2026-07-22, daytrading H4/H1/M15)
 - **`get_mtf_fused_signal()`** in `signals.py` — H4 trend bias + H1/H4 agreement gate + M15 MA crossover entry. Returns (signal, atr, entry_type, agreement_ratio). H4 determines bias, H1/H4 must agree on direction; M15 provides entry timing when its MA cross aligns with the H4/H1 consensus. Falls back to H1 pullback entry when M15 produces no crossover but H4/H1 bias exists.
@@ -184,8 +251,8 @@ The project has three roles and they must NOT overlap:
 **Optimizer changes**: `fetch_m15_data()` uses `copy_rates_from` with **backward paging** (via `mt5_connect.fetch_rates_paged`, `chunk_bars=MAX_M15_BARS=80000`) to stitch a full 3y window — a single per-request call was capped at ~80k bars (~2.3y M15) and silently truncated the early window. M15 fetched before H1 (MT5 bug: H1→M15 order causes -2 error). `mtf_enabled` added to `build_params()` override map for per-symbol disable. BTCUSD.raw uses `mtf_enabled = false` in INI.
 
 ## Full timeframe coverage in training & optimization (2026-07-23)
-- **M1 (orderflow `of_*`)**: now fetched unconditionally in `train_model` (per-symbol + pool), `optimize_params`, `parallel_optimize`, and `auto_optimizer`, and aggregated into `of_*` columns once per symbol via `ml_features.attach_orderflow_features(df, m1_df)` BEFORE window slicing. This closes the train/serve skew where `of_*` were always NaN→0.0 (item #11 follow-up).
-- **M15 (MTF entry TF)**: `df_m15` is now threaded into `Backtest(df, params, df_m15=...)` in all three optimizers, so MTF-enabled symbols (XAU500, US30, GBPJPY, SOLUSD, XRPUSD, DOGUSD) are evaluated on the real MTF signal path instead of the degraded M15-less path. Previously only `optimize_params` passed M15; `parallel_optimize` and `auto_optimizer` ran H1-only.
+- **M1 (orderflow `of_*`)**: now fetched unconditionally in `train_model` (per-symbol + pool), `optimize_params`, and `auto_optimizer`, and aggregated into `of_*` columns once per symbol via `ml_features.attach_orderflow_features(df, m1_df)` BEFORE window slicing. This closes the train/serve skew where `of_*` were always NaN→0.0 (item #11 follow-up).
+- **M15 (MTF entry TF)**: `df_m15` is now threaded into `Backtest(df, params, df_m15=...)` in the optimizer and `auto_optimizer`, so MTF-enabled portfolio symbols (US30, GBPJPY, SOLUSD, XRPUSD, XAUUSD — the `mtf_enabled = false` trio BTCUSD/EURUSD/US500 excluded) are evaluated on the real MTF signal path instead of the degraded M15-less path. Previously only `optimize_params` passed M15; `auto_optimizer` ran H1-only.
 - **H1/H4**: H1 fetched directly; H4 resampled from H1 in the backtest (H1 is deep/cheap from the broker). H1/H4 are NOT built from M15 (broker keeps shallower M15 history; resampling would cap depth and risk live/backtest parity divergence).
 - **Paging helper**: `mt5_connect.fetch_rates_paged(symbol, tf, start, end, chunk_bars=80000)` walks backwards from `end`, each page ending at the prior page's oldest timestamp, deduplicates seams, trims to `[start, end]`. Terminal "Max bars in chart" was raised to Unlimited on the trading box, but the code-side per-request cap (~80k) is the real limiter the pager removes; total depth still bounded by broker server history for that timeframe.
 

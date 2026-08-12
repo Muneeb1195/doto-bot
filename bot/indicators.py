@@ -53,10 +53,7 @@ def calc_vidya(df, period, sc_fast_period=2, sc_slow_period=30):
         sum_g = np.sum(gains[i - period : i])
         sum_l = np.sum(losses[i - period : i])
         denom = sum_g + sum_l
-        if denom != 0:
-            cmo = abs(100.0 * (sum_g - sum_l) / denom) / 100.0
-        else:
-            cmo = 0.0
+        cmo = abs(100.0 * (sum_g - sum_l) / denom) / 100.0 if denom != 0 else 0.0
         sc = _kama_sc(cmo, sc_fast_period, sc_slow_period)
         vidya[i] = vidya[i - 1] + sc * (close[i] - vidya[i - 1])
     return pd.Series(vidya, index=df.index)

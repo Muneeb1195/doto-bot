@@ -95,7 +95,7 @@ def get_recent_trade_stats(cfg):
         # Bucket time into _TRADE_STATS_TTL-second windows so the cache
         # invalidates shortly after new trades are journaled.
         cache_key = (st.st_mtime, st.st_size, lookback, int(time.time() // _TRADE_STATS_TTL))
-        if _TRADE_STATS_CACHE is not None and _TRADE_STATS_CACHE_KEY == cache_key:
+        if _TRADE_STATS_CACHE is not None and cache_key == _TRADE_STATS_CACHE_KEY:
             return _TRADE_STATS_CACHE
     except Exception:
         pass

@@ -13,6 +13,7 @@ from typing import Optional
 
 import pandas as pd
 import state as _st
+from credentials import load_credentials
 from state import _RATE_CACHE_TTL, _rate_cache
 
 _mt5_instance: Optional[object] = None
@@ -52,6 +53,34 @@ def init_mt5():
                 time.sleep(5)
             else:
                 raise RuntimeError(f"mt5linux failed after 5 attempts: {e}")
+
+
+def login_account():
+    """Initialize MT5 with the configured credentials and log in.
+
+    Uses credentials.load_credentials() — the repo's single settings+credentials
+    reader (scenario_analysis.py and tune_scaleout.py route through here too).
+    The live bot does NOT call this: the mt5linux RPyC bridge session is already
+    authenticated on the terminal. Returns True on success, False otherwise
+    (errors are logged).
+    """
+    try:
+        creds = load_credentials()
+    except RuntimeError as e:
+        logging.error(str(e))
+        return False
+    ok = mt5_call(mt5.initialize, path=creds["path"], timeout=creds["timeout"], _timeout=65)
+    if not ok:
+        logging.error(f"MT5 init failed: {mt5_call(mt5.last_error, _timeout=3)}")
+        return False
+    authorized = mt5_call(
+        mt5.login, login=creds["account"], password=creds["password"],
+        server=creds["server"], _timeout=30,
+    )
+    if not authorized:
+        logging.error(f"MT5 login failed: {mt5_call(mt5.last_error, _timeout=3)}")
+        return False
+    return True
 
 
 class _MT5Proxy:
@@ -206,11 +235,6 @@ def fetch_rates_paged(symbol, timeframe, start, end, chunk_bars=80000):
     return out if len(out) > 0 else None
 
 
-def get_positions(symbol):
-    positions = mt5_call(mt5.positions_get, symbol=symbol, _timeout=5)
-    return positions if positions else []
-
-
 def get_filling_mode(symbol, default=None):
     sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
     try:
@@ -326,7 +350,6 @@ def ensure_mt5_connected(cfg):
         logging.info("MT5 not initialized - attempting init_mt5()")
         try:
             init_mt5()
-            mt5 = _mt5_instance
         except Exception as e:
             logging.warning(f"init_mt5() failed: {e}")
             return False

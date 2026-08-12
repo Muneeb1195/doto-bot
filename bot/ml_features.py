@@ -67,10 +67,6 @@ FEATURE_COLS = [
 ]
 
 
-def compute_ema(arr, period):
-    return pd.Series(arr).ewm(span=period, adjust=False).mean().values
-
-
 def compute_kama_series(arr, er_period, sc_fast_period=2, sc_slow_period=30):
     n = len(arr)
     kama = np.full(n, np.nan)

@@ -95,7 +95,6 @@ try:
     import MetaTrader5 as mt5  # noqa: E402
 except ImportError:  # Linux: no native package, use the mt5linux RPyC bridge
     from mt5_connect import mt5  # noqa: E402
-import numpy as np  # noqa: E402
 import state as _st  # noqa: E402
 from analytics import fused_regime_score  # noqa: E402
 from correlation import compute_correlation_matrix, get_correlation_reduction  # noqa: E402
@@ -147,7 +146,6 @@ from state import (  # noqa: E402
     _chandelier_state,
     _exec_bias,
     _filter_stats,
-    _last_corr_time,
     _last_trade_time,
     _scale_out_state,
     load_bot_state,
@@ -209,7 +207,7 @@ def _handle_shutdown(signum, frame):  # noqa: ARG001
 
 
 def _apply_corr_ml_sizing(
-    sym_cfg, symbol, all_positions, kelly_mult, ml_conf, confidence_mult=1.0
+    sym_cfg, symbol, all_positions, kelly_mult, _ml_conf, confidence_mult=1.0
 ):
     if sym_cfg["corr_enabled"]:
         existing_syms = [p.symbol for p in all_positions if p.symbol != symbol]
@@ -780,6 +778,17 @@ def main():
                                         close_pnl = (
                                             result.profit if hasattr(result, "profit") and result.profit else 0.0
                                         )
+                                        # MR cooldown (A3): track consecutive losses on EVERY MR-position
+                                        # close (any exit reason) — parity with backtest._register_close.
+                                        # Kept outside trade_journal so risk state never depends on journaling.
+                                        if is_mr_pos:
+                                            if close_pnl > 0:
+                                                _st._mr_consecutive_losses[symbol] = 0
+                                            else:
+                                                _st._mr_consecutive_losses[symbol] = (
+                                                    _st._mr_consecutive_losses.get(symbol, 0) + 1
+                                                )
+                                                _st._mr_last_loss_time[symbol] = time.time()
                                         if sym_cfg["trade_journal"]:
                                             sinfo2 = mt5_call(mt5.symbol_info, symbol, _timeout=5)
                                             sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
@@ -788,14 +797,6 @@ def main():
                                                 result.profit if hasattr(result, "profit") and result.profit else 0.0
                                             )
                                             journal_close(pos.ticket, price, close_pnl, pips, close_reason)
-                                            if close_reason == "MR_EXIT":
-                                                if close_pnl > 0:
-                                                    _st._mr_consecutive_losses[symbol] = 0
-                                                else:
-                                                    _st._mr_consecutive_losses[symbol] = (
-                                                        _st._mr_consecutive_losses.get(symbol, 0) + 1
-                                                    )
-                                                    _st._mr_last_loss_time[symbol] = time.time()
                                         if sym_cfg["discord_url"]:
                                             sinfo2 = mt5_call(mt5.symbol_info, symbol, _timeout=5)
                                             sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
@@ -905,11 +906,17 @@ def main():
                         continue
 
                     is_mr_entry = mr_signal is not None and not gate_open
+                    # MR cooldown (A3): skip MR entries after >=2 consecutive losses within
+                    # the configured window. Bars -> seconds on the H1 timeframe (1 bar = 1h),
+                    # parity with backtest._get_mean_reversion_signal's bar-based cooldown.
+                    mr_cd_enabled = sym_cfg.get("mr_cooldown_enabled", True)
+                    mr_cd_window = sym_cfg.get("mr_cooldown_bars", 2) * 3600
                     if (
                         is_mr_entry
                         and signal_entry is not None
+                        and mr_cd_enabled
                         and _st._mr_consecutive_losses.get(symbol, 0) >= 2
-                        and time.time() - _st._mr_last_loss_time.get(symbol, 0) < 7200
+                        and time.time() - _st._mr_last_loss_time.get(symbol, 0) < mr_cd_window
                     ):
                         logging.debug(f"[{symbol}] MR consec losses cooldown — skipping")
                         _filter_stats[symbol]["no_signal"] += 1

@@ -203,22 +203,6 @@ class TestDailySummary:
         assert "Win Rate" in field_names
 
 
-class TestBotError:
-    def test_sends_embed(self, monkeypatch):
-        posted = [None]
-
-        def fake_post(url, json, timeout):
-            posted[0] = json
-            return MagicMock(status_code=200)
-
-        monkeypatch.setattr("discord_alerts.requests.post", fake_post)
-        from discord_alerts import bot_error
-        bot_error("https://discord.com/api/webhooks/valid", "Something went terribly wrong")
-        embed = posted[0]["embeds"][0]
-        assert "Bot Error" in embed["title"]
-        assert embed["fields"][0]["value"] == "Something went terribly wrong"
-
-
 class TestBotStart:
     def test_sends_embed(self, monkeypatch):
         posted = [None]

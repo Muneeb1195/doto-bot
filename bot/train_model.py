@@ -89,8 +89,7 @@ class PurgedTimeSeriesSplit:
             yield np.arange(0, train_end), np.arange(start_test, end_test)
 
 
-def _resolve_label_params(symbol):
-    cfg = _get_settings()
+def _resolve_label_params(cfg, symbol):
     sym_section = f"STRATEGY:{symbol}"
     if cfg.has_section(sym_section):
         sl_mult = cfg.getfloat(sym_section, "atr_sl_multiplier", fallback=None)
@@ -125,7 +124,7 @@ def load_csv_data_train(symbol, tf_name="H1"):
     return df
 
 
-def fetch_data(symbol, years=5.1, tf="H1", csv_mode=False):
+def fetch_training_data(symbol, years=5.1, tf="H1", csv_mode=False):
     if csv_mode:
         return load_csv_data_train(symbol, tf_name=tf)
     if not mt5.initialize():
@@ -146,7 +145,7 @@ def fetch_data(symbol, years=5.1, tf="H1", csv_mode=False):
     return df
 
 
-def fetch_m1_data(symbol, years=5.1, csv_mode=False):
+def fetch_training_m1_data(symbol, years=5.1, csv_mode=False):
     """Fetch M1 OHLCV+spread bars for historical orderflow feature backfill.
 
     Orderflow features are otherwise only computed live for the last bar, which
@@ -646,7 +645,7 @@ def train_pool_model(
         print("No common asset class found")
         return None
 
-    sym_tp, sym_sl = _resolve_label_params(symbols[0])
+    sym_tp, sym_sl = _resolve_label_params(_get_settings(), symbols[0])
     tp_atr_mult = sym_tp
     sl_atr_mult = sym_sl
     print(f"  Pool triple-barrier: tp_atr={tp_atr_mult:.2f} sl_atr={sl_atr_mult:.2f} max_hold={max_hold}")
@@ -656,12 +655,12 @@ def train_pool_model(
     all_X = []
     all_y = []
     for symbol in symbols:
-        df = fetch_data(symbol, years, csv_mode=csv_mode)
+        df = fetch_training_data(symbol, years, csv_mode=csv_mode)
         if df is None or len(df) < 200:
             n = 0 if df is None else len(df)
             print(f"  [{symbol}] skipped — insufficient data ({n} bars, need 200)")
             continue
-        df_m1 = fetch_m1_data(symbol, years, csv_mode=csv_mode)
+        df_m1 = fetch_training_m1_data(symbol, years, csv_mode=csv_mode)
         feature_data, full_df = prepare_features(df, symbol=symbol, m1_df=df_m1)
         labels = triple_barrier_labels(full_df, tp_atr_mult, sl_atr_mult, max_hold)
         aligned = pd.concat([feature_data, labels], axis=1).dropna(subset=["label"])
@@ -758,7 +757,7 @@ def train_model_for_symbol(
     print(f"Training model for {symbol}")
     print(f"{'=' * 60}")
 
-    sym_tp, sym_sl = _resolve_label_params(symbol)
+    sym_tp, sym_sl = _resolve_label_params(_get_settings(), symbol)
     tp_atr_mult = sym_tp
     sl_atr_mult = sym_sl
     print(
@@ -766,7 +765,7 @@ def train_model_for_symbol(
         f"tp_atr={tp_atr_mult:.2f} sl_atr={sl_atr_mult:.2f} max_hold={max_hold}"
     )
 
-    df = fetch_data(symbol, years, csv_mode=csv_mode)
+    df = fetch_training_data(symbol, years, csv_mode=csv_mode)
     if df is None or len(df) < 200:
         n = 0 if df is None else len(df)
         src = "CSV (data/history/)" if csv_mode else "MT5"
@@ -774,7 +773,7 @@ def train_model_for_symbol(
         return None
 
     print(f"Computing features ({len(FEATURE_COLS)} cols)...")
-    df_m1 = fetch_m1_data(symbol, years, csv_mode=csv_mode)
+    df_m1 = fetch_training_m1_data(symbol, years, csv_mode=csv_mode)
     feature_data, full_df = prepare_features(df, symbol=symbol, m1_df=df_m1)
     print(f"Feature matrix: {feature_data.shape}")
 

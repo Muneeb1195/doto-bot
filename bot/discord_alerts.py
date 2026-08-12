@@ -113,17 +113,6 @@ def daily_summary(discord_url, balance, equity, daily_pnl, positions, win_rate, 
     )
 
 
-def bot_error(discord_url, error_msg):
-    send_alert(
-        discord_url,
-        "ERROR",
-        "🚨 Bot Error",
-        [
-            ("Message", error_msg[:1000]),
-        ],
-    )
-
-
 def bot_start(discord_url, symbols, balance):
     send_alert(
         discord_url,

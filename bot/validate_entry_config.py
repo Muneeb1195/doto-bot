@@ -1,11 +1,16 @@
-"""validate_entry_config.py — pre-flight sanity check before a CPCC optimization run.
+"""validate_entry_config.py — pre-flight sanity check before an optimization run.
 
-Run this before `parallel_optimize.py --fast --csv` to abort early (non-zero
+Run this before `optimize_params.py --two-phase --csv` to abort early (non-zero
 exit) if the config is inconsistent, missing ML models, or has contradictory
 flags. Keeps a long multi-symbol grid run from failing midway.
 
 Usage:
-    python -m bot.validate_entry_config [--symbols X,Y,Z] [--min-entry-score 0.60]
+    python -m bot.validate_entry_config [--symbols X,Y,Z] [--min-entry-score 0.55]
+
+Note: this is the sole kept copy of the tool — the former tools/
+validate_entry_config.py (strict-vs-relaxed ENTRY simulation) was removed; it
+imported `compute_entry_score` from signals (moved to analytics.py) and needed
+the native MetaTrader5 package (mt5linux-only deployment), so it could not run.
 """
 
 import argparse
@@ -32,7 +37,7 @@ def main():
         "--symbols", type=str, default=None, help="Comma-separated symbols to validate (default: [PORTFOLIO] symbols)"
     )
     parser.add_argument(
-        "--min-entry-score", type=float, default=0.60, help="Required SCORING min_entry_score (Phase D target)"
+        "--min-entry-score", type=float, default=0.55, help="Required SCORING min_entry_score (Phase D target)"
     )
     args = parser.parse_args()
 

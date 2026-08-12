@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Upload exported M1 market-data CSVs to a GitHub release and prune old ones.
+"""Upload exported H1/M15/M1 market-data CSVs to a GitHub release and prune old ones.
 
 Runs on the home-server after `export_mt5_data.py --no-git` as part of the
-monthly doto-orchestrate cycle (or manually). Each `data/history/*_M1.csv` is
-uploaded as an INDIVIDUAL asset to a freshly created `data-YYYYMMDD-HHMM`
-release, so train.yml / optimize.yml shards can `gh release download --pattern
-'<SYM>_M1.csv'` exactly the files they need without a git checkout of the ~2GB
-M1 history (Git LFS bandwidth/space is a non-issue for this repo).
+monthly doto-orchestrate cycle (or manually). Every `data/history/*.csv` (H1 +
+M15 + M1) is uploaded as an INDIVIDUAL asset to a freshly created
+`data-YYYYMMDD-HHMM` release, so train.yml / optimize.yml shards can
+`gh release download --pattern '<SYM>_<TF>.csv'` exactly the files they need
+without relying on the git-tracked H1/M15 (which `--no-git` exports no longer
+update) or a git checkout of the ~2GB M1 history.
 
 Prunes all but the NEWEST 2 `data-*` releases (release + tag), since each cycle
 re-exports everything anyway — old M1 archives only waste quota.
@@ -24,43 +25,20 @@ Exit code 0 on success, 1 on any failure.
 from __future__ import annotations
 
 import json
-import logging
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+from _common import _gh, _setup_logging
 
 REPO = os.environ.get("GITHUB_REPO", "Muneeb1195/doto-bot")
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data" / "history"))
 LOG_FILE = BASE_DIR / "logs" / "download_models.log"
-GH = os.environ.get("GH_BINARY", "gh")
 KEEP_RELEASES = int(os.environ.get("KEEP_RELEASES", "2"))
 PREFIX = "data-"
-ASSET_GLOB = "*_M1.csv"
-
-
-def _setup_logging():
-    LOG_FILE.parent.mkdir(exist_ok=True)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
-    )
-    return logging.getLogger(__name__)
-
-
-def _gh(logger, *args, check=True):
-    env = dict(os.environ)
-    if os.environ.get("GITHUB_TOKEN"):
-        env["GH_TOKEN"] = os.environ["GITHUB_TOKEN"]
-    r = subprocess.run([GH, *args], capture_output=True, text=True, env=env)
-    if r.returncode != 0:
-        logger.error(f"gh {' '.join(args)} failed: {r.stderr.strip()}")
-        if check:
-            raise SystemExit(1)
-    return r.returncode, r.stdout.strip()
+ASSET_GLOB = "*.csv"
 
 
 def _list_data_releases(logger):
@@ -98,7 +76,7 @@ def push(logger):
     logger.info(f"Creating release {tag}...")
     _gh(logger, "release", "create", tag, "--repo", REPO,
         "--title", f"Market Data {tag}", "--notes",
-        "M1 market-data CSVs for the ML training / optimization cycle. "
+        "H1/M15/M1 market-data CSVs for the ML training / optimization cycle. "
         "Uploaded automatically by scripts/push_data.py after export.")
 
     uploaded = 0
@@ -126,7 +104,7 @@ def push(logger):
 
 
 def main():
-    logger = _setup_logging()
+    logger = _setup_logging(LOG_FILE)
     return push(logger)
 
 

@@ -1,4 +1,5 @@
-import numpy as np, pandas as pd
+import numpy as np
+import pandas as pd
 from backtest import Backtest
 
 
@@ -43,9 +44,6 @@ def main():
         print('fast=', fast, 'trades=', res[fast][0], 'eq_final=', res[fast][1])
     print('PNL MATCH:', res[False][2] == res[True][2])
     print('EQ MATCH:', res[False][1] == res[True][1])
-    # pointwise equity compare
-    a = np.array(res[False][2]); b = np.array(res[True][2])
-    print('EQ ARRAYS:', np.allclose(np.array(getattr(__import__('backtest').Backtest, '__init__')) , 0) if False else 'n/a')
 
 
 if __name__ == "__main__":

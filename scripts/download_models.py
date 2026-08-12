@@ -37,6 +37,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from _common import _gh, _setup_logging
+
 REPO = os.environ.get("GITHUB_REPO", "Muneeb1195/doto-bot")
 API = os.environ.get("GITHUB_API", "https://api.github.com").rstrip("/")
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,7 +47,6 @@ TRAIN_TAG_FILE = BASE_DIR / ".last_train_tag"
 OPT_TAG_FILE = BASE_DIR / ".last_optimize_tag"
 STREAKS_FILE = BASE_DIR / ".symbol_streaks.json"
 LOG_FILE = BASE_DIR / "logs" / "download_models.log"
-GH = os.environ.get("GH_BINARY", "gh")
 
 TRAIN_PREFIX = "train-"
 OPT_PREFIX = "optimize-"
@@ -67,16 +68,6 @@ RUN_TIMEOUTS = {
     "train.yml": 45 * 60,
     "optimize.yml": 8 * 3600,
 }
-
-
-def _setup_logging():
-    LOG_FILE.parent.mkdir(exist_ok=True)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
-    )
-    return logging.getLogger(__name__)
 
 
 def _api_request(logger, url: str, accept: str = "application/vnd.github+json"):
@@ -331,19 +322,6 @@ def _extract_models(logger, tar_path):
         return extracted > 0
 
 
-def _gh(logger, *args, check=True):
-    """Run gh with the token env inherited. Returns (returncode, stdout)."""
-    env = dict(os.environ)
-    if os.environ.get("GITHUB_TOKEN"):
-        env["GH_TOKEN"] = os.environ["GITHUB_TOKEN"]
-    r = subprocess.run([GH, *args], capture_output=True, text=True, env=env)
-    if r.returncode != 0:
-        logger.error(f"gh {' '.join(args)} failed: {r.stderr.strip()}")
-        if check:
-            raise SystemExit(1)
-    return r.returncode, r.stdout.strip()
-
-
 def _dispatch_run(logger, workflow, fields=None):
     """Dispatch workflow, wait for completion. Returns True on success."""
     logger.info(f"Checking for in-flight {workflow} runs...")
@@ -542,7 +520,7 @@ def _push_market_data(logger):
 
 
 def main():
-    logger = _setup_logging()
+    logger = _setup_logging(LOG_FILE)
     flags = {a for a in sys.argv[1:] if a.startswith("-")}
 
     if "--dispatch" in flags:

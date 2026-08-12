@@ -3,7 +3,6 @@
 import configparser
 import itertools
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +19,7 @@ LOGS_DIR = BASE_DIR / "logs"
 
 sys.path.insert(0, str(BASE_DIR / "bot"))
 from backtest import Backtest  # noqa: E402
+from mt5_connect import login_account  # noqa: E402
 
 SYMBOLS = ["ETHUSD.raw", "XAUUSD.raw", "XAGUSD.raw", "US30.raw", "EURUSD.raw"]
 YEARS = 3
@@ -74,20 +74,11 @@ SYMBOL_OVERRIDE_MAP = {
 
 
 def init_mt5():
-    settings = configparser.ConfigParser()
-    settings.read(CONFIG_DIR / "settings.ini")
-    creds = configparser.ConfigParser()
-    creds.read(CONFIG_DIR / "credentials.ini")
-    mt5_path = settings["MT5"]["path"]
-    timeout = int(settings["MT5"]["timeout_ms"])
-    if not mt5.initialize(path=mt5_path, timeout=timeout):
-        print(f"MT5 init failed: {mt5.last_error()}")
+    """Initialize MT5 and log in with the configured credentials."""
+    if not login_account():
+        print("MT5 init/login failed — see log for details")
         return False
-    return mt5.login(
-        int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-        password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-        server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
-    )
+    return True
 
 
 def fetch_symbol_data(symbol, tf=mt5.TIMEFRAME_H1):

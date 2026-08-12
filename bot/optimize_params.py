@@ -1,17 +1,26 @@
 import argparse
 import configparser
+import contextlib
 import os
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
-from backtest import Backtest
-
-from config import validate_config as _validate_config
+from credentials import load_credentials  # noqa: E402
+from optimizer_common import (  # noqa: E402
+    _resolve_ma_type,
+    build_params,
+    fetch_data,
+    fetch_m1_data,
+    fetch_m15_data,
+    make_windows,
+    run_bt,
+    score_r,
+    score_walk_forward,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -20,10 +29,6 @@ LOG_DIR = BASE_DIR / "logs"
 
 settings = configparser.ConfigParser()
 settings.read(CONFIG_DIR / "settings.ini")
-
-creds = configparser.ConfigParser()
-creds.read(CONFIG_DIR / "credentials.ini")
-
 
 # Profile assignment per symbol. This is a LOOKUP TABLE, not the portfolio:
 # what actually gets optimized comes from [PORTFOLIO] symbols in settings.ini.
@@ -106,7 +111,6 @@ PROFILE_COMMISSION = {
     "FAST": 558.0,
 }
 
-
 def _max_workers(csv_mode=False):
     """Worker count for the backtest pool.
 
@@ -118,115 +122,6 @@ def _max_workers(csv_mode=False):
     if csv_mode or os.environ.get("CI", "").lower() == "true":
         return max(1, cpus)
     return max(1, cpus - 1)
-
-
-def load_csv_data_optimize(symbol):
-    """Load pre-exported H1 bars from data/history/<SYMBOL>_H1.csv for offline optimization."""
-    from train_model import load_csv_data_train
-    csv_path = BASE_DIR / "data" / "history" / f"{symbol.replace('.', '_')}_H1.csv"
-    if not csv_path.exists():
-        print(f"  CSV not found: {csv_path}")
-        return None, None
-    df = load_csv_data_train(symbol, tf_name="H1")
-    if df is None:
-        return None, None
-    # Reuse parallel_optimize's info reconstruction from settings
-    point = 0.01
-    tick_value = 1.0
-    volume_step = 0.01
-    if settings.has_section("SYMBOL_POINTS"):
-        if settings.has_option("SYMBOL_POINTS", symbol):
-            point = float(settings.get("SYMBOL_POINTS", symbol))
-        if settings.has_option("SYMBOL_POINTS", symbol + "_tick"):
-            tick_value = float(settings.get("SYMBOL_POINTS", symbol + "_tick"))
-        if settings.has_option("SYMBOL_POINTS", symbol + "_vstep"):
-            volume_step = float(settings.get("SYMBOL_POINTS", symbol + "_vstep"))
-    print(f"  Loaded {len(df)} bars from CSV ({df['time'].iloc[0].date()} to {df['time'].iloc[-1].date()})")
-    return df, {"point": point, "tick_value": tick_value, "volume_step": volume_step}
-
-
-def fetch_data(symbol, years=5.1, csv_mode=False):
-    if csv_mode:
-        return load_csv_data_optimize(symbol)
-    import time
-
-    import MetaTrader5 as mt5
-
-    mt5.symbol_select(symbol, True)
-    end = datetime.now()
-    start = end - timedelta(days=int(years * 365))
-    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_H1, start, end)
-    if rates is None or len(rates) < 200:
-        return None, None
-    df = pd.DataFrame(rates)
-    df["time"] = pd.to_datetime(df["time"], unit="s")
-    print(f"  Loaded {len(df)} bars ({df['time'].iloc[0].date()} to {df['time'].iloc[-1].date()})")
-
-    sinfo = mt5.symbol_info(symbol)
-    point = sinfo.point if sinfo else 0.01
-    tick_value = sinfo.trade_tick_value if sinfo else 0.01
-    volume_step = sinfo.volume_step if sinfo and sinfo.volume_step > 0 else 0.01
-
-    if tick_value == 0:
-        mt5.symbol_select(symbol, False)
-        mt5.symbol_select(symbol, True)
-        time.sleep(0.5)
-        sinfo = mt5.symbol_info(symbol)
-        tick_value = sinfo.trade_tick_value if sinfo else 0.01
-
-    return df, {"point": point, "tick_value": tick_value, "volume_step": volume_step}
-
-
-def score_r(r):
-    pf = r.get("profit_factor", 0) or 0
-    ret = r.get("total_return", 0) or 0
-    dd = r.get("max_dd", 10000) or 10000
-    n = r.get("n_trades", 0)
-    if n < 3:
-        return -999
-    pf_capped = min(pf, 3.0)
-    if pf == float("inf"):
-        pf_capped = 3.0
-    calmar = abs(ret / dd) if dd > 0 else 0
-    return pf_capped * calmar * (1 + 0.05 * np.sqrt(n))
-
-
-def make_windows(df, n_windows=4, window_months=24, oos_months=6):
-    times = df["time"]
-    end = times.iloc[-1]
-    windows = []
-    for i in range(n_windows):
-        oos_end = end - pd.DateOffset(months=i * oos_months)
-        oos_start = oos_end - pd.DateOffset(months=oos_months)
-        is_end = oos_start
-        is_start = is_end - pd.DateOffset(months=window_months)
-        is_mask = (times >= is_start) & (times < is_end)
-        oos_mask = (times >= oos_start) & (times < oos_end)
-        df_is = df[is_mask].reset_index(drop=True)
-        df_oos = df[oos_mask].reset_index(drop=True)
-        if len(df_is) < 200 or len(df_oos) < 100:
-            continue
-        windows.append((df_is, df_oos, is_start, is_end, oos_start, oos_end))
-    return windows
-
-
-def score_walk_forward(window_results):
-    is_scores = []
-    oos_pfs = []
-    for wr in window_results:
-        is_r = wr["is"]
-        oos_r = wr["oos"]
-        is_s = score_r(is_r)
-        is_scores.append(is_s)
-        oos_pf = oos_r.get("profit_factor", 0) or 0
-        oos_pfs.append(oos_pf)
-    if not is_scores:
-        return -999
-    avg_is = float(np.mean(is_scores))
-    penalty = 0.5 if any(pf < 0.8 for pf in oos_pfs) else 1.0
-    bonus = 1.2 if all(pf >= 1.0 for pf in oos_pfs) else 1.0
-    return avg_is * penalty * bonus
-
 
 def make_cpcv_windows(df, n_paths=15, is_months=24, oos_months=6, purge_months=1):
     times = df["time"]
@@ -259,7 +154,6 @@ def make_cpcv_windows(df, n_paths=15, is_months=24, oos_months=6, purge_months=1
         step += 1
     return windows
 
-
 def score_cpcv(window_results):
     oos_scores = [score_r(wr["oos"]) for wr in window_results]
     oos_scores = [s for s in oos_scores if s > -999]
@@ -277,7 +171,6 @@ def score_cpcv(window_results):
         return (median * 0.5 + p25) * 0.25
     return median * (1.2 if all_positive else 1.0) + p25
 
-
 def stability_penalty(ema_scores, fast, slow):
     ratio = round(fast / slow, 4)
     neighbors = [(f, s) for f, s in ema_scores if abs(f / s - ratio) < 0.005]
@@ -287,184 +180,7 @@ def stability_penalty(ema_scores, fast, slow):
     cv = np.std(scores) / max(abs(np.mean(scores)), 0.01)
     return 1.0 / (1.0 + cv)
 
-
-def build_params(
-    symbol,
-    ema_fast,
-    ema_slow,
-    sl,
-    rr,
-    adx,
-    point,
-    tick_value,
-    volume_step,
-    mr_enabled=True,
-    commission=0.0,
-    ma_type="kama",
-    no_ml=False,
-    scoring_min_entry=None,
-):
-    p = {
-        "ema_fast": ema_fast,
-        "ema_slow": ema_slow,
-        "ma_type": ma_type,
-        "atr_period": 14,
-        "atr_sl_mult": sl,
-        "rr": rr,
-        "adx_enabled": True,
-        "adx_trend_threshold": adx,
-        "adx_range_threshold": 20,
-        "stops_level": 50,
-        "ml_confidence": 0.40,
-        "ml_threshold_overrides": {},
-        "volume_filter": True,
-        "volume_kappa": 1.2,
-        "volatility_filter": True,
-        "atr_sma_period": 20,
-        "chandelier_enabled": True,
-        "chandelier_mult": 3.0,
-        "chandelier_mult_partial": 1.5,
-        "chandelier_mult_overrides": {},
-        "chandelier_lookback": 14,
-        "ch_two_stage": True,
-        "ch_loose_mult": 3.5,
-        "ch_tight_mult": 1.5,
-        "ch_two_stage_min_r": 3.0,
-        "scale_out_enabled": True,
-        "scale_out_close_fractions": [0.20, 0.20],
-        "scale_out_tp_targets_rr": [0.50, 0.75],
-        "ml_enabled": not no_ml,
-        "risk_percent": 1.0,
-        "initial_balance": 500000.0,
-        "spread_model": 1.0,
-        "commission": commission,
-        "skip_uncertain_exhaustion": True,
-        "dr_enabled": True,
-        "dr_lookback": 50,
-        "dr_kelly_fraction": 0.25,
-        "dr_vol_adjust": True,
-        "dr_min_mult": 0.25,
-        "dr_max_mult": 1.5,
-        "max_positions": 5,
-        "max_positions_per_symbol": 1,
-        "max_risk_ratio": 2.0,
-        "spf_enabled": True,
-        "spf_max_ratio": 0.30,
-        "session_enabled": False,
-        "daily_loss_pct": 5.0,
-        "tr_enabled": True,
-        "tr_sigma": 3.0,
-        "tr_lookback": 50,
-        "tr_max_dd_pct": 8.0,
-        "cb_dd_pct": 15.0,
-        "mr_enabled": mr_enabled,
-        "mr_rsi_period": 14,
-        "mr_rsi_oversold": 30,
-        "mr_rsi_overbought": 70,
-        "mr_sl_atr_mult": 1.0,
-        "mr_tp_atr_mult": 1.5,
-        "mr_position_size_mult": 0.5,
-        "mr_cooldown_enabled": True,
-        "mr_cooldown_bars": 2,
-        "pb_enabled": True,
-        "pb_atr_mult": 2.0,
-        "slippage_points": 2,
-        "mtf_enabled": True,
-        "mtf_agreement_threshold": 0.67,
-        "point": point,
-        "tick_value": tick_value,
-        "volume_step": volume_step,
-        "symbol": symbol,
-        "htf_ema_slow": 100,
-        "htf_misalign_size_mult": float(settings.get("STRATEGY", "htf_misalign_size_mult", fallback=0.5)),
-        "scoring_enabled": True,
-        "scoring_min_entry": float(scoring_min_entry)
-        if scoring_min_entry is not None
-        else float(settings.get("SCORING", "min_entry_score", fallback=0.60)),
-    }
-    sym_section = f"STRATEGY:{symbol}"
-    override_map = {
-        "kelly_fraction": ("dr_kelly_fraction", float),
-        "risk_percent": ("risk_percent", float),
-        "max_positions_per_symbol": ("max_positions_per_symbol", int),
-        "min_entry_score": ("scoring_min_entry", float),
-        "htf_misalign_size_mult": ("htf_misalign_size_mult", float),
-        "mtf_enabled": ("mtf_enabled", lambda v: v.lower() == "true"),
-    }
-    if settings.has_section(sym_section):
-        for ini_key, (cfg_key, converter) in override_map.items():
-            if settings.has_option(sym_section, ini_key):
-                p[cfg_key] = converter(settings.get(sym_section, ini_key))
-    if settings.has_section("ML_SIGNAL") and settings.has_option("ML_SIGNAL", "threshold_overrides"):
-        overrides = {}
-        for pair in settings.get("ML_SIGNAL", "threshold_overrides").split(","):
-            pair = pair.strip()
-            if ":" in pair:
-                sym, val = pair.split(":", 1)
-                overrides[sym.strip()] = float(val.strip())
-        if overrides:
-            p["ml_threshold_overrides"] = overrides
-    if not no_ml:
-        model_path = MODELS_DIR / f"model_{symbol.replace('.', '_')}.pkl"
-        if model_path.exists():
-            p["ml_model_path"] = str(model_path)
-        else:
-            if p.get("ml_enabled", True):
-                p["ml_enabled"] = False
-    _validate_config(p)
-    return p
-
-
-def fetch_m1_data(symbol, years=5.1, csv_mode=False):
-    """Fetch M1 bars for the full window via backward paging (no per-request cap).
-
-    In csv_mode the bars come from data/history/<SYMBOL>_M1.csv when present.
-    M1 exports are large and are not committed for every symbol, so a missing
-    file is not an error: callers treat None as "no orderflow features", which
-    matches how the models were trained in CI.
-    """
-    if csv_mode:
-        from train_model import load_csv_data_train
-
-        return load_csv_data_train(symbol, tf_name="M1")
-
-    import MetaTrader5 as mt5
-    from mt5_connect import fetch_rates_paged
-
-    end = datetime.now()
-    start = end - timedelta(days=int(years * 365))
-    df_m1 = fetch_rates_paged(symbol, mt5.TIMEFRAME_M1, start, end)
-    if df_m1 is None or len(df_m1) < 100:
-        return None
-    return df_m1
-
-
-MAX_M15_BARS = 80000  # per-request page size (MT5 API cap observed ~80k)
-
-
-def fetch_m15_data(symbol, years=5.1, csv_mode=False):
-    """Fetch M15 bars for the full window via backward paging.
-
-    Previously a single copy_rates_from call capped at MAX_M15_BARS (~2.3y of
-    M15), truncating the early part of a 3y window. Paging removes the
-    per-request cap; total depth is still bounded by broker server history.
-    """
-    if csv_mode:
-        from train_model import load_csv_data_train
-        return load_csv_data_train(symbol, tf_name="M15")
-    import MetaTrader5 as mt5
-    from mt5_connect import fetch_rates_paged
-
-    end = datetime.now()
-    start = end - timedelta(days=int(years * 365))
-    df_m15 = fetch_rates_paged(symbol, mt5.TIMEFRAME_M15, start, end, chunk_bars=MAX_M15_BARS)
-    if df_m15 is None or len(df_m15) < 100:
-        return None
-    return df_m15
-
-
 _PRECOMPUTE_CACHE: dict[tuple[int, ...], dict] = {}
-
 
 def _get_fixed(df, params):
     t0 = df["time"].iloc[0]
@@ -474,13 +190,6 @@ def _get_fixed(df, params):
         from backtest import precompute_fixed
         _PRECOMPUTE_CACHE[key] = precompute_fixed(df, params)
     return _PRECOMPUTE_CACHE[key]
-
-
-def run_bt(df, params, df_m1=None, df_m15=None, fast=False, fixed=None):
-    bt = Backtest(df, params, df_m1=df_m1, df_m15=df_m15, fixed=fixed)
-    bt.run(fast=fast)
-    return bt.get_results()
-
 
 def run_walk_forward(windows, params, df_m1=None, df_m15=None, scorer=None, fast=False):
     results = []
@@ -493,16 +202,6 @@ def run_walk_forward(windows, params, df_m1=None, df_m15=None, scorer=None, fast
     score_fn = scorer or score_walk_forward
     return results, score_fn(results)
 
-
-def _resolve_ma_type(symbol):
-    sym_section = f"STRATEGY:{symbol}"
-    if settings.has_section(sym_section) and settings.has_option(sym_section, "ma_type"):
-        return settings.get(sym_section, "ma_type")
-    if settings.has_option("STRATEGY", "ma_type"):
-        return settings.get("STRATEGY", "ma_type")
-    return "kama"
-
-
 def _warm_jit(df_window, params, df_m1=None, df_m15=None):
     """Run a single minimal backtest to compile the numba kernel in-process.
 
@@ -514,7 +213,6 @@ def _warm_jit(df_window, params, df_m1=None, df_m15=None):
     tiny = df_window.head(200) if len(df_window) >= 200 else df_window
     _fixed = _get_fixed(tiny, params)
     run(tiny, params, df_m1=df_m1, df_m15=df_m15, fast=True, fixed=_fixed)
-
 
 def optimize_symbol(
     symbol, df_full, info, windows, quick=False, cpcv=False, df_m1=None, df_m15=None, no_ml=False, fast=False
@@ -537,14 +235,13 @@ def optimize_symbol(
     # recompile _simulate_core from scratch (~65s per worker). Warm once here,
     # then workers load the compiled kernel from bot/__pycache__/ via cache=True.
     if fast and windows and windows[0][0].shape[0] > 0:
-        try:
+        # Fall through to worker-side compilation if the warmup fails.
+        with contextlib.suppress(Exception):
             _warm_jit(windows[0][0], build_params(
                 symbol, ema_grid[0][0], ema_grid[0][1], sl_vals[0], rr_vals[0],
                 adx_vals[0], point, tick_value, volume_step, mr_enabled, commission,
                 ma_type, no_ml, scoring_min_entry=score_vals[0],
             ), df_m1=df_m1, df_m15=df_m15)
-        except Exception:
-            pass  # fall through to worker-side compilation if warmup fails
 
     if quick:
         ema_grid = ema_grid[::2]
@@ -730,7 +427,6 @@ def optimize_symbol(
         "oos_pfs": [wr["oos"].get("profit_factor", 0) for wr in wf_r],
     }
 
-
 def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=None, no_ml=False, fast=False):
     from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -776,7 +472,14 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
         futures = {}
         for idx, (ef, es) in enumerate(phase1_combos):
             w1_windows = windows[:n_phase1]
-            future = executor.submit(run_walk_forward, w1_windows, phase1_params[idx], df_m1=df_m1, df_m15=df_m15, fast=fast)
+            future = executor.submit(
+                run_walk_forward,
+                w1_windows,
+                phase1_params[idx],
+                df_m1=df_m1,
+                df_m15=df_m15,
+                fast=fast,
+            )
             futures[future] = (ef, es)
 
         for future in as_completed(futures):
@@ -847,7 +550,8 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
     phase2_results = {}
     with ProcessPoolExecutor(max_workers=_max_workers()) as executor:
         futures = {
-            executor.submit(run_bt, df, params, df_m15=df_m15, fast=fast): k for (df, params), k in zip(phase2_combos, phase2_keys)
+            executor.submit(run_bt, df, params, df_m15=df_m15, fast=fast): k
+            for (df, params), k in zip(phase2_combos, phase2_keys)
         }
         for done, future in enumerate(as_completed(futures), 1):
             k = futures[future]
@@ -939,6 +643,100 @@ def optimize_symbol_twophase(symbol, df_full, info, windows, df_m1=None, df_m15=
         "oos_pfs": [wr["oos"].get("profit_factor", 0) for wr in wf_r],
     }
 
+def _fetch_csv_mode(args, symbols):
+    """One-time data harvest: pull H1/M15/M1 bars from MT5 into data/history/.
+
+    Replaces the former parallel_optimize.py harvest, which wrote
+    ``data/history/<SYMBOL>.csv`` — a filename nothing reads. Writes
+    ``<SYMBOL>_<TF>.csv`` (dots -> underscores) with epoch-second timestamps,
+    the convention export_mt5_data.py and the CSV loaders use, so the output
+    is immediately consumable by ``--csv`` runs and CI.
+
+    Connects through mt5_connect's bridge (works on the Linux NUC via
+    mt5linux, where the native MetaTrader5 package is unavailable) and leaves
+    the terminal running afterwards.
+    """
+    import time
+    from datetime import datetime, timedelta
+
+    from mt5_connect import ensure_mt5_connected, fetch_rates_paged, mt5
+
+    from config import load_config
+
+    cfg = load_config()
+    cfg["symbols"] = symbols
+    if not ensure_mt5_connected(cfg):
+        print("MT5 connection failed — aborting harvest")
+        return
+
+    history_dir = BASE_DIR / "data" / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Fetch-CSV mode: harvesting H1/M15/M1 bars into {history_dir}/")
+    end = datetime.now()
+    start = end - timedelta(days=int(args.years * 365))
+    # One copy_rates_range call is capped at ~100k bars, so M15/M1 (which
+    # exceed that over 5.1y) page backwards; H1 fits in one call.
+    tf_map = (("H1", "TIMEFRAME_H1", False), ("M15", "TIMEFRAME_M15", True), ("M1", "TIMEFRAME_M1", True))
+    saved = 0
+    for symbol in symbols:
+        print(f"\nFetching {symbol}...")
+        try:
+            mt5.symbol_select(symbol, True)
+            time.sleep(0.3)
+            sinfo = mt5.symbol_info(symbol)
+        except Exception as e:
+            print(f"  SKIP {symbol} (symbol_info failed: {e})")
+            continue
+        info = None
+        if sinfo is not None:
+            info = {
+                "point": sinfo.point,
+                "tick_value": sinfo.trade_tick_value,
+                "volume_step": sinfo.volume_step if sinfo.volume_step > 0 else 0.01,
+            }
+        wrote_any = False
+        for tf_name, tf_attr, paged in tf_map:
+            try:
+                tf = getattr(mt5, tf_attr)
+                if paged:
+                    df = fetch_rates_paged(symbol, tf, start, end)
+                else:
+                    rates = mt5.copy_rates_range(symbol, tf, start, end)
+                    if rates is None or len(rates) < 100:
+                        print(f"  SKIP {tf_name} ({0 if rates is None else len(rates)} bars)")
+                        continue
+                    df = pd.DataFrame(rates)
+                    df["time"] = pd.to_datetime(df["time"], unit="s")
+            except Exception as e:
+                print(f"  SKIP {tf_name} ({e})")
+                continue
+            if df is None or len(df) < 100:
+                print(f"  SKIP {tf_name} ({len(df) if df is not None else 0} bars)")
+                continue
+            out = df[["time", "open", "high", "low", "close", "tick_volume"]].copy()
+            out["spread"] = df["spread"] if "spread" in df.columns else 0
+            out["time"] = out["time"].astype("datetime64[ns]").astype("int64") // 10**9
+            csv_path = history_dir / f"{symbol.replace('.', '_')}_{tf_name}.csv"
+            out.to_csv(csv_path, index=False)
+            print(f"  SAVED {csv_path} ({len(out)} bars)")
+            wrote_any = True
+        if wrote_any and info is not None:
+            # Persist point/tick_value/volume_step so offline runs can
+            # reconstruct PnL scale.
+            if not settings.has_section("SYMBOL_POINTS"):
+                settings.add_section("SYMBOL_POINTS")
+            settings.set("SYMBOL_POINTS", symbol, str(info["point"]))
+            settings.set("SYMBOL_POINTS", symbol + "_tick", str(info["tick_value"]))
+            settings.set("SYMBOL_POINTS", symbol + "_vstep", str(info["volume_step"]))
+            tmp = Path(str(CONFIG_DIR / "settings.ini") + ".tmp")
+            with open(tmp, "w") as fh:
+                settings.write(fh)
+                fh.flush()
+                os.fsync(fh.fileno())
+            tmp.replace(CONFIG_DIR / "settings.ini")
+            saved += 1
+    print(f"\nSaved {saved}/{len(symbols)} symbols to {history_dir}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Optimize per-symbol params")
@@ -970,7 +768,24 @@ def main():
     )
     parser.add_argument("--cpcv-paths", type=int, default=30, help="Number of CPCC paths (default 30; lower = faster)")
     parser.add_argument("--csv", action="store_true", help="Use pre-exported CSV data (no MT5 terminal needed)")
+    parser.add_argument(
+        "--fetch-csv",
+        action="store_true",
+        help="Harvest H1/M15/M1 bars from MT5 into data/history/<SYMBOL>_<TF>.csv, then exit",
+    )
     args = parser.parse_args()
+
+    symbols = (
+        [s.strip() for s in settings.get("PORTFOLIO", "symbols", fallback="").split(",") if s.strip()]
+        if (not args.symbols or args.symbols.upper() == "ALL")
+        else [s.strip() for s in args.symbols.split(",")]
+    )
+
+    if args.fetch_csv:
+        if args.csv:
+            parser.error("--fetch-csv harvests from the live MT5 terminal; cannot be combined with --csv")
+        _fetch_csv_mode(args, symbols)
+        return
 
     import backtest
 
@@ -993,22 +808,22 @@ def main():
     import subprocess
     import time
 
-    mt5_path = settings.get("MT5", "path", fallback="C:\\Program Files\\MetaTrader 5\\terminal64.exe")
-    timeout_ms = settings.getint("MT5", "timeout_ms", fallback=180000)
-
     if not args.csv:
         # Imported lazily: --csv mode runs entirely from data/history/ and must
         # work on hosts without the (Windows-only) MetaTrader5 package, which
         # is how the CI optimize workflow runs.
+        creds = load_credentials()
+        mt5_path = creds["path"]
+        timeout_ms = creds["timeout"]
         import MetaTrader5 as mt5
 
         ok = mt5.initialize()
         if not ok:
             ok = mt5.initialize(
                 path=mt5_path,
-                login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-                password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-                server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+                login=creds["account"],
+                password=creds["password"],
+                server=creds["server"],
                 timeout=timeout_ms,
             )
         if not ok:
@@ -1027,18 +842,16 @@ def main():
             time.sleep(15)
             ok = mt5.initialize(
                 path=mt5_path,
-                login=int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-                password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-                server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+                login=creds["account"],
+                password=creds["password"],
+                server=creds["server"],
                 timeout=timeout_ms,
             )
         if not ok:
             print(f"MT5 init failed: {mt5.last_error()}")
             return
         authorized = mt5.login(
-            int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-            password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-            server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+            creds["account"], password=creds["password"], server=creds["server"],
         )
         if not authorized:
             print(f"MT5 login failed: {mt5.last_error()}")
@@ -1046,12 +859,6 @@ def main():
             return
     else:
         print("CSV mode: skipping MT5 initialization (using pre-exported data)")
-
-    symbols = (
-        [s.strip() for s in settings.get("PORTFOLIO", "symbols", fallback="").split(",") if s.strip()]
-        if (not args.symbols or args.symbols.upper() == "ALL")
-        else [s.strip() for s in args.symbols.split(",")]
-    )
 
     if args.auto_train:
         missing = [s for s in symbols if not (MODELS_DIR / f"model_{s.replace('.', '_')}.pkl").exists()]
@@ -1223,7 +1030,6 @@ def main():
 
         if len(ranked) > 8:
             print(f"    ... ({len(ranked) - 8} more symbols)")
-
 
 if __name__ == "__main__":
     main()

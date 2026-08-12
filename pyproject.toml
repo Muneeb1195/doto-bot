@@ -27,7 +27,6 @@ exclude = [
     "models",
     "backups",
     "analyze_scoring_weights.py",
-    "tools/",
 ]
 
 [tool.ruff.lint]

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import joblib
+
 try:
     import MetaTrader5 as mt5
 except ImportError:  # Linux: no native package, use the socket/RPyC bridge
@@ -14,6 +15,7 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
 import numpy as np
 import pandas as pd
 from analytics import volume_filter_pass
+from credentials import load_credentials
 from indicators import SLOPE_SCALE, calc_adx_series, calc_atr_series, calc_ma
 
 from config import validate_config as _validate_config
@@ -2517,12 +2519,9 @@ def main():
         print(f"MT5 init failed: {mt5.last_error()}")
         return
 
-    creds = configparser.ConfigParser()
-    creds.read(CONFIG_DIR / "credentials.ini")
+    creds = load_credentials()
     authorized = mt5.login(
-        int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-        password=os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-        server=os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
+        creds["account"], password=creds["password"], server=creds["server"],
     )
     if not authorized:
         print(f"MT5 login failed: {mt5.last_error()}")

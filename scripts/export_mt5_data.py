@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
+from _common import _setup_logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -49,17 +50,6 @@ TF_MAP = {
 }
 
 EXPORT_YEARS = 5.1
-
-
-def _setup_logging():
-    LOG_FILE.parent.mkdir(exist_ok=True)
-    import logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
-    )
-    return logging.getLogger(__name__)
 
 
 def _load_settings():
@@ -143,7 +133,7 @@ def main():
         tf_map = {k: v for k, v in TF_MAP.items() if k in wanted}
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] or SYMBOLS
 
-    logger = _setup_logging()
+    logger = _setup_logging(LOG_FILE)
     logger.info("=" * 60)
     logger.info("MT5 Data Export Started")
     logger.info(f"Symbols: {symbols}")

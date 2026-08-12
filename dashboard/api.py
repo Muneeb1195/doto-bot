@@ -8,7 +8,6 @@ os.environ["JOBLIB_PARALLEL_BACKEND"] = "threading"
 
 import csv
 import json
-import os
 import re
 import secrets
 from pathlib import Path
@@ -24,19 +23,17 @@ LOG_DIR = BASE_DIR / "logs"
 
 security = HTTPBasic()
 
-_dashboard_user: str | None = os.getenv("DASHBOARD_USER")
-_dashboard_pass: str | None = os.getenv("DASHBOARD_PASS")
+_dashboard_user = os.getenv("DASHBOARD_USER") or ""
+_dashboard_pass = os.getenv("DASHBOARD_PASS") or ""
 if not _dashboard_user or not _dashboard_pass:
     raise RuntimeError(
         "DASHBOARD_USER and DASHBOARD_PASS environment variables must be set. "
         "Export them before starting the dashboard."
     )
-_dashboard_user_s: str = _dashboard_user
-_dashboard_pass_s: str = _dashboard_pass
 
 def verify_auth(creds: HTTPBasicCredentials = Depends(security)):
-    is_user = secrets.compare_digest(creds.username, _dashboard_user_s)
-    is_pass = secrets.compare_digest(creds.password, _dashboard_pass_s)
+    is_user = secrets.compare_digest(creds.username, _dashboard_user)
+    is_pass = secrets.compare_digest(creds.password, _dashboard_pass)
     if not (is_user and is_pass):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,6 +41,15 @@ def verify_auth(creds: HTTPBasicCredentials = Depends(security)):
         )
 
 app = FastAPI(title="Doto MT5 Bot Dashboard", dependencies=[Depends(verify_auth)])
+
+@app.middleware("http")
+async def _no_store_api(request, call_next):
+    """The frontend polls /api/* every 10s — never let a browser serve stale JSON."""
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
 
 _cache = {"state": None, "trades": [], "state_mtime": 0.0, "trades_mtime": 0.0}

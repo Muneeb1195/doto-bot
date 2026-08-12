@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Doto MT5 Bot Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
@@ -17,9 +16,14 @@ h2 { color: #8888bb; font-size: 1.1em; margin: 24px 0 8px; border-bottom: 1px so
 .metric .value.green { color: #00d4aa; }
 .metric .value.red { color: #ff4466; }
 .metric .value.blue { color: #4488ff; }
-.chart-container { background: #1a1a2e; border-radius: 8px; padding: 12px; }
-.chart-container.full { grid-column: 1 / -1; }
-.chart-container canvas { max-height: 300px; }
+.filter-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 0.8em; color: #8888bb; }
+.filter-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.filter-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.filter-chart { display: flex; gap: 12px; background: #1a1a2e; border-radius: 8px; padding: 12px; overflow-x: auto; }
+.bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 60px; }
+.bar-rows { display: flex; align-items: flex-end; gap: 2px; height: 160px; width: 100%; }
+.bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
+.bar-label { font-size: 0.7em; color: #8888bb; margin-top: 4px; white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
 th { background: #2a2a3a; color: #8888bb; padding: 6px 8px; text-align: left; font-weight: 600; }
 td { padding: 4px 8px; border-bottom: 1px solid #1a1a2e; }
@@ -46,7 +50,7 @@ pre.log { background: #0a0a15; padding: 8px; border-radius: 4px; font-size: 0.75
 
 <h2>Filter Rejection Breakdown</h2>
 <div id="filterBreakdown"></div>
-<div class="chart-container full"><canvas id="filterChart"></canvas></div>
+<div id="filterChart"></div>
 
 <h2>Performance Metrics</h2>
 <div class="metrics" id="perfMetrics"></div>
@@ -64,8 +68,8 @@ pre.log { background: #0a0a15; padding: 8px; border-radius: 4px; font-size: 0.75
 <p style="margin-top:16px;color:#555;font-size:0.8em">Auto-refreshes every 10s</p>
 
 <script>
-const CHART_COLORS = { green: '#00d4aa', red: '#ff4466', blue: '#4488ff' };
-const _charts = {};
+const FILTERS = ['regime_gate','ml_gate','sanity','no_signal','signals','htf_trend','tail_risk'];
+const FILTER_COLOR = i => `hsla(${i*40},70%,60%,0.7)`;
 function rs(v) { return `Rs.${(v??0).toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2})}`; }
 
 async function load() {
@@ -118,34 +122,35 @@ function renderFilters(state) {
   const el = document.getElementById('filterBreakdown');
   if (!state?.filters) return;
   const syms = Object.keys(state.filters);
-  const filters = ['regime_gate','ml_gate','sanity','no_signal','signals','tail_risk','ml'];
-  let h = '<table><thead><tr><th>Symbol</th>'+filters.map(f=>`<th>${f.replace('_',' ')}</th>`).join('')+'</tr></thead><tbody>';
+  let h = '<table><thead><tr><th>Symbol</th>'+FILTERS.map(f=>`<th>${f.replace('_',' ')}</th>`).join('')+'</tr></thead><tbody>';
   for (const sym of syms) {
     const s = state.filters[sym];
-    h += `<tr><td>${sym}</td>${filters.map(f=>`<td>${s[f]||0}</td>`).join('')}</tr>`;
+    h += `<tr><td>${sym}</td>${FILTERS.map(f=>`<td>${s[f]||0}</td>`).join('')}</tr>`;
   }
   el.innerHTML = h + '</tbody></table>';
   renderFilterChart(syms, state);
 }
 function renderFilterChart(syms, state) {
-  const filters = ['regime_gate','ml_gate','sanity','no_signal','tail_risk','ml'];
-  const ctx = document.getElementById('filterChart').getContext('2d');
-  if (_charts.filterChart) _charts.filterChart.destroy();
-  _charts.filterChart = new Chart(ctx, {
-    type: 'bar', data: {
-      labels: syms,
-      datasets: filters.map((f,i) => ({
-        label: f.replace('_',' '), data: syms.map(s => state.filters?.[s]?.[f]||0),
-        backgroundColor: `hsla(${i*40},70%,60%,0.7)`
-      }))
-    },
-    options: { responsive: true, plugins: { legend: { position:'top', labels:{color:'#8888bb'} } },
-      scales: { x: { ticks:{color:'#8888bb'} }, y: { ticks:{color:'#8888bb'} } } }
-  });
+  const el = document.getElementById('filterChart');
+  if (!syms.length) { el.innerHTML = '<p style="color:#555">No filter data yet</p>'; return; }
+  const max = Math.max(1, ...syms.map(s => FILTERS.map(f => state.filters?.[s]?.[f]||0)).flat());
+  const legend = FILTERS.map((f,i) =>
+    `<span><i style="background:${FILTER_COLOR(i)}"></i>${f.replace('_',' ')}</span>`).join('');
+  const groups = syms.map(s =>
+    `<div class="bar-group"><div class="bar-rows">` +
+    FILTERS.map((f,i) => {
+      const v = state.filters?.[s]?.[f]||0;
+      return `<div class="bar" style="height:${(v/max*100).toFixed(1)}%;background:${FILTER_COLOR(i)}" title="${f.replace('_',' ')}: ${v}"></div>`;
+    }).join('') +
+    `</div><div class="bar-label">${s.replace('.raw','')}</div></div>`).join('');
+  el.innerHTML = `<div class="filter-legend">${legend}</div><div class="filter-chart">${groups}</div>`;
 }
 function renderPerfMetrics(trades) {
   const el = document.getElementById('perfMetrics');
-  const closed = trades.filter(t => ['CLOSE','REVERSAL','MR_EXIT'].includes(t.event));
+  // A closed trade is any journaled non-OPEN row (CLOSE/SCALE_OUT/CHANDELIER/
+  // REVERSAL/MR_EXIT/CIRCUIT_BREAKER/MANUAL_CLOSE/EXTERNAL/*_NAKED_CLOSE) —
+  // matches journal.py's resolved-ticket rule.
+  const closed = trades.filter(t => t.event && t.event !== 'OPEN');
   if (!closed.length) { el.innerHTML = '<p style="color:#555">No closed trades yet</p>'; return; }
   const wins = closed.filter(t => t.pnl > 0);
   const losses = closed.filter(t => t.pnl <= 0);
@@ -186,11 +191,14 @@ function renderPerfMetrics(trades) {
 }
 function renderRegimePerf(trades) {
   const el = document.getElementById('regimePerf');
-  const closed = trades.filter(t => ['CLOSE','REVERSAL','MR_EXIT','SCALE_OUT'].includes(t.event));
+  const closed = trades.filter(t => t.event && t.event !== 'OPEN');
   if (!closed.length) return;
+  const EVENT_LABEL = {'SCALE_OUT':'Scale-Out','MR_EXIT':'Ranging','REVERSAL':'Trend Reversal',
+    'CHANDELIER':'Chandelier','CLOSE':'Trend','CIRCUIT_BREAKER':'Circuit Breaker',
+    'MANUAL_CLOSE':'Manual','EXTERNAL':'External','MR_NAKED_CLOSE':'Ranging','TREND_NAKED_CLOSE':'Trend'};
   const byRegime = {};
   for (const t of closed) {
-    const r = t.event === 'SCALE_OUT' ? 'Scale-Out' : (t.event === 'MR_EXIT' ? 'Ranging' : (t.event === 'REVERSAL' ? 'Trend Reversal' : 'Trend'));
+    const r = EVENT_LABEL[t.event] || t.event;
     if (!byRegime[r]) byRegime[r] = {trades:0,wins:0,pnl:0};
     byRegime[r].trades++;
     byRegime[r].pnl += t.pnl||0;
@@ -233,7 +241,9 @@ async function renderLog() {
   } catch(_) { document.getElementById('botLog').textContent = 'Failed to load log'; }
 }
 
-setInterval(load, 10000);
+// Skip polling while the tab is hidden; refresh immediately on return.
+setInterval(() => { if (!document.hidden) load(); }, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 load();
 </script>
 </body>

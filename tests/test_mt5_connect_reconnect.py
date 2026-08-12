@@ -12,8 +12,6 @@ import time
 from concurrent.futures import TimeoutError as FutureTimeout
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 sys.path.insert(0, "bot")
 
 

@@ -37,21 +37,6 @@ class TestComputeKamaSeries:
         assert np.all(valid <= np.max(arr))
 
 
-class TestComputeEma:
-    def test_returns_correct_length(self):
-        from ml_features import compute_ema
-        arr = np.array([1, 2, 3, 4, 5], dtype=float)
-        result = compute_ema(arr, 3)
-        assert len(result) == 5
-
-    def test_ema_follows_input(self):
-        from ml_features import compute_ema
-        arr = np.array([100, 101, 102, 103, 104], dtype=float)
-        result = compute_ema(arr, 3)
-        assert result[-1] > result[0]
-        assert not np.isnan(result[-1])
-
-
 class TestComputeRsi:
     def test_rsi_bounds(self):
         from ml_features import compute_rsi

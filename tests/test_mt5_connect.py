@@ -1,7 +1,6 @@
 """Tests for mt5_connect.py — mt5_call timeout, get_rates caching, market_open."""
 
 import sys
-from unittest.mock import MagicMock
 
 sys.path.insert(0, "bot")
 
@@ -246,27 +245,6 @@ class TestCanTradeSymbol:
         from mt5_connect import can_trade_symbol
         assert can_trade_symbol("ETHUSD.raw") is True
 
-
-class TestGetPositions:
-    def test_returns_list_when_none(self, monkeypatch):
-        monkeypatch.setattr("mt5_connect.mt5_call", lambda f, *a, **kw: None)
-        from mt5_connect import get_positions
-        assert get_positions("EURUSD.raw") == []
-
-    def test_returns_list_when_empty(self, monkeypatch):
-        monkeypatch.setattr("mt5_connect.mt5_call", lambda f, *a, **kw: ())
-        from mt5_connect import get_positions
-        assert get_positions("EURUSD.raw") == []
-
-    def test_returns_positions(self, monkeypatch):
-        fake_pos = MagicMock()
-        fake_pos.symbol = "EURUSD.raw"
-        fake_pos.ticket = 12345
-        monkeypatch.setattr("mt5_connect.mt5_call", lambda f, *a, **kw: (fake_pos,))
-        from mt5_connect import get_positions
-        result = get_positions("EURUSD.raw")
-        assert len(result) == 1
-        assert result[0].ticket == 12345
 
 
 class TestGetFillingMode:

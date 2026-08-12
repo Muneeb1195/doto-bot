@@ -49,7 +49,8 @@ jobs:
           python-version: '3.12'
       # Resolve the latest data-* release tag (published by the home-server's
       # scripts/push_data.py after each export). Shards use it to fetch their
-      # own M1 CSV instead of a multi-GB git-lfs checkout.
+      # own H1/M15/M1 CSVs instead of relying on git-tracked data/history
+      # (which --no-git exports no longer update).
       - name: Resolve data release
         id: data
         env:
@@ -157,18 +158,27 @@ jobs:
       # re-downloading the release. Dependencies still have to be installed here:
       # each job runs on its own fresh runner, so a pip install in the setup job
       # does NOT carry over. The pip cache below makes the repeat install cheap.
-      - name: Fetch M1 history for ${{ matrix.symbol }} only
+      #
+      # The data-* release is rebuilt at the START of every doto-orchestrate
+      # cycle (export + push_data.py), so downloading H1/M15/M1 from it is what
+      # keeps this run on FRESH bars — the git-tracked data/history CSVs are no
+      # longer updated by the export (which runs with --no-git).
+      - name: Fetch H1/M15/M1 history for ${{ matrix.symbol }}
         run: |
           SAFE="$(echo '${{ matrix.symbol }}' | tr '.' '_')"
           TAG="${{ needs.setup.outputs.data_tag }}"
           mkdir -p data/history
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "${SAFE}_M1.csv" --dir data/history
-          F="data/history/${SAFE}_M1.csv"
-          if [ ! -s "$F" ] || head -c 40 "$F" | grep -q 'git-lfs.github.com'; then
-            echo "::error::$F did not materialise (missing asset or LFS pointer)."
-            exit 1
-          fi
-          echo "M1 rows: $(wc -l < "$F")"
+          for TF in H1 M15 M1; do
+            # --clobber: the git checkout already provides H1/M15 in
+            # data/history; the release assets must replace them, not skip.
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "${SAFE}_${TF}.csv" --dir data/history --clobber
+            F="data/history/${SAFE}_${TF}.csv"
+            if [ ! -s "$F" ] || head -c 40 "$F" | grep -q 'git-lfs.github.com'; then
+              echo "::error::$F did not materialise (missing asset or LFS pointer)."
+              exit 1
+            fi
+            echo "${TF} rows: $(wc -l < "$F")"
+          done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v7.0.0

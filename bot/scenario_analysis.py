@@ -2,9 +2,7 @@
 """Scenario analysis / stress testing for Doto MT5 portfolio."""
 
 import argparse
-import configparser
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -16,9 +14,8 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR / "bot"))
-from mt5_connect import mt5_call  # noqa: E402
+from mt5_connect import login_account, mt5_call  # noqa: E402
 
-CONFIG_DIR = BASE_DIR / "config"
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -50,21 +47,6 @@ SCENARIOS = {
         "shocks": {"US30.raw": 5.0, "XAU500.raw": -2.0, "BTCUSD.raw": 8.0, "GBPJPY.raw": 3.0, "NZDUSD.raw": 2.0},
     },
 }
-
-
-def load_credentials():
-    settings = configparser.ConfigParser()
-    settings.read(CONFIG_DIR / "settings.ini")
-    creds = configparser.ConfigParser()
-    creds.read(CONFIG_DIR / "credentials.ini")
-    return {
-        "account": int(os.getenv("MT5_ACCOUNT") or creds["LOGIN"]["account"]),
-        "password": os.getenv("MT5_PASSWORD") or creds["LOGIN"]["password"],
-        "server": os.getenv("MT5_SERVER") or creds["LOGIN"]["server"],
-        "path": settings.get("MT5", "path", fallback="C:\\Program Files\\MetaTrader 5\\terminal64.exe"),
-        "timeout": int(settings.get("MT5", "timeout_ms", fallback=180000)),
-        "portfolio_symbols": [s.strip() for s in settings.get("PORTFOLIO", "symbols", fallback="").split(",")],
-    }
 
 
 def get_position_pkr(pos, sinfo):
@@ -103,19 +85,8 @@ def compute_scenario_pnl(pos, sinfo, shock_pct):
 
 
 def run_scenario_analysis():
-    creds = load_credentials()
-    ok = mt5_call(mt5.initialize, path=creds["path"], timeout=creds["timeout"], _timeout=65)
-    if not ok:
-        err = mt5_call(mt5.last_error, _timeout=3)
-        print(f"MT5 init failed: {err}")
-        return
-    authorized = mt5_call(
-        mt5.login, login=creds["account"], password=creds["password"], server=creds["server"], _timeout=30
-    )
-    if not authorized:
-        err = mt5_call(mt5.last_error, _timeout=3)
-        print(f"MT5 login failed: {err}")
-        mt5_call(mt5.shutdown, _timeout=5)
+    if not login_account():
+        print("MT5 init/login failed — see log for details")
         return
 
     account_info = mt5_call(mt5.account_info, _timeout=5)

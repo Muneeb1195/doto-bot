@@ -1,6 +1,5 @@
 """Quick symbol screen — one profile per symbol."""
 
-import configparser
 import csv
 import logging
 import os
@@ -20,9 +19,9 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
     from mt5_connect import mt5  # noqa: E402
 import pandas as pd  # noqa: E402
 from backtest import Backtest  # noqa: E402
+from credentials import load_credentials  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_DIR = BASE_DIR / "config"
 LOG_DIR = BASE_DIR / "logs"
 
 PROFILES = {
@@ -134,12 +133,11 @@ def classify(sym):
 
 
 def run():
-    creds = configparser.ConfigParser()
-    creds.read(CONFIG_DIR / "credentials.ini")
+    creds = load_credentials()
     if not mt5.initialize(
-        login=int(os.getenv("MT5_ACCOUNT", creds["LOGIN"]["account"])),
-        password=os.getenv("MT5_PASSWORD", creds["LOGIN"]["password"]),
-        server=os.getenv("MT5_SERVER", creds["LOGIN"]["server"]),
+        login=creds["account"],
+        password=creds["password"],
+        server=creds["server"],
     ):
         print("MT5 init failed")
         return

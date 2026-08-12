@@ -1,4 +1,5 @@
-import numpy as np, pandas as pd
+import numpy as np
+import pandas as pd
 from backtest import Backtest
 
 np.random.seed(7)
@@ -14,8 +15,7 @@ df = pd.DataFrame({
 base = dict(
     symbol="XAU500.raw", initial_balance=400000.0, risk_percent=1.0, commission=0.0,
     ma_type="kama", ema_fast=12, ema_slow=48, atr_period=14, adx_enabled=True,
-    atr_sl_mult=2.0, rr=2.0, adx_trend_threshold=25,
-    exec_enabled=True, exec_bias_max_flips=3, er_min=0.10, er_period=10,
+    atr_sl_mult=2.0, rr=2.0, adx_trend_threshold=25, er_period=10,
     mr_enabled=True, mr_rsi_period=14, mr_rsi_oversold=30, mr_rsi_overbought=70,
     htf_ema_slow=200, htf_misalign_size_mult=0.5,
     scoring_enabled=True, scoring_min_entry=0.0,

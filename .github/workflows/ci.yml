@@ -17,6 +17,19 @@ jobs:
         with:
           args: check
 
+  dupcheck:
+    # Fails if the same module-level function name is defined in more than one
+    # file under scripts/ or tools/ (copy-pasted helpers must move to a shared
+    # _common.py instead). Stdlib-only: no pip install needed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Check duplicate function definitions
+        run: python .github/scripts/check_duplicate_defs.py
+
   typecheck:
     runs-on: ubuntu-latest
     steps:

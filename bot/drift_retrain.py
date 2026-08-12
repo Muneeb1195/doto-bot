@@ -4,6 +4,7 @@ from pathlib import Path
 
 import joblib
 import lightgbm as lgb
+
 try:
     import MetaTrader5 as mt5
 except ImportError:  # Linux: no native package, use the socket/RPyC bridge
@@ -15,24 +16,17 @@ import xgboost as xgb
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from ml_features import FEATURE_COLS, compute_feature_stats, prepare_features, triple_barrier_labels
-from train_model import EnsembleModel, EnsembleRegressor, _CalibratedWrapper
+from train_model import (
+    EnsembleModel,
+    EnsembleRegressor,
+    _CalibratedWrapper,
+    _resolve_label_params,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
 _RETRAIN_BARS = 2000
 _MIN_RETRAIN_SAMPLES = 100
-
-
-def _resolve_label_params(cfg, symbol):
-    sym_section = f"STRATEGY:{symbol}"
-    if cfg.has_section(sym_section):
-        sl_mult = cfg.getfloat(sym_section, "atr_sl_multiplier", fallback=None)
-        rr = cfg.getfloat(sym_section, "risk_reward_ratio", fallback=None)
-        if sl_mult is not None and rr is not None:
-            return sl_mult * rr, sl_mult
-    sl_mult = cfg.getfloat("STRATEGY", "atr_sl_multiplier", fallback=1.0)
-    rr = cfg.getfloat("STRATEGY", "risk_reward_ratio", fallback=2.0)
-    return sl_mult * rr, sl_mult
 
 
 def warmstart_model(symbol, cfg=None, max_hold=12):
@@ -65,7 +59,10 @@ def warmstart_model(symbol, cfg=None, max_hold=12):
 
     end = pd.Timestamp.now()
     start = end - pd.Timedelta(hours=_RETRAIN_BARS)
-    rates = mt5_call(mt5.copy_rates_range, symbol, mt5.TIMEFRAME_H1, start.to_pydatetime(), end.to_pydatetime(), _timeout=60)
+    rates = mt5_call(
+        mt5.copy_rates_range, symbol, mt5.TIMEFRAME_H1,
+        start.to_pydatetime(), end.to_pydatetime(), _timeout=60,
+    )
     if rates is None or len(rates) < _RETRAIN_BARS // 2:
         logging.warning(f"[{symbol}] Insufficient data for warm-start ({len(rates) if rates is not None else 0})")
         return False
@@ -77,7 +74,10 @@ def warmstart_model(symbol, cfg=None, max_hold=12):
     try:
         m1_end = end
         m1_start = end - pd.Timedelta(hours=min(_RETRAIN_BARS, 720))
-        m1_rates = mt5_call(mt5.copy_rates_range, symbol, mt5.TIMEFRAME_M1, m1_start.to_pydatetime(), m1_end.to_pydatetime(), _timeout=120)
+        m1_rates = mt5_call(
+            mt5.copy_rates_range, symbol, mt5.TIMEFRAME_M1,
+            m1_start.to_pydatetime(), m1_end.to_pydatetime(), _timeout=120,
+        )
         if m1_rates is not None and len(m1_rates) > 0:
             m1_df = pd.DataFrame(m1_rates)
             m1_df["time"] = pd.to_datetime(m1_df["time"], unit="s")

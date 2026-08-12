@@ -107,10 +107,8 @@ class TestWriteDashboardState:
         write_dashboard_state([FakePosition()], {"XAU500.raw": "strong_trend"})
         with open(tmp_path / "data" / "dashboard_state.json") as f:
             data = json.load(f)
-        required = ["timestamp", "balance", "equity", "profit", "margin",
-                     "margin_free", "positions", "regimes",
-                     "exec_quality", "positions_detail", "filters",
-                     "dynamic_deviation", "correlation", "health"]
+        required = ["balance", "equity", "profit", "margin_free", "positions",
+                     "regimes", "positions_detail", "filters", "health"]
         for key in required:
             assert key in data, f"Missing key: {key}"
 

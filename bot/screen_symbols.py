@@ -5,10 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 
-import configparser
 import csv
 import logging
-import os
 from datetime import datetime, timedelta
 
 try:
@@ -17,9 +15,9 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
     from mt5_connect import mt5
 import pandas as pd
 from backtest import Backtest
+from credentials import load_credentials
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_DIR = BASE_DIR / "config"
 LOG_DIR = BASE_DIR / "logs"
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -82,13 +80,8 @@ def base_params(symbol, sinfo, profile):
 
 
 def screen():
-    creds = configparser.ConfigParser()
-    creds.read(CONFIG_DIR / "credentials.ini")
-    account = int(os.getenv("MT5_ACCOUNT", creds["LOGIN"]["account"]))
-    password = os.getenv("MT5_PASSWORD", creds["LOGIN"]["password"])
-    server = os.getenv("MT5_SERVER", creds["LOGIN"]["server"])
-
-    if not mt5.initialize(login=account, password=password, server=server):
+    creds = load_credentials()
+    if not mt5.initialize(login=creds["account"], password=creds["password"], server=creds["server"]):
         print(f"MT5 init failed: {mt5.last_error()}")
         return
 

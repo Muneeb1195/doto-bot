@@ -62,7 +62,7 @@ mkdir -p ~/doto-mt5-bot/config ~/doto-mt5-bot/logs ~/doto-mt5-bot/models
 nano ~/doto-mt5-bot/config/credentials.ini
 ```
 
-Format (matches `bot/start_mt5.py`):
+Format (read by `bot/credentials.load_credentials`):
 
 ```ini
 [LOGIN]
@@ -124,7 +124,7 @@ export DISPLAY=:99
 wine "$HOME/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" /portable
 ```
 
-Log in inside the Wine GUI (or use `bot/start_mt5.py`), confirm balance, then:
+Log in inside the Wine GUI, confirm balance, then:
 
 ```bash
 kill %1; systemctl --user start doto-bot mt5-rpyc
@@ -192,8 +192,9 @@ sudo loginctl disable-linger $USER
 - `mt5linux` is **not** in `requirements.txt`; it is installed separately in
   both the native venv (client) and the Wine Python (server).
 - The old Wine-Python launcher scripts (`bot/run_bot.sh`, `bot/run_optimizer.sh`,
-  `bot/train_all.sh`) are **obsolete** — current `mt5_connect.py` always uses
-  the mt5linux RPyC path on Linux.
+  `bot/run_retrain.sh`, `bot/train_all.sh`, `bot/start_mt5.sh`, `bot/train_all.py`)
+  were **removed** — current `mt5_connect.py` always uses the mt5linux RPyC
+  path on Linux.
 - MT5 first connect under Wine can take 100+ seconds; the RPyC service
   (`Restart=always`, RestartSec=15) will keep retrying until MT5 is ready.
 - The dashboard runs on the home-server at `http://<tailscale-ip>:8501` (reachable via Tailscale). HTTP Basic auth via `DASHBOARD_USER`/`DASHBOARD_PASS` env vars.
