@@ -29,7 +29,7 @@ jobs:
           lfs: false
       - name: Fetch M1 market data
         run: |
-          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName --jq 'map(select(startswith("data-"))) | .[0]')
+          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName --jq '[.[].tagName | select(startswith("data-"))] | first')
           if [ -z "$TAG" ]; then echo "No data-* release found"; exit 1; fi
           echo "Fetching M1 data from release $TAG"
           mkdir -p data/history
