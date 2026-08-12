@@ -287,7 +287,7 @@ jobs:
               except (TypeError, ValueError):
                   return default
 
-          result, skipped = {}, []
+          result, failed, skipped = {}, {}, []
           for path in sorted(glob.glob('logs/optimize_*.csv')):
               sym = os.path.basename(path).replace('optimize_', '').replace('.csv', '').replace('_', '.')
               if sym not in portfolio:
@@ -301,6 +301,16 @@ jobs:
                   skipped.append(f'{sym}: no valid plateau')
                   continue
 
+              def _to_params(r):
+                  return {
+                      'ema_fast_period': int(r['ema_fast']),
+                      'ema_slow_period': int(r['ema_slow']),
+                      'atr_sl_multiplier': float(r['sl']),
+                      'risk_reward_ratio': float(r['rr']),
+                      'adx_trend_threshold': int(r['adx']),
+                      'scoring_min_entry': float(r['score']),
+                  }
+
               # Multiple-testing guard: a walk-forward winner drawn from a large
               # search is not evidence of edge on its own. Skip publishing any
               # symbol whose result is indistinguishable from a lucky draw.
@@ -310,28 +320,25 @@ jobs:
               # columns existed sailed straight through ungated.
               if 'dsr' not in df.columns or 'pbo' not in df.columns:
                   skipped.append(f'{sym}: no DSR/PBO columns (stale or pre-gate CSV)')
+                  failed[sym] = _to_params(rec)
                   continue
               dsr, pbo = num(rec, 'dsr'), num(rec, 'pbo')
               if math.isnan(dsr):
                   skipped.append(f'{sym}: DSR not computed')
+                  failed[sym] = _to_params(rec)
                   continue
               if dsr < 0.95:
                   skipped.append(f'{sym}: DSR={dsr:.3f} < 0.95')
+                  failed[sym] = _to_params(rec)
                   continue
               # PBO is legitimately NaN when there are too few candidates to
               # split, so only a computed value can reject.
               if not math.isnan(pbo) and pbo > 0.5:
                   skipped.append(f'{sym}: PBO={pbo:.2f} > 0.50')
+                  failed[sym] = _to_params(rec)
                   continue
 
-              result[sym] = {
-                  'ema_fast_period': int(rec['ema_fast']),
-                  'ema_slow_period': int(rec['ema_slow']),
-                  'atr_sl_multiplier': float(rec['sl']),
-                  'risk_reward_ratio': float(rec['rr']),
-                  'adx_trend_threshold': int(rec['adx']),
-                  'scoring_min_entry': float(rec['score']),
-              }
+              result[sym] = _to_params(rec)
               print(f"  {sym}: EMA{int(rec['ema_fast'])}/{int(rec['ema_slow'])} "
                     f"SL={float(rec['sl']):.1f} RR={float(rec['rr']):.1f} "
                     f"ADX={int(rec['adx'])} score={float(rec['score']):.2f} "
@@ -350,6 +357,15 @@ jobs:
           with open('strategy-params.json', 'w') as f:
               json.dump(result, f, indent=2)
           print(f'Published params for {len(result)}/{len(portfolio)} portfolio symbols')
+          # Gate-failed symbols keep their best plateau params but the box
+              # applies them with a TIGHTENED entry on the 1st consecutive
+              # failure and PAUSES new entries on the 2nd+. Persisting them lets
+              # the downloader enforce that policy locally instead of dropping
+              # the symbol's params entirely. Always write the file (empty when
+              # nothing failed) so the release always carries it.
+              with open('failed-params.json', 'w') as f:
+                  json.dump(failed, f, indent=2)
+              print(f'Failed gate ({len(failed)}): {", ".join(sorted(failed)) or "none"}')
           for s in skipped:
               print(f'  SKIPPED {s}')
 
@@ -368,9 +384,10 @@ jobs:
             echo "${{ needs.setup.outputs.mode }} optimization (sharded per symbol)."
             echo
             echo "Params are selected by pick_middle_of_plateau() and then gated on"
-            echo "DSR >= 0.95 and PBO <= 0.50. A symbol that fails the gate is omitted"
-            echo "from strategy-params.json and therefore KEEPS ITS EXISTING settings.ini"
-            echo "parameters on the live bot -- it is not disabled, just not updated."
+            echo "DSR >= 0.95 and PBO <= 0.50. A symbol that fails the gate lands in"
+            echo "failed-params.json; the box applies its best params with a tightened"
+            echo "entry on the 1st consecutive failure and pauses new entries on the"
+            echo "2nd+ (existing positions still exit)."
             echo
             python - <<'PY'
           import json
@@ -382,12 +399,12 @@ jobs:
                     f"SL={v['atr_sl_multiplier']} RR={v['risk_reward_ratio']} "
                     f"ADX={v['adx_trend_threshold']} score={v['scoring_min_entry']}")
           print()
-          print(f"### Not updated ({len(s)})")
+          print(f"### Not applied ({len(s)})")
           for line in s:
               print(f"- {line}")
           PY
           } > notes.md
-          gh release create "$TAG" strategy-params.json skipped.json logs/optimize_*.csv \
+          gh release create "$TAG" strategy-params.json failed-params.json skipped.json logs/optimize_*.csv \
             --title "Strategy Params $(date +%Y-%m-%d)" \
             --notes-file notes.md
         env:
@@ -410,14 +427,15 @@ jobs:
                   return default
 
           applied = load('strategy-params.json', {})
+          failed = load('failed-params.json', {})
           skipped = load('skipped.json', [])
 
           msg = (f"Optimization ({os.environ['MODE']}): {os.environ['STATUS']} — "
                  f"{len(applied)} applied, {len(skipped)} not updated")
-          if skipped:
-              shown = "; ".join(skipped[:4])
-              extra = f" (+{len(skipped) - 4} more)" if len(skipped) > 4 else ""
-              msg += f"\nKept existing params: {shown}{extra}"
+          if failed:
+              shown = "; ".join(sorted(failed)[:4])
+              extra = f" (+{len(failed) - 4} more)" if len(failed) > 4 else ""
+              msg += f"\nHybrid policy (gate fail): {shown}{extra}"
 
           hook = os.environ.get('WEBHOOK')
           if not hook:

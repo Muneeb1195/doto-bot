@@ -30,6 +30,7 @@ SYMBOL_OVERRIDE_KEYS = {
     "mtf_m15_ema_fast",
     "mtf_m15_ema_slow",
     "mtf_enabled",
+    "trading_enabled",
 }
 
 SYMBOL_STRATEGY_MAP = {
@@ -56,6 +57,7 @@ SYMBOL_STRATEGY_MAP = {
     "mtf_m15_ema_slow": int,
     "mtf_enabled": lambda v: v.lower() == "true" if isinstance(v, str) else bool(v),
     "scoring_min_entry": float,
+    "trading_enabled": lambda v: v.lower() == "true" if isinstance(v, str) else bool(v),
 }
 
 KEY_MAP = {
@@ -418,6 +420,7 @@ def load_config():
         "deviation": cfg.get("deviation", 50),
         "mtf_h4_ema_period": cfg.get("mtf_h4_ema_period", 100),
         "mtf_enabled": cfg.get("mtf_enabled", False),
+        "trading_enabled": True,
     }
 
     for symbol in cfg["symbols"]:

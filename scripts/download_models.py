@@ -43,6 +43,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
 TRAIN_TAG_FILE = BASE_DIR / ".last_train_tag"
 OPT_TAG_FILE = BASE_DIR / ".last_optimize_tag"
+STREAKS_FILE = BASE_DIR / ".symbol_streaks.json"
 LOG_FILE = BASE_DIR / "logs" / "download_models.log"
 GH = os.environ.get("GH_BINARY", "gh")
 
@@ -50,6 +51,15 @@ TRAIN_PREFIX = "train-"
 OPT_PREFIX = "optimize-"
 MODEL_ASSET = "models.tar.gz"
 PARAMS_ASSET = "strategy-params.json"
+FAILED_PARAMS_ASSET = "failed-params.json"
+
+# Hybrid gate-failure policy: a symbol whose plateau pick fails the DSR/PBO
+# gate in the CI publish job lands in failed-params.json. The box re-applies
+# its best params with a tightened entry on the FIRST consecutive failure, and
+# pauses new entries entirely on the SECOND+ (existing positions still exit).
+FAILURE_PAUSE_STRIKE = 2
+ENTRY_TIGHTEN_DELTA = 0.15
+ENTRY_TIGHTEN_CAP = 0.90
 
 POLL_SECONDS = 30
 # How long to wait for each dispatched run before giving up.
@@ -134,25 +144,30 @@ def _download_asset(logger, tag, asset_name, dest):
         return None
 
 
-def _apply_strategy_params(logger):
-    """Apply strategy-params.json to settings.ini via update_symbol_strategy."""
-    params_path = BASE_DIR / "strategy-params.json"
-    if not params_path.exists():
-        logger.warning("strategy-params.json not found — skipping param apply")
-        return False
+def _load_streaks():
+    """Per-symbol consecutive gate-failure count. Returns dict {sym: int}."""
+    if not STREAKS_FILE.exists():
+        return {}
     try:
-        params = json.loads(params_path.read_text())
-    except (json.JSONDecodeError, OSError) as e:
-        logger.error(f"Failed to read strategy-params.json: {e}")
-        return False
+        data = json.loads(STREAKS_FILE.read_text())
+        return {str(k): int(v) for k, v in data.items() if int(v) > 0}
+    except (json.JSONDecodeError, KeyError, ValueError, OSError):
+        return {}
 
-    sys.path.insert(0, str(BASE_DIR / "bot"))
-    from auto_optimizer import load_portfolio, update_symbol_strategy, write_settings
 
-    # load_portfolio() returns (symbols, settings). `settings` is a
-    # ConfigParser, whose .get() signature is get(section, option).
-    portfolio, settings = load_portfolio()
-    any_changed = False
+def _save_streaks(streaks):
+    try:
+        STREAKS_FILE.write_text(json.dumps(streaks, indent=2))
+    except OSError as e:
+        logging.getLogger(__name__).warning(f"Failed to persist streak file: {e}")
+
+
+def _apply_passed_params(logger, settings, params, portfolio):
+    """Apply a gate-PASSED symbol's params normally: reset its failure streak
+    and force trading_enabled=true (a fresh pass clears any pause)."""
+    from auto_optimizer import set_trading_enabled, update_symbol_strategy
+
+    changed = False
     skipped = []
     for symbol, p in params.items():
         if portfolio and symbol not in portfolio:
@@ -167,15 +182,111 @@ def _apply_strategy_params(logger):
             "score": p.get("scoring_min_entry"),
         }
         if update_symbol_strategy(symbol, rec, settings):
-            any_changed = True
+            changed = True
+        if set_trading_enabled(symbol, True, settings):
+            changed = True
+        logger.info(f"  {symbol}: PASS — params applied, trading enabled")
+    if skipped:
+        logger.warning(f"Skipped params for non-portfolio symbols: {sorted(skipped)}")
+    return changed
+
+
+def _apply_failed_params(logger, settings, failed, streaks):
+    """Apply the hybrid policy for gate-failed symbols.
+
+    1st consecutive failure: re-apply best params with a TIGHTENED entry
+    (scoring_min_entry + DIFF, capped) — symbol keeps trading.
+    2nd+ consecutive failure: pause new entries (trading_enabled=false);
+    existing positions still exit. Params not touched on the pause so the
+    symbol keeps whatever the last applied (or tightened) config was.
+    """
+    from auto_optimizer import set_trading_enabled, update_symbol_strategy
+
+    changed = False
+    for symbol, p in failed.items():
+        streak = streaks.get(symbol, 0) + 1
+        streaks[symbol] = streak
+        changed = True  # streak state always bumps on a failed release
+
+        if streak >= FAILURE_PAUSE_STRIKE:
+            if set_trading_enabled(symbol, False, settings):
+                changed = True
+            logger.warning(
+                f"  {symbol}: FAILED x{streak} — new entries PAUSED "
+                f"(existing positions still exit)"
+            )
+            continue
+
+        rec = {
+            "ema_fast": p.get("ema_fast_period"),
+            "ema_slow": p.get("ema_slow_period"),
+            "sl": p.get("atr_sl_multiplier"),
+            "rr": p.get("risk_reward_ratio"),
+            "adx": p.get("adx_trend_threshold"),
+            "score": p.get("scoring_min_entry"),
+        }
+        try:
+            base_score = float(rec["score"]) if rec["score"] is not None else 0.60
+        except (TypeError, ValueError):
+            base_score = 0.60
+        rec["score"] = min(round(base_score + ENTRY_TIGHTEN_DELTA, 2),
+                           ENTRY_TIGHTEN_CAP)
+        if update_symbol_strategy(symbol, rec, settings):
+            changed = True
+        if set_trading_enabled(symbol, True, settings):
+            changed = True
+        logger.warning(
+            f"  {symbol}: FAILED x{streak} — applying params with TIGHTENED "
+            f"entry (min_score={rec['score']:.2f}), still trading"
+        )
+    return changed
+
+
+def _apply_strategy_params(logger):
+    """Apply strategy-params.json (passed) + failed-params.json (hybrid policy)
+    to settings.ini. Returns True once run (even if nothing changed)."""
+    params_path = BASE_DIR / "strategy-params.json"
+    failed_path = BASE_DIR / "failed-params.json"
+    params = {}
+    failed = {}
+    if params_path.exists():
+        try:
+            params = json.loads(params_path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error(f"Failed to read strategy-params.json: {e}")
+    if failed_path.exists():
+        try:
+            failed = json.loads(failed_path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error(f"Failed to read failed-params.json: {e}")
+    if not params and not failed:
+        logger.warning("No strategy-params.json / failed-params.json found — "
+                       "skipping param apply")
+        return False
+
+    sys.path.insert(0, str(BASE_DIR / "bot"))
+    from auto_optimizer import load_portfolio, write_settings
+
+    # load_portfolio() returns (symbols, settings). `settings` is a
+    # ConfigParser, whose .get() signature is get(section, option).
+    portfolio, settings = load_portfolio()
+    streaks = _load_streaks()
+    orig_streaks = dict(streaks)
+
+    any_changed = False
+    if params and _apply_passed_params(logger, settings, params, portfolio):
+        any_changed = True
+    if failed and _apply_failed_params(logger, settings, failed, streaks):
+        any_changed = True
+
+    if streaks != orig_streaks:
+        _save_streaks(streaks)
 
     if any_changed:
         write_settings(settings)
-        logger.info("Strategy params applied to settings.ini")
+        logger.info("Strategy params/policy applied to settings.ini")
     else:
         logger.info("No strategy param changes needed")
-    if skipped:
-        logger.warning(f"Skipped params for non-portfolio symbols: {sorted(skipped)}")
     return True
 
 
@@ -347,14 +458,29 @@ def fetch(logger):
                 tmp = Path(tmpdir)
                 params_path = _download_asset(logger, opt_tag, PARAMS_ASSET,
                                               tmp / PARAMS_ASSET)
-                if params_path:
+                if not params_path:
+                    # A release must always carry strategy-params.json; treat a
+                    # missing one like a failed download (do not advance tag).
+                    logger.warning("Params download failed — not updating optimize tag")
+                else:
                     shutil.move(str(params_path), BASE_DIR / PARAMS_ASSET)
                     logger.info("strategy-params.json downloaded")
+                    failed_path = _download_asset(logger, opt_tag, FAILED_PARAMS_ASSET,
+                                                  tmp / FAILED_PARAMS_ASSET)
+                    if failed_path:
+                        shutil.move(str(failed_path), BASE_DIR / FAILED_PARAMS_ASSET)
+                        logger.info("failed-params.json downloaded")
+                    else:
+                        # A release that has no gate failures simply omits the
+                        # file; remove any leftover so a previous failure isn't
+                        # replayed from an older release.
+                        stale = BASE_DIR / FAILED_PARAMS_ASSET
+                        if stale.exists():
+                            stale.unlink()
+                            logger.info("No failed-params.json in release — cleared previous")
                     OPT_TAG_FILE.write_text(opt_tag)
                     logger.info(f"Updated optimize tag to {opt_tag}")
                     changed = True
-                else:
-                    logger.warning("Params download failed — not updating optimize tag")
 
     if changed:
         _apply_strategy_params(logger)

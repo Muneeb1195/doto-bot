@@ -115,6 +115,21 @@ def pick_best_params(csv_path, symbol):
     return rec
 
 
+def set_trading_enabled(symbol, enabled, settings):
+    """Set the per-symbol trading_enabled gate in [STRATEGY:<symbol>].
+    Returns True if the value changed from what is currently on disk."""
+    section = f"STRATEGY:{symbol}"
+    if section not in settings:
+        settings[section] = {}
+    current_raw = settings[section].get("trading_enabled")
+    new_val = "true" if enabled else "false"
+    if current_raw is not None and current_raw.strip().lower() == new_val:
+        return False
+    settings[section]["trading_enabled"] = new_val
+    logging.info(f"  {symbol}: trading_enabled {current_raw}->{new_val}")
+    return True
+
+
 def update_symbol_strategy(symbol, rec, settings):
     section = f"STRATEGY:{symbol}"
     if section not in settings:

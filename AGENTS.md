@@ -114,6 +114,17 @@ The project has three roles and they must NOT overlap:
     pure URL/urllib download of the latest `train-*`/`optimize-*` releases, no `gh`
     needed. Tracks progress in `.last_train_tag`/`.last_optimize_tag` (two files —
     models and params come from separate release streams).
+- **Gate-failure hybrid policy** (`optimize.yml` publish → `download_models.py`):
+  a symbol whose plateau pick fails the DSR/PBO gate is published in
+  `failed-params.json` (its best plateau params, same shape as
+  `strategy-params.json`). The box tracks consecutive failures in
+  `.symbol_streaks.json`: **1st failure** → re-apply those params with a
+  TIGHTENED entry (`scoring_min_entry` + 0.15, capped at 0.90), symbol keeps
+  trading; **2nd+ consecutive failure** → `trading_enabled = false` in
+  `[STRATEGY:<sym>]` in `settings.ini` (new entries paused, existing positions
+  still exit via position management). A fresh pass resets the streak and
+  re-enables the symbol. `trading_enabled` is a per-symbol `SYMBOL_STRATEGY_MAP`
+  key (bool-converted, defaults true).
   - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write, Contents:
     write) in `config/credentials.ini`, injected as `GITHUB_TOKEN` via the unit
     EnvironmentFile.

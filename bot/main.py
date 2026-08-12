@@ -831,6 +831,11 @@ def main():
                     positions_sym = [p for p in all_positions if p.symbol == symbol]
                     total_positions = len(all_positions)
 
+                    if not sym_cfg.get("trading_enabled", True):
+                        logging.debug(f"[{symbol}] Trading disabled by policy — exits only")
+                        _filter_stats[symbol]["no_signal"] += 1
+                        continue
+
                     if block_entries:
                         logging.debug(f"[{symbol}] Block entries active — skipping")
                         _filter_stats[symbol]["no_signal"] += 1

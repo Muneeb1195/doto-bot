@@ -227,6 +227,7 @@ atr_sl_multiplier = 2.0
 risk_reward_ratio = 2.0
 adx_trend_threshold = 20
 risk_percent = 1.0
+trading_enabled = false
 
 [STRATEGY:GBPJPY.raw]
 ema_fast_period = 6
@@ -433,6 +434,29 @@ class TestApplySymbolStrategy:
         cfg = config_module.load_config()
         config_module.apply_symbol_strategy(cfg, "XAU500.raw")
         assert cfg["atr_period"] == 14
+
+    def test_trading_enabled_default_true(self, config_module):
+        cfg = config_module.load_config()
+        config_module.apply_symbol_strategy(cfg, "XAU500.raw")
+        assert cfg["trading_enabled"] is True
+
+    def test_trading_enabled_parsed_from_override(self, config_module):
+        cfg = config_module.load_config()
+        # Conftest SETTINGS_INI sets [STRATEGY:US30.raw] trading_enabled = false.
+        config_module.apply_symbol_strategy(cfg, "US30.raw")
+        assert cfg["trading_enabled"] is False
+
+    def test_trading_enabled_resets_between_symbols(self, config_module):
+        cfg = config_module.load_config()
+        config_module.apply_symbol_strategy(cfg, "US30.raw")
+        assert cfg["trading_enabled"] is False
+        config_module.apply_symbol_strategy(cfg, "XAU500.raw")
+        assert cfg["trading_enabled"] is True
+
+    def test_trading_enabled_in_symbol_strategy_map(self, config_module):
+        cfg = config_module.load_config()
+        ss = cfg["symbol_strategy"]
+        assert ss.get("US30.raw", {}).get("trading_enabled") is False
 
 
 class TestApplySymbolOverrides:
