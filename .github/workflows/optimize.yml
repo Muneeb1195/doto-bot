@@ -358,14 +358,14 @@ jobs:
               json.dump(result, f, indent=2)
           print(f'Published params for {len(result)}/{len(portfolio)} portfolio symbols')
           # Gate-failed symbols keep their best plateau params but the box
-              # applies them with a TIGHTENED entry on the 1st consecutive
-              # failure and PAUSES new entries on the 2nd+. Persisting them lets
-              # the downloader enforce that policy locally instead of dropping
-              # the symbol's params entirely. Always write the file (empty when
-              # nothing failed) so the release always carries it.
-              with open('failed-params.json', 'w') as f:
-                  json.dump(failed, f, indent=2)
-              print(f'Failed gate ({len(failed)}): {", ".join(sorted(failed)) or "none"}')
+          # applies them with a TIGHTENED entry on the 1st consecutive
+          # failure and PAUSES new entries on the 2nd+. Persisting them lets
+          # the downloader enforce that policy locally instead of dropping
+          # the symbol's params entirely. Always write the file (empty when
+          # nothing failed) so the release always carries it.
+          with open('failed-params.json', 'w') as f:
+              json.dump(failed, f, indent=2)
+          print(f'Failed gate ({len(failed)}): {", ".join(sorted(failed)) or "none"}')
           for s in skipped:
               print(f'  SKIPPED {s}')
 
