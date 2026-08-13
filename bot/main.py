@@ -112,6 +112,7 @@ from filters import (  # noqa: E402
 )
 from journal import _reconcile_external_deals, journal_close, journal_init, reconcile_journal  # noqa: E402
 from mt5_connect import (  # noqa: E402
+    LIVE_MARKET,
     can_trade_symbol,
     ensure_mt5_connected,
     get_filling_mode,
@@ -119,6 +120,7 @@ from mt5_connect import (  # noqa: E402
     market_open,
     mt5_call,
     mt5_order_send,
+    realized_pnl,
 )
 from regime import get_current_atr  # noqa: E402
 from risk import calc_kelly_mult, calc_volatility_mult  # noqa: E402
@@ -455,7 +457,7 @@ def main():
                         }
                         result_cb = mt5_order_send(close_req, _timeout=10)
                         if result_cb is not None and result_cb.retcode == mt5.TRADE_RETCODE_DONE:
-                            pnl_cb = result_cb.profit if hasattr(result_cb, "profit") else 0.0
+                            pnl_cb = realized_pnl(LIVE_MARKET, pos.ticket)
                             pips_cb = (
                                 abs(pos.price_open - close_price) / sinfo_cb.point
                                 if (sinfo_cb and sinfo_cb.point)

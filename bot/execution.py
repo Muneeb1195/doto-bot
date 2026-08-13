@@ -20,6 +20,7 @@ from mt5_connect import (
     get_filling_mode,
     mt5_call,
     mt5_order_send,
+    realized_pnl,
 )
 from regime import get_current_atr
 from risk import calc_position_size
@@ -172,7 +173,7 @@ def check_scale_out(cfg, position, market=None):
     result = market.order_send(close_req)
     if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
         return False
-    pnl = result.profit if hasattr(result, "profit") else 0.0
+    pnl = realized_pnl(market, ticket)
     pips = abs(position.price_open - level) / sinfo.point if sinfo.point else 0
     if cfg["trade_journal"]:
         journal_close(ticket, level, pnl, pips, "SCALE_OUT")
@@ -372,7 +373,7 @@ def check_chandelier_exit(cfg, position, market=None):
         if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
             _chandelier_state.pop(position.ticket, None)
             save_bot_state()
-            pnl = result.profit if hasattr(result, "profit") else 0.0
+            pnl = realized_pnl(market, position.ticket)
             pips = abs(position.price_open - close_price) / sinfo.point if sinfo.point else 0
             if cfg["trade_journal"]:
                 journal_close(position.ticket, close_price, pnl, pips, "CHANDELIER")
@@ -517,7 +518,7 @@ def manage_positions(
         _update_dynamic_deviation(symbol, True, sym_cfg)
         _last_trade_time.pop(f"trend:{symbol}", None)
         _last_trade_time.pop(f"mr:{symbol}", None)
-        close_pnl = result.profit if hasattr(result, "profit") and result.profit else 0.0
+        close_pnl = realized_pnl(market, pos.ticket)
         # MR cooldown (A3): track consecutive losses on EVERY MR-position close
         # (any exit reason) — parity with backtest._register_close. Kept outside
         # trade_journal so risk state never depends on journaling.

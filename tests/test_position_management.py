@@ -36,11 +36,18 @@ class Pos:
 
 
 class DoneResult:
-    def __init__(self, profit=0.0, price=0.0):
+    # Mirrors the real mt5.TradeResult: retcode/price only — NO profit field.
+    # Realized P&L comes from the executed deal via realized_pnl().
+    def __init__(self, price=0.0):
         self.retcode = execution.mt5.TRADE_RETCODE_DONE
-        self.profit = profit
         self.price = price
         self.order = 0
+
+
+class Deal:
+    # Mirrors an executed mt5.TradeDeal (the source of realized P&L).
+    def __init__(self, profit=0.0):
+        self.profit = profit
 
 
 def _sinfo():
@@ -58,11 +65,12 @@ def _sinfo():
 class FakeMarket:
     """Deterministic stand-in for mt5_connect.Market; records every order_send."""
 
-    def __init__(self, tick=None, sinfo=None, rates=None, send_results=None):
+    def __init__(self, tick=None, sinfo=None, rates=None, send_results=None, deals=None):
         self.tick = tick
         self.sinfo = sinfo
         self.rates = rates
         self.send_results = list(send_results or [])
+        self.deals = deals or {}  # {ticket: [Deal, ...]}
         self.orders = []
         self.sinfo_calls = 0
         self.tick_calls = 0
@@ -85,6 +93,9 @@ class FakeMarket:
         if self.send_results:
             return self.send_results.pop(0)
         return None
+
+    def get_deals(self, position):
+        return self.deals.get(position, [])
 
 
 @pytest.fixture
@@ -146,7 +157,8 @@ class TestClosePath:
         pos = self._old_position()
         market = FakeMarket(
             tick=MagicMock(bid=1999.0, ask=1999.5),
-            send_results=[DoneResult(profit=5.0)],
+            send_results=[DoneResult()],
+            deals={pos.ticket: [Deal(profit=5.0)]},
         )
         self._seed_scale_state(pm_cfg, pos)
         _chandelier_state[pos.ticket] = {"ch_sl": 1900.0}
@@ -195,7 +207,8 @@ class TestClosePath:
         self._patch_side_effects(monkeypatch)
         pos = self._old_position(magic=pm_cfg["mr_magic"], comment="TrendBot-MR")
         market = FakeMarket(tick=MagicMock(bid=1999.0, ask=1999.5),
-                            send_results=[DoneResult(profit=-3.0)])
+                            send_results=[DoneResult()],
+                            deals={pos.ticket: [Deal(profit=-3.0)]})
         self._seed_scale_state(pm_cfg, pos)
         try:
             manage_positions(pm_cfg, "XAU500.raw", [pos], atr=10.0, market=market)
@@ -210,7 +223,8 @@ class TestClosePath:
         pos = self._old_position(magic=pm_cfg["mr_magic"], comment="TrendBot-MR")
         _st._mr_consecutive_losses["XAU500.raw"] = 2
         market = FakeMarket(tick=MagicMock(bid=1999.0, ask=1999.5),
-                            send_results=[DoneResult(profit=5.0)])
+                            send_results=[DoneResult()],
+                            deals={pos.ticket: [Deal(profit=5.0)]})
         self._seed_scale_state(pm_cfg, pos)
         try:
             manage_positions(pm_cfg, "XAU500.raw", [pos], atr=10.0, market=market)
@@ -234,7 +248,8 @@ class TestCloseDecision:
         closed = self._patch_side_effects(monkeypatch)
         pos = Pos()
         market = FakeMarket(tick=MagicMock(bid=1999.0, ask=1999.5),
-                            send_results=[DoneResult(profit=1.0)])
+                            send_results=[DoneResult()],
+                            deals={pos.ticket: [Deal(profit=1.0)]})
         try:
             book = manage_positions(
                 pm_cfg, "XAU500.raw", [pos], trend_signal="sell",
@@ -277,7 +292,8 @@ class TestCloseDecision:
                             lambda cfg, pos, market=None: True)
         pos = Pos(magic=pm_cfg["mr_magic"], comment="TrendBot-MR")
         market = FakeMarket(tick=MagicMock(bid=1999.0, ask=1999.5),
-                            send_results=[DoneResult(profit=2.0)])
+                            send_results=[DoneResult()],
+                            deals={pos.ticket: [Deal(profit=2.0)]})
         try:
             book = manage_positions(
                 pm_cfg, "XAU500.raw", [pos], regime="trending", market=market,

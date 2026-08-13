@@ -164,7 +164,7 @@ def _close_via_order_send(mt5_sim, cfg, pos, reason="REVERSAL"):
     """Helper: send a close deal for a position (mirrors main.py inline logic)."""
     from execution import mt5_order_send
     from journal import journal_close
-    from mt5_connect import get_deviation, mt5_call
+    from mt5_connect import LIVE_MARKET, get_deviation, mt5_call, realized_pnl
     close_type = mt5_sim.ORDER_TYPE_SELL if pos.type == mt5_sim.ORDER_TYPE_BUY else mt5_sim.ORDER_TYPE_BUY
     tick = mt5_call(mt5_sim.symbol_info_tick, pos.symbol)
     if tick is None:
@@ -180,7 +180,7 @@ def _close_via_order_send(mt5_sim, cfg, pos, reason="REVERSAL"):
     }
     result = mt5_order_send(close_req)
     if result is not None and result.retcode == mt5_sim.TRADE_RETCODE_DONE:
-        close_pnl = result.profit if hasattr(result, "profit") and result.profit else 0.0
+        close_pnl = realized_pnl(LIVE_MARKET, pos.ticket)
         sp = sinfo.point if (sinfo and sinfo.point) else 0.001
         pips = abs(pos.price_open - price) / sp
         journal_close(pos.ticket, price, close_pnl, pips, reason)

@@ -182,6 +182,25 @@ class Market:
     def order_send(self, request, _timeout=10):
         return mt5_order_send(request, _timeout=_timeout)
 
+    def get_deals(self, position):
+        return mt5_call(mt5.history_deals_get, position=position, _timeout=10)
+
+
+def realized_pnl(market, position_ticket):
+    """Realized P&L of a just-executed close, read from the position's last deal.
+
+    order_send returns a TradeResult, which carries no `profit` field — realized
+    P&L lives on the executed TradeDeal (the same source reconcile_journal uses
+    for MANUAL_CLOSE rows). Returns 0.0 if the deal is not yet visible.
+    """
+    try:
+        deals = market.get_deals(position_ticket)
+        if deals is not None and len(deals) > 0:
+            return float(getattr(deals[-1], "profit", 0.0) or 0.0)
+    except Exception:
+        logging.exception("realized_pnl lookup failed for ticket %s", position_ticket)
+    return 0.0
+
 
 LIVE_MARKET = Market()
 
