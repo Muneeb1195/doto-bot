@@ -41,6 +41,7 @@
 
 ## Key Conventions
 - All MT5 calls wrapped via `mt5_call(func, *args, _timeout=N)` from `mt5_connect`
+- **`order_send` returns a `TradeResult` with NO `profit` field** — realized P&L lives on the executed `TradeDeal`. Bot-close paths must read it via `mt5_connect.realized_pnl(market, ticket)` (`deals[-1].profit` from `history_deals_get(position=ticket)`, the same source `journal.reconcile_journal` uses); a `hasattr(result, "profit")` fallback silently journals 0.0 and breaks MR loss-streak state
 - Rate cache TTL is 5s (`_RATE_CACHE_TTL` in `state.py`); avoids re-fetching within same cycle
 - Config is a global `dict` loaded from `settings.ini`. Per-symbol mutation uses `deepcopy(cfg)` in `main.py` to avoid cross-symbol contamination
 - State lives in module-level globals in `state.py` (no context/DI): `_scale_out_state`, `_chandelier_state`, `_exec_bias`, `_last_trade_time`, `_tail_risk_triggered`, `_circuit_breaker_triggered`, `_daily_realized_pnl`, `_ml_confidence_history`, `_ml_drift_warned`, `_filter_stats`, `_equity_history`, `_ns_cache`, `_rate_cache`, and more
