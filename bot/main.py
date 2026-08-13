@@ -10,13 +10,7 @@ import socket
 import sys
 import threading
 import time
-from copy import deepcopy
 from datetime import datetime
-
-
-# MT5's order_send is sensitive to the calling frame (see execution.py).
-def mt5_order_send(req, _timeout=None):
-    return mt5.order_send(req)
 
 
 def _sd_notify(state):
@@ -129,6 +123,7 @@ from mt5_connect import (  # noqa: E402
     get_rates,
     market_open,
     mt5_call,
+    mt5_order_send,
 )
 from regime import get_current_atr  # noqa: E402
 from risk import calc_kelly_mult, calc_volatility_mult  # noqa: E402
@@ -153,7 +148,7 @@ from state import (  # noqa: E402
     save_bot_state,
 )
 
-from config import apply_symbol_overrides, apply_symbol_strategy, load_config  # noqa: E402
+from config import load_config, symbol_cfg  # noqa: E402
 from dashboard import write_dashboard_state  # noqa: E402
 
 
@@ -313,10 +308,7 @@ def main():
         # (overrides + strategy), not the base cfg — previously the base config
         # was used, so symbols with overrides (e.g. crypto VIDYA) got wrong
         # scale-out/SL parameters on restart (agent audit M8).
-        sym_cfg = deepcopy(cfg)
-        sym_cfg["symbol"] = pos.symbol
-        apply_symbol_strategy(sym_cfg, pos.symbol)
-        apply_symbol_overrides(sym_cfg, pos.symbol)
+        sym_cfg = symbol_cfg(cfg, pos.symbol)
         if sym_cfg["scale_out_enabled"] and pos.ticket not in _scale_out_state:
             # Detect MR trades by magic number (broker-truncation-proof); fall
             # back to comment for positions opened before mr_magic was adopted.
@@ -573,10 +565,7 @@ def main():
             if filled_limits:
                 for sym in filled_limits:
                     try:
-                        sym_cfg = deepcopy(cfg)
-                        sym_cfg["symbol"] = sym
-                        apply_symbol_strategy(sym_cfg, sym)
-                        apply_symbol_overrides(sym_cfg, sym)
+                        sym_cfg = symbol_cfg(cfg, sym)
                         sinfo = mt5_call(mt5.symbol_info, sym, _timeout=5)
                         if sinfo is None:
                             continue
@@ -614,10 +603,7 @@ def main():
                         continue
                     if not market_open(symbol):
                         continue
-                    sym_cfg = deepcopy(cfg)
-                    sym_cfg["symbol"] = symbol
-                    apply_symbol_strategy(sym_cfg, symbol)
-                    apply_symbol_overrides(sym_cfg, symbol)
+                    sym_cfg = symbol_cfg(cfg, symbol)
                     positions_sym = [p for p in all_positions if p.symbol == symbol]
 
                     if symbol not in _filter_stats:

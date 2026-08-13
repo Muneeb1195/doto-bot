@@ -34,7 +34,6 @@ def write_dashboard_state(all_positions, regimes):
                     "tp": p.tp,
                     "profit": p.profit,
                     "swap": p.swap,
-                    "ticket": p.ticket,
                 }
                 for p in all_positions
             ],

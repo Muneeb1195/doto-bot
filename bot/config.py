@@ -3,6 +3,7 @@
 import configparser
 import logging
 import os
+from copy import deepcopy
 
 from state import CONFIG_DIR
 
@@ -496,6 +497,21 @@ def apply_symbol_overrides(cfg, symbol):
             cfg["ch_atr_mult"] = ch["atr_multiplier"]
         if "atr_multiplier_partial" in ch:
             cfg["ch_atr_mult_partial"] = ch["atr_multiplier_partial"]
+
+
+def symbol_cfg(cfg, symbol):
+    """Fresh per-symbol config: deepcopy + strategy + scale-out/chandelier
+    overrides, with `symbol` set.
+
+    Callers MUST never mutate the shared global cfg — this returns a new dict so
+    cross-symbol contamination is impossible by construction. Replaces the
+    repeated deepcopy+apply ritual at every call site.
+    """
+    sym = deepcopy(cfg)
+    sym["symbol"] = symbol
+    apply_symbol_strategy(sym, symbol)
+    apply_symbol_overrides(sym, symbol)
+    return sym
 
 
 # save_bot_state / load_bot_state moved to state.py

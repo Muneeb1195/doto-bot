@@ -109,9 +109,18 @@ def patch_mt5_module(mt5_sim):
     # through the simulator instead of into a dead MagicMock.
     import bot.mt5_connect as _mt5c
     _mt5c.mt5 = mt5_sim
+    # Consumers import the BARE module (tests add bot/ to sys.path), a distinct
+    # object from bot.mt5_connect. Patch its `mt5` too so
+    # mt5_connect.mt5_order_send (the single order-send source) routes through
+    # the simulator instead of the dead MagicMock.
+    import mt5_connect as _mt5c_bare
+    _mt5c_bare.mt5 = mt5_sim
     try:
         yield
     finally:
+        # Drop the re-imported bare module so the pre-test original restores
+        # below and later test files don't inherit a sim-tainted module.
+        sys.modules.pop("mt5_connect", None)
         for name, mod in saved.items():
             if name not in sys.modules:
                 sys.modules[name] = mod

@@ -44,6 +44,22 @@ def closed_bars(df):
     return df.iloc[:-1]
 
 
+def apply_news_confidence_mult(confidence_mult, news_val):
+    """News-based confidence adjustment, shared by live filters and backtest
+    (single source of truth — prevention A1).
+
+    `news_val >= 0.70` -> `confidence_mult * 1.10` (capped 1.5);
+    `news_val <= 0.30` -> `confidence_mult * 0.50`; otherwise unchanged.
+    """
+    if news_val is None:
+        return confidence_mult
+    if news_val >= 0.70:
+        return min(1.5, confidence_mult * 1.10)
+    if news_val <= 0.30:
+        return confidence_mult * 0.50
+    return confidence_mult
+
+
 def fused_regime_score(df_closed, cfg):
     """Fused regime score (0-100) on the last CLOSED bar.
 

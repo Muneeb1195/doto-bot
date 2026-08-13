@@ -148,6 +148,19 @@ def _recreate_instance():
         return True
 
 
+def mt5_order_send(req, _timeout=None):
+    """Send a trade request; single home for order_send (was duplicated in
+    execution.py + main.py).
+
+    The old frame-sensitivity warning ("must be called from the placing module's
+    frame or it returns None") predates the RPyC bridge and is folklore — the
+    `_MT5Proxy` resolves attributes at call time, so a shared helper is safe.
+    The REAL quirk is that MT5 mutates the request dict in place: callers must
+    build a fresh request dict per send (see execution.py `_place_trade_inner`).
+    """
+    return mt5.order_send(req)
+
+
 def mt5_call(func, *args, _timeout=None, **kwargs):
     name = getattr(func, "__name__", "")
     # The module-level `mt5` is a _MT5Proxy whose __getattr__ resolves on the

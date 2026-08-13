@@ -24,12 +24,9 @@ DEFAULT_DIRS = ["scripts", "tools", "bot"]
 #   main / run       — entry-point convention in standalone scripts
 #   init_mt5         — mt5_connect.init_mt5 (RPyC bridge init) vs
 #                      tune_scaleout.init_mt5 (login wrapper)
-#   mt5_order_send   — frame-sensitive MT5 order wrappers: execution.py
-#                      (retry/timeout) + main.py (thin alias; see comment at
-#                      main.py top)
 EXEMPT = {
     "main", "run",
-    "init_mt5", "mt5_order_send",
+    "init_mt5",
 }
 
 

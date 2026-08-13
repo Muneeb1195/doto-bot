@@ -13,17 +13,16 @@ import state as _st
 from discord_alerts import trade_open, trade_partial
 from indicators import calc_atr, calc_ma
 from journal import journal_close, journal_open
-from mt5_connect import _update_dynamic_deviation, get_deviation, get_filling_mode, get_rates, mt5_call
+from mt5_connect import (
+    _update_dynamic_deviation,
+    get_deviation,
+    get_filling_mode,
+    get_rates,
+    mt5_call,
+    mt5_order_send,
+)
 from risk import calc_position_size
 from state import _chandelier_state, _exec_quality, _last_trade_time, _scale_out_state, save_bot_state
-
-
-# MT5's order_send is sensitive to the calling frame: it must be invoked
-# via direct attribute access (``mt5.order_send(req)``) from THIS module's
-# frame. Routing it through a helper in another module (or as a captured
-# argument) makes it return None, so trades silently never fill.
-def mt5_order_send(req, _timeout=None):
-    return mt5.order_send(req)
 
 
 def log_execution_quality(cfg, symbol, req_price, fill_price=None, rejected=False):

@@ -177,6 +177,36 @@ class TestObvDivergence:
         assert _obv_divergence(df, "hold") is False
 
 
+class TestApplyNewsConfidenceMult:
+    def test_high_news_boosts(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.80) == pytest.approx(1.10)
+
+    def test_high_news_capped_at_1_5(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.4, 0.80) == pytest.approx(1.5)
+
+    def test_low_news_halves(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.20) == pytest.approx(0.5)
+
+    def test_neutral_news_unchanged(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(0.85, 0.5) == pytest.approx(0.85)
+
+    def test_none_news_unchanged(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(0.85, None) == pytest.approx(0.85)
+
+    def test_boundary_0_70_is_boost(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.70) == pytest.approx(1.10)
+
+    def test_boundary_0_30_is_half(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.30) == pytest.approx(0.5)
+
+
 class TestComputeEntryScore:
     def test_ml_disabled_uses_fallback(self):
         from analytics import compute_entry_score

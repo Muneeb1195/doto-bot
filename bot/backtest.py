@@ -14,7 +14,7 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
     from mt5_connect import mt5
 import numpy as np
 import pandas as pd
-from analytics import volume_filter_pass
+from analytics import apply_news_confidence_mult, volume_filter_pass
 from credentials import load_credentials
 from indicators import SLOPE_SCALE, calc_adx_series, calc_atr_series, calc_ma
 
@@ -1894,10 +1894,7 @@ class Backtest:
                     else:
                         confidence_mult = p.get("scoring_low_conviction_mult", 0.50)
                     news_val = score_details.get("news", 0.5) if score_details else 0.5
-                    if news_val >= 0.70:
-                        confidence_mult = min(1.5, confidence_mult * 1.10)
-                    elif news_val <= 0.30:
-                        confidence_mult *= 0.50
+                    confidence_mult = apply_news_confidence_mult(confidence_mult, news_val)
 
                 current_equity = self.initial_balance + cumulative_pnl
                 sl_price_dist = abs(bar["close"] - sl)

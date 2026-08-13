@@ -1004,6 +1004,27 @@ class TestChandelierExitParity:
         assert isinstance(results["trades"], list)
 
 
+class TestNewsAdjustmentSingleSource:
+    """The news confidence adjustment was a byte-identical twin (filters.py vs
+    backtest._run_reference). Both must call analytics.apply_news_confidence_mult
+    — the inline copy is a build failure, not a lint nit."""
+
+    def test_both_paths_call_the_shared_function(self):
+        import re
+        from pathlib import Path
+
+        bot_dir = Path(__file__).resolve().parent.parent / "bot"
+        bt = (bot_dir / "backtest.py").read_text(encoding="utf-8")
+        fl = (bot_dir / "filters.py").read_text(encoding="utf-8")
+        assert "apply_news_confidence_mult" in bt
+        assert "apply_news_confidence_mult" in fl
+        # the old inline twin pattern must not reappear
+        assert "confidence_mult *= 0.50" not in bt
+        assert "confidence_mult *= 0.50" not in fl
+        assert re.search(r"min\(1\.5, confidence_mult \* 1\.10\)", bt) is None
+        assert re.search(r"min\(1\.5, confidence_mult \* 1\.10\)", fl) is None
+
+
 class TestNaNPolicyParity:
     """Train and serve must apply the identical NaN->0 policy to the ML feature
     matrix. Train uses np.nan_to_num(X, nan=0.0) (train_model.py); serve uses

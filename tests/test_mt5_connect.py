@@ -313,6 +313,47 @@ class FakePagedServer:
         return rates
 
 
+class TestOrderSendSingleSource:
+    def test_mt5_order_send_defined_only_in_mt5_connect(self):
+        """The order_send wrapper lives in exactly one module. It was twinned in
+        execution.py + main.py because of a frame-sensitivity claim that
+        predates the RPyC bridge (folklore); the consolidation removed both
+        twins. This guards against the pattern creeping back."""
+        import ast
+        from pathlib import Path
+
+        bot_dir = Path(__file__).resolve().parent.parent / "bot"
+        defs = []
+        for py in sorted(bot_dir.glob("*.py")):
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+            for node in tree.body:
+                if isinstance(node, ast.FunctionDef) and node.name == "mt5_order_send":
+                    defs.append(py.name)
+        assert defs == ["mt5_connect.py"], f"mt5_order_send defined in {defs}"
+
+    def test_no_raw_mt5_order_send_outside_mt5_connect(self):
+        import re
+        from pathlib import Path
+
+        bot_dir = Path(__file__).resolve().parent.parent / "bot"
+        offenders = []
+        for py in sorted(bot_dir.glob("*.py")):
+            if py.name == "mt5_connect.py":
+                continue
+            src = py.read_text(encoding="utf-8")
+            if re.search(r"mt5\.order_send\s*\(", src):
+                offenders.append(py.name)
+        assert offenders == [], f"raw mt5.order_send call sites outside mt5_connect: {offenders}"
+
+    def test_consumers_use_the_single_source(self):
+        """execution's mt5_order_send binding must come from mt5_connect, not a
+        local redefinition (checked by __module__, which is stable across the
+        test session's module-reload universe)."""
+        from execution import mt5_order_send
+
+        assert mt5_order_send.__module__ == "mt5_connect"
+
+
 class TestFetchRatesPaged:
     def _run(self, monkeypatch, server, start, end, chunk):
         import mt5_connect as mc

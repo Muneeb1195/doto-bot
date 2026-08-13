@@ -5,8 +5,7 @@ from main. This checker runs ON the server (e.g. a daily systemd timer) where
 both copies are reachable: it fetches the repo default-branch tarball from
 codeload and diffs sha256 hashes of every deploy-managed file against the
 local copy. Exits 0 when in sync, 1 on drift (changed/missing/extra files),
-2 on operational error. `--webhook` posts the drift summary to a Discord
-webhook on drift so it catches itself without a monitoring stack.
+2 on operational error.
 
 Deploy-managed = bot/*.py, scripts/*.py, tools/*.py, dashboard/*.py,
 dashboard/templates/*.html, services/*.py, pyproject.toml, requirements.txt.
@@ -19,7 +18,6 @@ the detection itself must run where both the local copy and the repo exist.
 
 Usage:
     python scripts/check_deploy_drift.py                     # vs Muneeb1195/doto-bot @ main
-    python scripts/check_deploy_drift.py --webhook $DISCORD_WEBHOOK
     python scripts/check_deploy_drift.py --self-test         # CI: prove the logic works
 """
 
@@ -28,7 +26,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
-import json
 import os
 import sys
 import tarfile
@@ -96,9 +93,7 @@ def extract_tarball_hashes(data: bytes) -> dict[str, str]:
                 continue  # top-level dir entries / root files without a dir
             rel = Path(*parts[1:]).as_posix()
             # Only keep deploy-managed paths (mirrors hash_files scope).
-            if rel in ROOT_FILES:
-                pass
-            elif not any(
+            if rel not in ROOT_FILES and not any(
                 rel.startswith("/".join(d) + "/") and rel.endswith(pat.lstrip("*"))
                 for d, pat in DEPLOY_PATTERNS
             ):
@@ -117,14 +112,6 @@ def fetch_tarball(repo: str, ref: str, token: str | None) -> bytes:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=120) as resp:
         return resp.read()
-
-
-def _post_webhook(url: str, text: str) -> None:
-    body = json.dumps({"content": text}).encode("utf-8")
-    req = urllib.request.Request(url, data=body, method="POST",
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30):
-        pass
 
 
 def run_self_test() -> int:
@@ -177,8 +164,6 @@ def main() -> int:
                     help=f"owner/name (default {DEFAULT_REPO})")
     ap.add_argument("--ref", default=DEFAULT_REF, help=f"branch/ref (default {DEFAULT_REF})")
     ap.add_argument("--root", default=".", help="deployed copy root (default cwd)")
-    ap.add_argument("--webhook", default=os.environ.get("DISCORD_WEBHOOK"),
-                    help="Discord webhook URL to alert on drift")
     ap.add_argument("--self-test", action="store_true",
                     help="run the offline fixture self-test (CI) and exit")
     args = ap.parse_args()
@@ -212,14 +197,6 @@ def main() -> int:
         print(f"  missing  {f}")
     for f in extra:
         print(f"  extra    {f}")
-    if args.webhook:
-        try:
-            _post_webhook(args.webhook, "Deploy drift detected "
-                          f"({args.repo}@{args.ref}): "
-                          f"{len(changed)} changed, {len(missing)} missing, "
-                          f"{len(extra)} extra — scp the changed files")
-        except Exception as e:
-            print(f"[WARN] webhook failed: {e}")
     return 1
 
 

@@ -112,7 +112,9 @@ class TestWriteDashboardState:
         for key in required:
             assert key in data, f"Missing key: {key}"
 
-    def test_positions_detail_includes_ticket(self, mock_mt5_calls, tmp_path):
+    def test_positions_detail_no_dead_fields(self, mock_mt5_calls, tmp_path):
+        """The template never reads `ticket`; dead writer fields are a contract
+        violation (tests/test_dashboard_contract.py enforces this end-to-end)."""
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr("dashboard.DASHBOARD_STATE", tmp_path / "data" / "dashboard_state.json")
         (tmp_path / "data").mkdir(exist_ok=True)
@@ -126,8 +128,8 @@ class TestWriteDashboardState:
         pd_ = data["positions_detail"][0]
         assert pd_["symbol"] == "BTCUSD.raw"
         assert pd_["type"] == "sell"
-        assert pd_["ticket"] == 2002
         assert pd_["volume"] == 0.1
+        assert "ticket" not in pd_
 
     def test_health_connected(self, mock_mt5_calls, tmp_path):
         monkeypatch = pytest.MonkeyPatch()
