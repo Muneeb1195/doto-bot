@@ -62,6 +62,12 @@ FAILURE_PAUSE_STRIKE = 2
 ENTRY_TIGHTEN_DELTA = 0.15
 ENTRY_TIGHTEN_CAP = 0.90
 
+# Streaks are keyed to the optimize release tag that produced them: the same
+# release can reach the apply step twice (once when it arrives via --dispatch,
+# again when an unrelated train release re-triggers the apply of the on-disk
+# failed-params.json), and each apply must count the failure only once.
+LAST_TAG_KEY = "_last_opt_tag"
+
 POLL_SECONDS = 30
 # How long to wait for each dispatched run before giving up.
 RUN_TIMEOUTS = {
@@ -136,24 +142,41 @@ def _download_asset(logger, tag, asset_name, dest):
 
 
 def _load_streaks():
-    """Per-symbol consecutive gate-failure count. Returns dict {sym: int}."""
+    """Per-symbol consecutive gate-failure count, plus LAST_TAG_KEY holding the
+    optimize release tag the streaks were recorded against (may be absent on a
+    legacy file). Returns dict {sym: int, LAST_TAG_KEY: str}."""
     if not STREAKS_FILE.exists():
         return {}
     try:
         data = json.loads(STREAKS_FILE.read_text())
-        return {str(k): int(v) for k, v in data.items() if int(v) > 0}
-    except (json.JSONDecodeError, KeyError, ValueError, OSError):
+    except (json.JSONDecodeError, OSError):
         return {}
+    out = {}
+    for k, v in data.items():
+        if k == LAST_TAG_KEY:
+            out[k] = str(v)
+            continue
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            continue  # skip unknown/legacy keys, never crash the whole load
+        if n > 0:
+            out[k] = n
+    return out
 
 
-def _save_streaks(streaks):
+def _save_streaks(streaks, opt_tag=None):
+    """Persist the streak dict; `opt_tag` (if given) becomes LAST_TAG_KEY."""
+    data = dict(streaks)
+    if opt_tag is not None:
+        data[LAST_TAG_KEY] = opt_tag
     try:
-        STREAKS_FILE.write_text(json.dumps(streaks, indent=2))
+        STREAKS_FILE.write_text(json.dumps(data, indent=2))
     except OSError as e:
         logging.getLogger(__name__).warning(f"Failed to persist streak file: {e}")
 
 
-def _apply_passed_params(logger, settings, params, portfolio):
+def _apply_passed_params(logger, settings, params, portfolio, streaks):
     """Apply a gate-PASSED symbol's params normally: reset its failure streak
     and force trading_enabled=true (a fresh pass clears any pause)."""
     from auto_optimizer import set_trading_enabled, update_symbol_strategy
@@ -176,13 +199,14 @@ def _apply_passed_params(logger, settings, params, portfolio):
             changed = True
         if set_trading_enabled(symbol, True, settings):
             changed = True
+        streaks.pop(symbol, None)  # a fresh pass resets the consecutive streak
         logger.info(f"  {symbol}: PASS — params applied, trading enabled")
     if skipped:
         logger.warning(f"Skipped params for non-portfolio symbols: {sorted(skipped)}")
     return changed
 
 
-def _apply_failed_params(logger, settings, failed, streaks):
+def _apply_failed_params(logger, settings, failed, streaks, opt_tag):
     """Apply the hybrid policy for gate-failed symbols.
 
     1st consecutive failure: re-apply best params with a TIGHTENED entry
@@ -190,8 +214,17 @@ def _apply_failed_params(logger, settings, failed, streaks):
     2nd+ consecutive failure: pause new entries (trading_enabled=false);
     existing positions still exit. Params not touched on the pause so the
     symbol keeps whatever the last applied (or tightened) config was.
+
+    The streak is keyed to `opt_tag`: if the release was already applied
+    (LAST_TAG_KEY matches), the whole apply is a no-op so a release that
+    reaches this step twice is counted only once.
     """
     from auto_optimizer import set_trading_enabled, update_symbol_strategy
+
+    if opt_tag is not None and streaks.get(LAST_TAG_KEY) == opt_tag:
+        logger.info(f"  failed-params for {opt_tag} already applied — "
+                    f"skipping streak bumps")
+        return False
 
     changed = False
     for symbol, p in failed.items():
@@ -233,9 +266,12 @@ def _apply_failed_params(logger, settings, failed, streaks):
     return changed
 
 
-def _apply_strategy_params(logger):
+def _apply_strategy_params(logger, opt_tag=None):
     """Apply strategy-params.json (passed) + failed-params.json (hybrid policy)
-    to settings.ini. Returns True once run (even if nothing changed)."""
+    to settings.ini. `opt_tag` is the optimize release being applied; failure
+    streaks are keyed to it so a release applied twice (dispatch cycle + the
+    hourly fetch re-applying the on-disk params after a train-only change) is
+    counted only once. Returns True once run (even if nothing changed)."""
     params_path = BASE_DIR / "strategy-params.json"
     failed_path = BASE_DIR / "failed-params.json"
     params = {}
@@ -263,21 +299,25 @@ def _apply_strategy_params(logger):
     portfolio, settings = load_portfolio()
     streaks = _load_streaks()
     orig_streaks = dict(streaks)
+    last_tag = streaks.get(LAST_TAG_KEY)
 
     any_changed = False
-    if params and _apply_passed_params(logger, settings, params, portfolio):
+    if params and _apply_passed_params(logger, settings, params, portfolio, streaks):
         any_changed = True
-    if failed and _apply_failed_params(logger, settings, failed, streaks):
+    if failed and _apply_failed_params(logger, settings, failed, streaks, opt_tag):
         any_changed = True
-
-    if streaks != orig_streaks:
-        _save_streaks(streaks)
 
     if any_changed:
         write_settings(settings)
         logger.info("Strategy params/policy applied to settings.ini")
     else:
         logger.info("No strategy param changes needed")
+
+    # Record the tag only after the settings write succeeded, so a re-apply
+    # retries (rather than skips) if the previous apply never committed.
+    new_tag = opt_tag if opt_tag is not None else last_tag
+    if streaks != orig_streaks or new_tag != last_tag:
+        _save_streaks(streaks, new_tag)
     return True
 
 
@@ -461,7 +501,7 @@ def fetch(logger):
                     changed = True
 
     if changed:
-        _apply_strategy_params(logger)
+        _apply_strategy_params(logger, opt_tag)
         _restart_bot(logger)
     else:
         logger.info("Nothing new to apply")

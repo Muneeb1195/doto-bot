@@ -71,10 +71,14 @@ the repo is only the seed — see Deployment drift below).
 | XAUUSD | KAMA | 10 | 40 | 2.0 | 2.5 | 25 | 0.75* | on | FAIL x1 |
 
 \* EURUSD (PBO=0.92 > 0.50) and XAUUSD (DSR=0.934 < 0.95) failed the gate on
-this cycle; per the hybrid policy both are at **failure strike 1**: best params
-re-applied with a TIGHTENED entry (`scoring_min_entry` + 0.15), still trading.
-`.symbol_streaks.json` tracks the streaks; a 2nd consecutive failure pauses new
-entries (`trading_enabled = false`), a fresh pass resets the streak.
+this cycle. They were briefly paused at **strike 2** on 2026-08-13 because the
+pre-fix `download_models.py` counted the same release twice (dispatch cycle +
+hourly fetch); after the streak-keying fix (see Environment Boundaries) the
+artifact was reconciled on the server: `.symbol_streaks.json` reset to
+**failure strike 1** (`_last_opt_tag = optimize-20260812-1348`) and both
+symbols re-enabled (`trading_enabled = true`), keeping the TIGHTENED
+`scoring_min_entry` (0.70 / 0.75). A 2nd consecutive failure from a genuinely
+new release pauses again; a fresh pass resets the streak.
 
 Global defaults (fallback): KAMA 10/40, SL=1.5, RR=2.0, ADX=25, 1%/trade, 5 max positions.
 
@@ -141,7 +145,10 @@ The project has three roles and they must NOT overlap:
   `[STRATEGY:<sym>]` in `settings.ini` (new entries paused, existing positions
   still exit via position management). A fresh pass resets the streak and
   re-enables the symbol. `trading_enabled` is a per-symbol `SYMBOL_STRATEGY_MAP`
-  key (bool-converted, defaults true).
+  key (bool-converted, defaults true). Streaks are keyed to the optimize
+  release tag (`_last_opt_tag` inside `.symbol_streaks.json`): the same release
+  can reach the apply step twice (once on arrival, again when a train-only
+  change re-triggers the apply of the on-disk params), and it counts only once.
   - Requires `gh` (github-cli) + a fine-grained PAT (Actions: write, Contents:
     write), injected as `GITHUB_TOKEN` via the unit EnvironmentFile
     `~/.config/doto-orchestrate.env` — the file systemd actually reads. A token

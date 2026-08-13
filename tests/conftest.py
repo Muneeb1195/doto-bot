@@ -14,6 +14,12 @@ _bot_dir = str(Path(__file__).resolve().parent.parent / "bot")
 if _bot_dir not in sys.path:
     sys.path.insert(0, _bot_dir)
 
+# scripts/ holds standalone tools (check_deploy_drift, export_mt5_data);
+# tests import them as plain modules.
+_scripts_dir = str(Path(__file__).resolve().parent.parent / "scripts")
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+
 
 # mt5linux 1.1.0 tries to start a Docker container when its MetaTrader5 client
 # is instantiated. CI runners have no Docker daemon, and mt5linux 1.1.0 also has

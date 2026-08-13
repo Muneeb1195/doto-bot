@@ -30,6 +30,20 @@ jobs:
       - name: Check duplicate function definitions
         run: python .github/scripts/check_duplicate_defs.py
 
+  deploy-drift:
+    # The drift checker runs ON the home-server (GitHub-hosted runners cannot
+    # reach the private box), so CI cannot diff against the deployment itself.
+    # CI's job is proving the checker logic is sound via its offline --self-test
+    # mode; tests/test_deploy_drift.py covers the same ground under pytest.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Validate deploy-drift checker
+        run: python scripts/check_deploy_drift.py --self-test
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
