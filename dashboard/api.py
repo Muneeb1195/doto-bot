@@ -12,7 +12,7 @@ import re
 import secrets
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -99,16 +99,23 @@ def load_trades(limit=500):
         _cache["trades_mtime"] = mtime
     return _cache["trades"][:limit]
 
-@app.get("/api/state")
+@app.get("/api/state", response_model=dict, summary="Dashboard snapshot",
+         description="Current dashboard_state.json content (account, positions, regimes, "
+                     "filter stats). Returns {} until the bot writes a snapshot.")
 def get_state():
     return load_state() or {}
 
-@app.get("/api/trades")
-def get_trades():
-    return load_trades()
 
-@app.get("/api/log")
-def get_log():
+@app.get("/api/trades", response_model=list, summary="Recent trade journal rows",
+         description="logs/trades.csv as JSON, newest first, capped at `limit` rows "
+                     "(default 500, max 1000).")
+def get_trades(limit: int = Query(500, ge=1, le=1000)):
+    return load_trades(limit)
+
+
+@app.get("/api/logs", response_model=dict, summary="Tail of bot.log",
+         description="Last 60 INFO/WARNING/ERROR lines from the tail of logs/bot.log.")
+def get_logs():
     try:
         log_path = LOG_DIR / "bot.log"
         if not log_path.exists():

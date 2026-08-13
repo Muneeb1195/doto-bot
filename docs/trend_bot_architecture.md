@@ -504,7 +504,7 @@ Set via `Environment=` in systemd service file. All routes require valid credent
 
 - `GET /api/state` → returns dashboard_state.json (requires Basic Auth)
 - `GET /api/trades` → returns logs/trades.csv as JSON
-- `GET /api/log` → returns last 60 lines of latest bot log
+- `GET /api/logs` → returns last 60 lines of latest bot log
 
 ### H3. Dashboard UI (index.html)
 

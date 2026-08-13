@@ -235,7 +235,7 @@ function renderRegimeStatus(state) {
 }
 async function renderLog() {
   try {
-    const resp = await fetch('/api/log');
+    const resp = await fetch('/api/logs');
     const data = await resp.json();
     document.getElementById('botLog').textContent = (data.lines||['No logs']).join('\n');
   } catch(_) { document.getElementById('botLog').textContent = 'Failed to load log'; }
