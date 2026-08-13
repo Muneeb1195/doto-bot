@@ -118,12 +118,14 @@ def patch_mt5_module(mt5_sim):
     try:
         yield
     finally:
-        # Drop the re-imported bare module so the pre-test original restores
-        # below and later test files don't inherit a sim-tainted module.
-        sys.modules.pop("mt5_connect", None)
+        # Drop the re-imported bare modules and restore the pre-test originals
+        # so later test files don't inherit a sim-tainted module. Restore is
+        # unconditional: a module may have been re-imported during the test
+        # (e.g. execution now imports signals at module level), and leaving
+        # that fresh sim-bound copy in sys.modules would break subsequent
+        # tests that patch the original object.
         for name, mod in saved.items():
-            if name not in sys.modules:
-                sys.modules[name] = mod
+            sys.modules[name] = mod
         sys.modules["MetaTrader5"] = MagicMock()
 
 

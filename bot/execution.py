@@ -1,4 +1,4 @@
-"""Trade execution — place_trade, place_mean_reversion_trade, scale-out, chandelier."""
+"""Trade execution — place/limit entry, position management (exit tree)."""
 
 import logging
 import time
@@ -10,19 +10,21 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
     from mt5_connect import mt5
 import pandas as pd
 import state as _st
-from discord_alerts import trade_open, trade_partial
+from discord_alerts import trade_close, trade_open, trade_partial
 from indicators import calc_atr, calc_ma
 from journal import journal_close, journal_open
 from mt5_connect import (
+    LIVE_MARKET,
     _update_dynamic_deviation,
     get_deviation,
     get_filling_mode,
-    get_rates,
     mt5_call,
     mt5_order_send,
 )
+from regime import get_current_atr
 from risk import calc_position_size
-from state import _chandelier_state, _exec_quality, _last_trade_time, _scale_out_state, save_bot_state
+from signals import check_mean_reversion_exit
+from state import _chandelier_state, _exec_bias, _exec_quality, _last_trade_time, _scale_out_state, save_bot_state
 
 
 def log_execution_quality(cfg, symbol, req_price, fill_price=None, rejected=False):
@@ -81,7 +83,8 @@ def _init_scale_out_state(cfg, price, signal, sl_points, sinfo, is_mr=False, vol
     }
 
 
-def check_scale_out(cfg, position):
+def check_scale_out(cfg, position, market=None):
+    market = market or LIVE_MARKET
     symbol = position.symbol
     ticket = position.ticket
     state = _scale_out_state.get(ticket)
@@ -89,10 +92,10 @@ def check_scale_out(cfg, position):
         return False
     if not position.tp:
         logging.warning(f"[{symbol}] Scale-out: ticket={ticket} in _scale_out_state but has no TP")
-    tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    tick = market.symbol_info_tick(symbol)
     if tick is None:
         return False
-    sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
+    sinfo = market.symbol_info(symbol)
     if sinfo is None:
         return False
     is_long = position.type == mt5.ORDER_TYPE_BUY
@@ -102,7 +105,7 @@ def check_scale_out(cfg, position):
     if state["step"] >= num_partials:
         return False
     needed = cfg["atr_period"] + 10
-    rates = get_rates(symbol, cfg["timeframe"], needed)
+    rates = market.get_rates(symbol, cfg["timeframe"], needed)
     if rates is None or len(rates) < needed:
         return False
     cur_atr = calc_atr(rates, cfg["atr_period"])
@@ -166,7 +169,7 @@ def check_scale_out(cfg, position):
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": get_filling_mode(symbol),
     }
-    result = mt5_order_send(close_req, _timeout=10)
+    result = market.order_send(close_req)
     if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
         return False
     pnl = result.profit if hasattr(result, "profit") else 0.0
@@ -202,12 +205,12 @@ def check_scale_out(cfg, position):
             min_allowed = current_price + stops_level * mult * sinfo.point
             sl2 = max(new_sl, min_allowed)
         req = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket, "sl": sl2, "tp": position.tp}
-        mod = mt5_order_send(req, _timeout=10)
+        mod = market.order_send(req)
         if mod is not None and mod.retcode == mt5.TRADE_RETCODE_DONE:
             break
     if new_step >= num_partials:
         tp_req = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket, "sl": sl2, "tp": 0.0}
-        mt5_order_send(tp_req, _timeout=10)
+        market.order_send(tp_req)
     save_bot_state()
     return True
 
@@ -226,15 +229,16 @@ def check_max_hold(cfg, position):
     return True
 
 
-def check_breakeven(cfg, position, atr):
+def check_breakeven(cfg, position, atr, market=None):
     """After price reaches be_atr_mult * ATR in profit, move SL to breakeven."""
     if not cfg.get("be_enabled", True):
         return
+    market = market or LIVE_MARKET
     symbol = position.symbol
-    sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
+    sinfo = market.symbol_info(symbol)
     if sinfo is None:
         return
-    tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    tick = market.symbol_info_tick(symbol)
     if tick is None:
         return
     is_long = position.type == mt5.ORDER_TYPE_BUY
@@ -258,27 +262,28 @@ def check_breakeven(cfg, position, atr):
             min_allowed = tick.ask + stops_level * mult * sinfo.point
             new_sl = min(position.price_open, min_allowed)
         req = {"action": mt5.TRADE_ACTION_SLTP, "position": position.ticket, "sl": new_sl, "tp": position.tp}
-        result = mt5_order_send(req, _timeout=10)
+        result = market.order_send(req)
         if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
             logging.info(f"[{symbol}] Breakeven at {profit_atrs:.2f} ATR profit")
             return
     logging.warning(f"[{symbol}] Breakeven SL mod failed at all {5} levels")
 
 
-def check_chandelier_exit(cfg, position):
+def check_chandelier_exit(cfg, position, market=None):
+    market = market or LIVE_MARKET
     symbol = position.symbol
     if not position.sl:
         logging.warning(
             f"[{symbol}] Chandelier: ticket={position.ticket} has no SL ({position.sl!r}) — chandelier trail disabled"
         )
-    sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
+    sinfo = market.symbol_info(symbol)
     if sinfo is None:
         return
-    tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    tick = market.symbol_info_tick(symbol)
     if tick is None:
         return
     needed = cfg["ch_lookback"] + cfg["ch_atr_period"] + 10
-    df = get_rates(symbol, cfg["timeframe"], needed)
+    df = market.get_rates(symbol, cfg["timeframe"], needed)
     if df is None or len(df) < needed:
         return
     entry_idx = df["time"].searchsorted(pd.Timestamp(position.time, unit="s"), side="left")
@@ -342,7 +347,7 @@ def check_chandelier_exit(cfg, position):
             new_sl = min(new_sl, position.sl)
     if state["ch_sl"] is not None and abs(new_sl - state["ch_sl"]) < sinfo.point:
         return
-    tick2 = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    tick2 = market.symbol_info_tick(symbol)
     if tick2 is None:
         return
     stops_level = _min_stop_points(sinfo, tick2)
@@ -363,7 +368,7 @@ def check_chandelier_exit(cfg, position):
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": get_filling_mode(symbol),
         }
-        result = mt5_order_send(close_req, _timeout=10)
+        result = market.order_send(close_req)
         if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
             _chandelier_state.pop(position.ticket, None)
             save_bot_state()
@@ -384,12 +389,175 @@ def check_chandelier_exit(cfg, position):
             min_allowed = tick2.ask + stops_level * mult * sinfo.point
             sl2 = max(new_sl, min_allowed)
         req = {"action": mt5.TRADE_ACTION_SLTP, "position": position.ticket, "sl": sl2, "tp": position.tp}
-        result = mt5_order_send(req, _timeout=10)
+        result = market.order_send(req)
         if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
             _chandelier_state[position.ticket] = {"ch_sl": sl2}
             save_bot_state()
             return
     logging.warning(f"[{symbol}] Chandelier SL mod failed at all {5} levels")
+
+
+def manage_positions(
+    sym_cfg,
+    symbol,
+    all_positions,
+    atr=None,
+    trend_signal=None,
+    regime="trending",
+    market=None,
+):
+    """Run the per-cycle exit tree for one symbol and return the refreshed book.
+
+    Owns TP restore, breakeven/chandelier/scale-out checks, the close decision
+    tree (MAX_HOLD / MR_EXIT / REVERSAL), close construction + retcode handling,
+    and every post-close side effect (dynamic deviation, entry throttles, MR
+    streak, journal, Discord, state pops, persistence). All broker access routes
+    through the `market` seam (default: live MT5) so the whole surface is
+    testable without monkeypatching mt5_call.
+    """
+    market = market or LIVE_MARKET
+    positions_sym = [p for p in all_positions if p.symbol == symbol]
+    if not positions_sym:
+        return all_positions
+
+    # TP restore: a scale-out position whose TP was cleared (final partial) gets
+    # it restored from the scale-out state so the remainder exits at target.
+    for pos in positions_sym:
+        if pos.ticket in _scale_out_state and (pos.tp is None or pos.tp == 0.0):
+            so_state = _scale_out_state[pos.ticket]
+            sl_pts = so_state.get("sl_points")
+            so_point = so_state.get("point")
+            so_rr = so_state.get("rr")
+            if sl_pts and so_point and so_rr and pos.sl:
+                desired_tp_dist = sl_pts * so_point * so_rr
+                new_tp = (
+                    pos.price_open + desired_tp_dist
+                    if pos.type == mt5.ORDER_TYPE_BUY
+                    else pos.price_open - desired_tp_dist
+                )
+                market.order_send(
+                    {
+                        "action": mt5.TRADE_ACTION_SLTP,
+                        "position": pos.ticket,
+                        "sl": pos.sl,
+                        "tp": new_tp,
+                    }
+                )
+    if atr is not None:
+        for pos in positions_sym:
+            check_breakeven(sym_cfg, pos, atr, market=market)
+        for pos in positions_sym:
+            check_chandelier_exit(sym_cfg, pos, market=market)
+    if sym_cfg["scale_out_enabled"]:
+        for pos in positions_sym:
+            if pos.ticket in _scale_out_state:
+                check_scale_out(sym_cfg, pos, market=market)
+
+    for pos in positions_sym:
+        pos_type = "buy" if pos.type == mt5.ORDER_TYPE_BUY else "sell"
+        should_close = False
+        close_reason = ""
+        if check_max_hold(sym_cfg, pos):
+            should_close = True
+            close_reason = "MAX_HOLD"
+        is_mr_pos = (getattr(pos, "magic", None) == sym_cfg.get("mr_magic", 20240707)) or (
+            hasattr(pos, "comment") and pos.comment == "TrendBot-MR"
+        )
+        if (
+            not should_close
+            and (is_mr_pos or (regime == "ranging" and sym_cfg["mr_enabled"]))
+            and check_mean_reversion_exit(sym_cfg, pos, market=market)
+        ):
+            should_close = True
+            close_reason = "MR_EXIT"
+        if (
+            not should_close
+            and trend_signal is not None
+            and (
+                (pos_type == "buy" and trend_signal == "sell")
+                or (pos_type == "sell" and trend_signal == "buy")
+            )
+        ):
+            cur_atr = get_current_atr(sym_cfg, market=market)
+            in_sub_profit = False
+            if cur_atr and cur_atr > 0:
+                in_sub_profit = (
+                    pos_type == "buy" and pos.price_current > pos.price_open + cur_atr * 0.25
+                ) or (pos_type == "sell" and pos.price_current < pos.price_open - cur_atr * 0.25)
+            if not in_sub_profit:
+                should_close = True
+                close_reason = "REVERSAL"
+        if not should_close:
+            continue
+        close_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        tick = market.symbol_info_tick(symbol)
+        if tick is None:
+            logging.warning(f"[{symbol}] Close ({close_reason}) aborted: no tick")
+            time.sleep(2)
+            break
+        price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
+        close_req = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": pos.volume,
+            "type": close_type,
+            "position": pos.ticket,
+            "price": price,
+            "deviation": get_deviation(sym_cfg, symbol),
+            "magic": sym_cfg.get("magic", 20240706),
+            "comment": f"TrendBot-{close_reason}",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": get_filling_mode(symbol),
+        }
+        result = market.order_send(close_req)
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            logging.info(f"[{symbol}] Close ({close_reason}) failed: {getattr(result, 'retcode', 'None')}")
+            time.sleep(2)
+            break
+        _update_dynamic_deviation(symbol, True, sym_cfg)
+        _last_trade_time.pop(f"trend:{symbol}", None)
+        _last_trade_time.pop(f"mr:{symbol}", None)
+        close_pnl = result.profit if hasattr(result, "profit") and result.profit else 0.0
+        # MR cooldown (A3): track consecutive losses on EVERY MR-position close
+        # (any exit reason) — parity with backtest._register_close. Kept outside
+        # trade_journal so risk state never depends on journaling.
+        if is_mr_pos:
+            if close_pnl > 0:
+                _st._mr_consecutive_losses[symbol] = 0
+            else:
+                _st._mr_consecutive_losses[symbol] = _st._mr_consecutive_losses.get(symbol, 0) + 1
+                _st._mr_last_loss_time[symbol] = time.time()
+        if sym_cfg["trade_journal"]:
+            sinfo2 = market.symbol_info(symbol)
+            sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
+            pips = abs(pos.price_open - price) / sp
+            journal_close(pos.ticket, price, close_pnl, pips, close_reason)
+        if sym_cfg["discord_url"]:
+            sinfo2 = market.symbol_info(symbol)
+            sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
+            pips2 = abs(pos.price_open - price) / sp
+            trade_close(
+                sym_cfg["discord_url"],
+                symbol,
+                pos_type,
+                pos.volume,
+                pos.price_open,
+                price,
+                close_pnl,
+                pips2,
+                close_reason,
+            )
+        _chandelier_state.pop(pos.ticket, None)
+        _scale_out_state.pop(pos.ticket, None)
+        _exec_bias.pop(symbol, None)
+        save_bot_state()
+        # Keep the in-memory book fresh so a same-cycle reversal is not blocked
+        # by stale position counts.
+        all_positions = [p for p in all_positions if p.ticket != pos.ticket]
+        logging.info(f"[{symbol}] Close ({close_reason}) ok: ticket={pos.ticket} pnl={close_pnl:.2f}")
+        time.sleep(2)
+        break
+    return all_positions
 
 
 def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):

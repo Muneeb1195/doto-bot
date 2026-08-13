@@ -161,6 +161,31 @@ def mt5_order_send(req, _timeout=None):
     return mt5.order_send(req)
 
 
+class Market:
+    """Live MT5 seam for position management (the exit tree).
+
+    execution.manage_positions routes every broker call through this adapter
+    (or a test fake) so the ~200-line exit surface — checks, close decision,
+    order send, post-close side effects — is testable through one interface
+    instead of module-level monkeypatching of mt5_call.
+    """
+
+    def symbol_info_tick(self, symbol):
+        return mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+
+    def symbol_info(self, symbol):
+        return mt5_call(mt5.symbol_info, symbol, _timeout=5)
+
+    def get_rates(self, symbol, timeframe, count):
+        return get_rates(symbol, timeframe, count)
+
+    def order_send(self, request, _timeout=10):
+        return mt5_order_send(request, _timeout=_timeout)
+
+
+LIVE_MARKET = Market()
+
+
 def mt5_call(func, *args, _timeout=None, **kwargs):
     name = getattr(func, "__name__", "")
     # The module-level `mt5` is a _MT5Proxy whose __getattr__ resolves on the

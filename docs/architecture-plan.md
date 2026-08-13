@@ -32,12 +32,20 @@ backtest trade streams, and — for anything touching `filters.py`/`execution.py
   `_compute_entry_score` is DELETED. Parity test is a call-site assertion;
   fast/reference PNL+EQ MATCH verified via tools/parity_check.py.
 
-## Phase C — the big one
+## Phase C — the big one — DONE 2026-08-13
 
-- **C1 — `manage_positions()` in execution.py.** Move the whole exit tree out of
-  main.py including post-close side effects (MR streak, journal, Discord, state
-  pops, save); small injected `Market` adapter as the seam; new
-  `test_position_management.py` gives the ~200-line exit surface its first tests.
+- **C1 — `manage_positions()` in execution.py.** ✅ The whole exit tree moved out
+  of main.py into `execution.manage_positions(sym_cfg, symbol, all_positions,
+  atr, trend_signal, regime, market=None)`, including all post-close side
+  effects (MR streak, journal, Discord, state pops, save) — the module returns
+  the refreshed book. `mt5_connect.Market` (+ `LIVE_MARKET`) is the injected
+  seam; `check_breakeven`/`check_chandelier_exit`/`check_scale_out` and the
+  cross-module helpers (`signals.check_mean_reversion_exit`,
+  `regime.get_current_atr`) take an optional `market` and thread it through.
+  New `test_position_management.py` (12 tests) drives the exit tree through a
+  fake market. Test-infra note: the lifecycle fixture now restores the saved
+  modules unconditionally — execution imports signals at module level, so a
+  re-imported sim-tainted `signals` was leaking into later test files.
 
 ## Phase D — gated / follow-ups
 

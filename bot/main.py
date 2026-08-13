@@ -96,11 +96,8 @@ from discord_alerts import bot_start, daily_summary  # noqa: E402
 from drift_detector import consume_warmstart_queue  # noqa: E402
 from drift_retrain import warmstart_model as _warmstart_model  # noqa: E402
 from execution import (  # noqa: E402
-    check_breakeven,
-    check_chandelier_exit,
     check_limit_orders,
-    check_max_hold,
-    check_scale_out,
+    manage_positions,
     place_limit_order,
     place_mean_reversion_trade,
     place_trade,
@@ -115,10 +112,8 @@ from filters import (  # noqa: E402
 )
 from journal import _reconcile_external_deals, journal_close, journal_init, reconcile_journal  # noqa: E402
 from mt5_connect import (  # noqa: E402
-    _update_dynamic_deviation,
     can_trade_symbol,
     ensure_mt5_connected,
-    get_deviation,
     get_filling_mode,
     get_rates,
     market_open,
@@ -130,7 +125,6 @@ from risk import calc_kelly_mult, calc_volatility_mult  # noqa: E402
 from signals import (  # noqa: E402
     _get_regime_gate,
     check_htf_trend,
-    check_mean_reversion_exit,
     get_mean_reversion_signal,
     get_mtf_fused_signal,
     get_signal,
@@ -141,7 +135,6 @@ from state import (  # noqa: E402
     _chandelier_state,
     _exec_bias,
     _filter_stats,
-    _last_trade_time,
     _scale_out_state,
     load_bot_state,
     load_news_sentiment,
@@ -671,148 +664,15 @@ def main():
                     regime = "ranging" if not gate_open else "trending"
                     regimes[symbol] = regime
 
-                    if len(positions_sym) > 0:
-                        for pos in positions_sym:
-                            if pos.ticket in _scale_out_state and (pos.tp is None or pos.tp == 0.0):
-                                so_state = _scale_out_state[pos.ticket]
-                                sl_pts = so_state.get("sl_points")
-                                so_point = so_state.get("point")
-                                so_rr = so_state.get("rr")
-                                if sl_pts and so_point and so_rr and pos.sl:
-                                    desired_tp_dist = sl_pts * so_point * so_rr
-                                    new_tp = (
-                                        pos.price_open + desired_tp_dist
-                                        if pos.type == mt5.ORDER_TYPE_BUY
-                                        else pos.price_open - desired_tp_dist
-                                    )
-                                    modify_req = {
-                                        "action": mt5.TRADE_ACTION_SLTP,
-                                        "position": pos.ticket,
-                                        "sl": pos.sl,
-                                        "tp": new_tp,
-                                    }
-                                    mt5_order_send(modify_req, _timeout=10)
-                        if atr is not None:
-                            for pos in positions_sym:
-                                check_breakeven(sym_cfg, pos, atr)
-                        if atr is not None:
-                            for pos in positions_sym:
-                                check_chandelier_exit(sym_cfg, pos)
-                        if sym_cfg["scale_out_enabled"]:
-                            for pos in positions_sym:
-                                if pos.ticket in _scale_out_state:
-                                    check_scale_out(sym_cfg, pos)
-                        for pos in positions_sym:
-                            pos_type = "buy" if pos.type == mt5.ORDER_TYPE_BUY else "sell"
-                            should_close = False
-                            close_reason = ""
-                            if check_max_hold(sym_cfg, pos):
-                                should_close = True
-                                close_reason = "MAX_HOLD"
-                            is_mr_pos = (
-                                getattr(pos, "magic", None) == sym_cfg.get("mr_magic", 20240707)
-                            ) or (hasattr(pos, "comment") and pos.comment == "TrendBot-MR")
-                            if (
-                                not should_close
-                                and (is_mr_pos or (regime == "ranging" and sym_cfg["mr_enabled"]))
-                                and check_mean_reversion_exit(sym_cfg, pos)
-                            ):
-                                should_close = True
-                                close_reason = "MR_EXIT"
-                            if (
-                                not should_close
-                                and trend_signal is not None
-                                and (
-                                    (pos_type == "buy" and trend_signal == "sell")
-                                    or (pos_type == "sell" and trend_signal == "buy")
-                                )
-                            ):
-                                cur_atr = get_current_atr(sym_cfg)
-                                in_sub_profit = False
-                                if cur_atr and cur_atr > 0:
-                                    in_sub_profit = (
-                                        pos_type == "buy" and pos.price_current > pos.price_open + cur_atr * 0.25
-                                    ) or (pos_type == "sell" and pos.price_current < pos.price_open - cur_atr * 0.25)
-                                if not in_sub_profit:
-                                    should_close = True
-                                    close_reason = "REVERSAL"
-                            if should_close:
-                                close_type = (
-                                    mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-                                )
-                                tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
-                                if tick:
-                                    price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
-                                    close_req = {
-                                        "action": mt5.TRADE_ACTION_DEAL,
-                                        "symbol": symbol,
-                                        "volume": pos.volume,
-                                        "type": close_type,
-                                        "position": pos.ticket,
-                                        "price": price,
-                                        "deviation": get_deviation(sym_cfg, symbol),
-                                        "magic": sym_cfg.get("magic", 20240706),
-                                        "comment": f"TrendBot-{close_reason}",
-                                        "type_time": mt5.ORDER_TIME_GTC,
-                                        "type_filling": get_filling_mode(symbol),
-                                    }
-                                    result = mt5_order_send(close_req, _timeout=10)
-                                    if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
-                                        _update_dynamic_deviation(symbol, True, sym_cfg)
-                                        _last_trade_time.pop(f"trend:{symbol}", None)
-                                        _last_trade_time.pop(f"mr:{symbol}", None)
-                                        close_pnl = (
-                                            result.profit if hasattr(result, "profit") and result.profit else 0.0
-                                        )
-                                        # MR cooldown (A3): track consecutive losses on EVERY MR-position
-                                        # close (any exit reason) — parity with backtest._register_close.
-                                        # Kept outside trade_journal so risk state never depends on journaling.
-                                        if is_mr_pos:
-                                            if close_pnl > 0:
-                                                _st._mr_consecutive_losses[symbol] = 0
-                                            else:
-                                                _st._mr_consecutive_losses[symbol] = (
-                                                    _st._mr_consecutive_losses.get(symbol, 0) + 1
-                                                )
-                                                _st._mr_last_loss_time[symbol] = time.time()
-                                        if sym_cfg["trade_journal"]:
-                                            sinfo2 = mt5_call(mt5.symbol_info, symbol, _timeout=5)
-                                            sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
-                                            pips = abs(pos.price_open - price) / sp
-                                            close_pnl = (
-                                                result.profit if hasattr(result, "profit") and result.profit else 0.0
-                                            )
-                                            journal_close(pos.ticket, price, close_pnl, pips, close_reason)
-                                        if sym_cfg["discord_url"]:
-                                            sinfo2 = mt5_call(mt5.symbol_info, symbol, _timeout=5)
-                                            sp = sinfo2.point if (sinfo2 and sinfo2.point) else 0.001
-                                            pips2 = abs(pos.price_open - price) / sp
-                                            from discord_alerts import trade_close
-
-                                            trade_close(
-                                                sym_cfg["discord_url"],
-                                                symbol,
-                                                pos_type,
-                                                pos.volume,
-                                                pos.price_open,
-                                                price,
-                                                close_pnl,
-                                                pips2,
-                                                close_reason,
-                                            )
-                                        _chandelier_state.pop(pos.ticket, None)
-                                        _scale_out_state.pop(pos.ticket, None)
-                                        _exec_bias.pop(symbol, None)
-                                        save_bot_state()
-                                        # Keep in-memory list fresh so same-cycle
-                                        # reversal is not blocked by stale counts
-                                        all_positions = [p for p in all_positions if p.ticket != pos.ticket]
-                                        logging.info(
-                                            f"[{symbol}] Close ({close_reason}) failed: "
-                                            f"{result.retcode if result else 'None'}"
-                                        )
-                                time.sleep(2)
-                                break
+                    # Position management: TP restore, breakeven, chandelier,
+                    # scale-out, and the close decision tree live in
+                    # execution.manage_positions (deep module — the exit tree
+                    # and all post-close side effects are tested through the
+                    # injected Market seam).
+                    all_positions = manage_positions(
+                        sym_cfg, symbol, all_positions,
+                        atr=atr, trend_signal=trend_signal, regime=regime,
+                    )
 
                     # Re-filter from updated in-memory list after close
                     positions_sym = [p for p in all_positions if p.symbol == symbol]

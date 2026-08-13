@@ -17,14 +17,18 @@ when a module or concept gets a stable name.
   chandelier trailing.
 - **Close order** — the `TRADE_ACTION_DEAL` that flattens a position, and its
   post-close side effects: journal row, Discord alert, streak/state updates.
-- **Position management** — the module that owns both the exit decision and the
-  close order for open positions. Target: one interface in `execution.py`
-  (`manage_positions`), absorbing the decision tree currently inline in
-  `main.py`'s cycle loop.
+- **Position management** — `execution.manage_positions` owns both the exit
+  decision and the close order for open positions: TP restore,
+  breakeven/chandelier/scale-out checks, the close decision tree (`MAX_HOLD` /
+  `MR_EXIT` / `REVERSAL`), close construction + retcode handling, and every
+  post-close side effect (deviation, throttles, MR streak, journal, Discord,
+  state pops, persistence). `main.py`'s cycle loop just calls it per symbol and
+  gets the refreshed book back.
 - **Market seam** — the boundary between the engine and the broker terminal:
-  live MT5 (RPyC bridge via `mt5_connect`) in production, a synthetic/fake in
-  tests. The position-management module should take its market access across
-  this seam.
+  live MT5 (`mt5_connect.Market` / `LIVE_MARKET`) in production, a synthetic
+  fake in tests. The whole exit tree takes its market access across this seam
+  (`market=None` → live), so the ~200-line close path is testable without
+  monkeypatching `mt5_call`.
 - **Order-send contract** — `mt5_connect.mt5_order_send` is the single home for
   order placement (the frame-sensitivity warning that forced twins in
   execution.py/main.py predates the RPyC bridge and is folklore). The real MT5
