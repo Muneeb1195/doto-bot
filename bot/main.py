@@ -138,6 +138,7 @@ from state import (  # noqa: E402
     _scale_out_state,
     load_bot_state,
     load_news_sentiment,
+    prune_position_state,
     save_bot_state,
 )
 
@@ -286,14 +287,9 @@ def main():
     logging.info(f"DEBUG: positions_get done, count={len(active_positions) if active_positions else 0}")
     if active_positions is None:
         active_positions = []
-    active_tickets = {p.ticket for p in active_positions}
-    stale_scale = [t for t in _scale_out_state if t not in active_tickets]
-    for t in stale_scale:
-        _scale_out_state.pop(t, None)
-    stale_chandelier = [t for t in _chandelier_state if t not in active_tickets]
-    for t in stale_chandelier:
-        _chandelier_state.pop(t, None)
-    if stale_scale or stale_chandelier:
+    elif prune_position_state({p.ticket for p in active_positions}):
+        # A failed fetch (None) must NOT be conflated with an empty book — the
+        # elif guard skips pruning then, so live position state is never wiped.
         save_bot_state()
 
     for pos in active_positions:
@@ -407,6 +403,12 @@ def main():
                 # Backfill manual/external trades the bot never placed so the
                 # journal reflects all account activity (Phase 3 observability).
                 _reconcile_external_deals()
+                # Drop scale-out/chandelier state for tickets closed outside
+                # the bot (broker SL/TP, manual) so bot_state.json stays clean
+                # mid-session, not just at startup. Guarded by positions_valid:
+                # a failed fetch must never wipe live state.
+                if prune_position_state(active_tickets_set):
+                    save_bot_state()
 
         except Exception as e:
             logging.warning(f"positions_get failed: {e}")

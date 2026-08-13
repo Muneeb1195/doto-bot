@@ -146,6 +146,47 @@ class TestLoadBotState:
         assert _st._tail_risk_triggered.get("SOLUSD.raw") is True
         assert _st._tail_risk_cooldown.get("SOLUSD.raw") == 100.0
 
+    def test_non_numeric_ticket_key_is_skipped(self, tmp_state_file):
+        # One corrupt key must neither abort the load nor wipe the valid
+        # tickets (previously the int() coercion raised and the whole load
+        # failed).
+        data = {
+            "scale_out_state": {"1001": {"step": 2}, "junk": {"step": 9}},
+            "chandelier_state": {"1002": {"ch_sl": 1990.0}},
+            "exec_bias": {},
+            "last_trade_time": {},
+            "tail_risk_triggered": {},
+            "tail_risk_cooldown": {},
+            "circuit_breaker_triggered": False,
+        }
+        tmp_state_file.write_text(json.dumps(data))
+        _st._scale_out_state.clear()
+        _st._chandelier_state.clear()
+        _st.load_bot_state()
+        assert _st._scale_out_state == {1001: {"step": 2}}  # valid ticket kept, junk dropped
+        assert _st._chandelier_state == {1002: {"ch_sl": 1990.0}}  # later fields still load
+
+    def test_entirely_corrupt_field_falls_back_to_default(self, tmp_state_file):
+        # exec_bias as a non-dict previously raised inside _coerce and aborted
+        # the whole load; now that field defaults and fields AFTER it load.
+        data = {
+            "scale_out_state": {"1001": {"step": 2}},
+            "chandelier_state": {},
+            "exec_bias": [1, 2, 3],
+            "last_trade_time": {},
+            "tail_risk_triggered": {},
+            "tail_risk_cooldown": {},
+            "circuit_breaker_triggered": True,
+        }
+        tmp_state_file.write_text(json.dumps(data))
+        _st._scale_out_state.clear()
+        _st._exec_bias.clear()
+        _st._circuit_breaker_triggered = False
+        _st.load_bot_state()
+        assert _st._scale_out_state == {1001: {"step": 2}}
+        assert _st._exec_bias == {}  # fell back to default
+        assert _st._circuit_breaker_triggered is True  # loaded after the bad field
+
 
 class TestSchemaTable:
     """Every PERSISTED field round-trips save->load and appears in the payload
@@ -195,6 +236,36 @@ class TestSchemaTable:
         _st.load_bot_state()
         for gname, expected in reps.items():
             assert getattr(_st, gname) == expected, f"{gname} roundtrip mismatch"
+
+
+class TestPrunePositionState:
+    def test_prunes_stale_and_keeps_active(self):
+        _st._scale_out_state[1] = {"step": 0}
+        _st._scale_out_state[2] = {"step": 0}
+        _st._chandelier_state[1] = {"ch_sl": 10.0}
+        _st._chandelier_state[3] = {"ch_sl": 20.0}
+        try:
+            changed = _st.prune_position_state({1})
+            scale = dict(_st._scale_out_state)
+            chandelier = dict(_st._chandelier_state)
+        finally:
+            _st._scale_out_state.clear()
+            _st._chandelier_state.clear()
+        assert changed is True
+        assert list(scale) == [1]
+        assert list(chandelier) == [1]
+
+    def test_no_change_returns_false(self):
+        _st._scale_out_state[1] = {"step": 0}
+        try:
+            assert _st.prune_position_state({1}) is False
+            assert _st.prune_position_state({1, 99}) is False  # extra tickets harmless
+        finally:
+            _st._scale_out_state.clear()
+
+    def test_empty_state_returns_false(self):
+        assert _st.prune_position_state({1, 2}) is False
+        assert _st.prune_position_state(set()) is False
 
 
 class TestDailyRollover:

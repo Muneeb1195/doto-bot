@@ -131,14 +131,21 @@ _WATCHDOG_LAST_KILL = 0.0
 _WATCHDOG_MAX_FAILURES = 3
 
 
+def _reset_field(gname, kind, default):
+    """Reset one PERSISTED field to its default (in-place clear for mutable
+    kinds so module-held references stay valid). Shared by reset_all and the
+    per-field load fallback."""
+    if kind in _MUTABLE_KINDS:
+        globals()[gname].clear()
+    else:
+        globals()[gname] = default
+
+
 def reset_all():
     """Reset all mutable state to defaults.  Called after every test via conftest.py
     autouse fixture so tests can run in any order without cross-contamination."""
     for key, gname, kind, default in PERSISTED:
-        if kind in _MUTABLE_KINDS:
-            globals()[gname].clear()
-        else:
-            globals()[gname] = default
+        _reset_field(gname, kind, default)
     # Runtime-only state (never persisted):
     _filter_stats.clear()
     _exec_quality.clear()
@@ -220,22 +227,33 @@ def _serialize(kind, value):
 def _coerce(kind, raw, default):
     """Restore a JSON value to its in-memory form (inverse of _serialize).
 
-    Tolerant of legacy/corrupt files: wrong types fall back to the default so
-    the live bot_state.json always loads (defensive load is part of the seam).
+    Tolerant of legacy/corrupt files: wrong types fall back to the default and
+    non-numeric ticket keys are dropped (salvaging the valid entries), so the
+    live bot_state.json always loads — a corrupt bit never aborts the load.
     """
     if kind == "int_keys_dict":
-        return {int(k): v for k, v in raw.items()} if isinstance(raw, dict) else default
+        if not isinstance(raw, dict):
+            return default
+        out = {}
+        for k, v in raw.items():
+            try:
+                out[int(k)] = v
+            except (ValueError, TypeError):
+                logging.warning(f"load_bot_state: dropping non-numeric key {k!r}")
+        return out
     if kind == "dict":
         return raw if isinstance(raw, dict) else default
     if kind == "exec_bias":
+        if not isinstance(raw, dict):
+            return default
         out = {}
-        for sym, eb in (raw or {}).items():
+        for sym, eb in raw.items():
             eb2 = dict(eb) if isinstance(eb, dict) else {}
             if "date" in eb2 and isinstance(eb2["date"], str):
                 with contextlib.suppress(ValueError, TypeError):
                     eb2["date"] = date.fromisoformat(eb2["date"])
             out[sym] = eb2
-        return out if isinstance(raw, dict) else default
+        return out
     if kind == "ids":
         return set(raw) if isinstance(raw, (list, tuple, set)) else default
     if kind == "bool":
@@ -278,18 +296,40 @@ def load_bot_state():
         if "scale_out_state" not in state_data:
             logging.warning("load_bot_state: state_data missing 'scale_out_state' — empty state?")
         for key, gname, kind, default in PERSISTED:
-            value = _coerce(kind, state_data.get(key), default)
-            if kind in _MUTABLE_KINDS:
-                target = globals()[gname]
-                target.clear()
-                target.update(value)
-            else:
-                globals()[gname] = value
+            try:
+                value = _coerce(kind, state_data.get(key), default)
+                if kind in _MUTABLE_KINDS:
+                    target = globals()[gname]
+                    target.clear()
+                    target.update(value)
+                else:
+                    globals()[gname] = value
+            except Exception as e:
+                # One corrupt field must not abort the whole load: log it, fall
+                # back to that field's default, and keep loading the rest.
+                logging.warning(f"load_bot_state: field '{key}' corrupt ({e}) — using default")
+                _reset_field(gname, kind, default)
         logging.info(
             f"Bot state loaded: {len(_scale_out_state)} scale-out, {len(_chandelier_state)} chandelier entries"
         )
     except Exception as e:
         logging.warning(f"load_bot_state failed: {e}")
+
+
+def prune_position_state(active_tickets):
+    """Drop scale-out/chandelier state for tickets no longer in the book
+    (broker-fired SL/TP closes, manual closes). Returns True if anything was
+    removed. Only call with a VALID positions_get result — an empty set means
+    "no positions", and a failed fetch must not be conflated with that.
+    """
+    pruned = False
+    for tickets in (_scale_out_state, _chandelier_state):
+        stale = [t for t in tickets if t not in active_tickets]
+        for t in stale:
+            tickets.pop(t, None)
+        if stale:
+            pruned = True
+    return pruned
 
 
 def daily_realized_pnl_for(today):
