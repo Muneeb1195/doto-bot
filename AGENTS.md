@@ -41,6 +41,7 @@
 
 ## Key Conventions
 - All MT5 calls wrapped via `mt5_call(func, *args, _timeout=N)` from `mt5_connect`
+- **`order_send` returns a `TradeResult` with NO `profit` field** — realized P&L lives on the executed `TradeDeal`. Bot-close paths must read it via `mt5_connect.realized_pnl(market, ticket)` (`deals[-1].profit` from `history_deals_get(position=ticket)`, the same source `journal.reconcile_journal` uses); a `hasattr(result, "profit")` fallback silently journals 0.0 and breaks MR loss-streak state
 - Rate cache TTL is 5s (`_RATE_CACHE_TTL` in `state.py`); avoids re-fetching within same cycle
 - Config is a global `dict` loaded from `settings.ini`. Per-symbol mutation uses `deepcopy(cfg)` in `main.py` to avoid cross-symbol contamination
 - State lives in module-level globals in `state.py` (no context/DI): `_scale_out_state`, `_chandelier_state`, `_exec_bias`, `_last_trade_time`, `_tail_risk_triggered`, `_circuit_breaker_triggered`, `_daily_realized_pnl`, `_ml_confidence_history`, `_ml_drift_warned`, `_filter_stats`, `_equity_history`, `_ns_cache`, `_rate_cache`, and more
@@ -271,7 +272,7 @@ Because the box has no git and is updated by manual scp, the live copy can lag
 
 ## Scoring Parity (2026-07-22)
 - **`analytics.compute_entry_score()`** — single source of truth for entry scoring. Uses 3-component model: ML (40%), spread (30%), news (30%). Weights from `cfg["scoring_weights"]`.
-- **`backtest.py:_compute_entry_score()`** — backtest scoring model. Now uses the same 3-component weights from config. Previously skipped components not in `scores` dict (e.g., news when `ns_enabled=False`), causing score divergence. Fixed: weighting loop now uses `scores.get(key, 0.5)` to include all weighted components with default 0.5.
+- **`analytics.compute_entry_score()`** — single scoring math for live + backtest (raw-value seam, C4-2). Backtest calls it with per-bar inputs (`ml_conf`, bar spread in price units, `tail_risk`); `_compute_entry_score` is deleted. Weighting loop uses only components present in `scores` (missing weighted keys are renormalized out); the news-based confidence adjustment is `analytics.apply_news_confidence_mult`.
 - **`filters.py:check_ml_gate()`** — live ML gate. Applies news-based confidence adjustment: `news_val >= 0.70` → `confidence_mult * 1.10` (capped 1.5); `news_val <= 0.30` → `confidence_mult * 0.50`. Backtest's `_run_reference()` now applies the same adjustment.
 - **`mr_min` parity**: Both paths use `mr_min = 0.03 if entry_atr is None else 0.0` (previously backtest used `entry_type == "mean_reversion"`).
 - **Parity tests** in `tests/test_parity.py::TestScoringParity` guard against future divergence.

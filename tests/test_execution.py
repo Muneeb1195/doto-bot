@@ -323,35 +323,34 @@ class TestScaleOutMinLot:
             volume_max = 100.0
 
         SInfo.volume_min = volume_min
-
-        def fake_mt5_call(fn, *a, _timeout=30, **kw):
-            name = str(fn)
-            if "symbol_info_tick" in name:
-                return Tick()
-            if "symbol_info" in name:
-                return SInfo()
-            return None
-
-        monkeypatch.setattr(execution, "mt5_call", fake_mt5_call)
-        monkeypatch.setattr(execution, "calc_atr", lambda *a, **kw: 2.0)
-        monkeypatch.setattr(execution, "get_rates",
-                            lambda *a, **kw: pd.DataFrame({"close": np.ones(30)}))
         res = FakeOrderResult()
         res.retcode = execution.mt5.TRADE_RETCODE_DONE
 
-        def fake_send(req, _timeout=10):
-            captured.setdefault("calls", 0)
-            captured["calls"] += 1
-            captured.setdefault("reqs", []).append(req)
-            return res
+        # check_scale_out routes all broker access through the Market seam;
+        # drive it with a deterministic fake instead of patching mt5_call.
+        class Market:
+            def symbol_info_tick(self, symbol):
+                return Tick()
 
-        monkeypatch.setattr(execution, "mt5_order_send", fake_send)
+            def symbol_info(self, symbol):
+                return SInfo()
+
+            def get_rates(self, symbol, timeframe, count):
+                return pd.DataFrame({"close": np.ones(30)})
+
+            def order_send(self, req, _timeout=10):
+                captured.setdefault("calls", 0)
+                captured["calls"] += 1
+                captured.setdefault("reqs", []).append(req)
+                return res
+
+        monkeypatch.setattr(execution, "calc_atr", lambda *a, **kw: 2.0)
         monkeypatch.setattr(execution, "get_deviation", lambda c, s: 50)
         monkeypatch.setattr(execution, "get_filling_mode", lambda s: execution.mt5.ORDER_FILLING_FOK)
         monkeypatch.setattr(execution, "journal_close", lambda *a, **kw: None)
         monkeypatch.setattr(execution, "trade_partial", lambda *a, **kw: None)
         monkeypatch.setattr(execution, "save_bot_state", lambda *a, **kw: None)
-        return Tick(), SInfo()
+        return Market(), SInfo()
 
     def _make_state_and_position(self, cfg, volume=0.1):
         sinfo = FakeSymbolInfo()
@@ -375,11 +374,11 @@ class TestScaleOutMinLot:
         # minimum tradable lot and close only that (remaining 0.05 stays open).
         captured = {}
         basic_cfg["volume_min"] = 0.05
-        self._patch(monkeypatch, captured, volume_min=0.05)
+        market, _ = self._patch(monkeypatch, captured, volume_min=0.05)
         state, pos = self._make_state_and_position(basic_cfg, volume=0.1)
         execution._scale_out_state[pos.ticket] = state
         try:
-            ok = execution.check_scale_out(basic_cfg, pos)
+            ok = execution.check_scale_out(basic_cfg, pos, market=market)
             assert ok is True
             close_reqs = [r for r in captured.get("reqs", [])
                           if r.get("action") == execution.mt5.TRADE_ACTION_DEAL]
@@ -395,11 +394,11 @@ class TestScaleOutMinLot:
         # step, never liquidate everything early.
         captured = {}
         basic_cfg["volume_min"] = 0.1
-        self._patch(monkeypatch, captured, volume_min=0.1)
+        market, _ = self._patch(monkeypatch, captured, volume_min=0.1)
         state, pos = self._make_state_and_position(basic_cfg, volume=0.1)
         execution._scale_out_state[pos.ticket] = state
         try:
-            ok = execution.check_scale_out(basic_cfg, pos)
+            ok = execution.check_scale_out(basic_cfg, pos, market=market)
             assert ok is False
             assert captured.get("calls", 0) == 0
             assert execution._scale_out_state[pos.ticket]["step"] == 1

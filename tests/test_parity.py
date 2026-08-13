@@ -301,10 +301,24 @@ class TestStructuralParity:
         assert isinstance(ratio, float) and 0.0 <= ratio <= 1.0
 
 
+def _bt_entry_score(bt, i, signal):
+    """Backtest-side entry scoring via the shared analytics function (raw-value
+    seam, C4-2): per-bar ml mult, bar spread in price units, stateful tail risk.
+    """
+    return compute_entry_score(
+        bt.p, signal, float(bt.atr_series.iloc[i]),
+        spread=(float(bt.df.iloc[i].get("spread") or 0) * bt.point)
+        if bt.p.get("spf_enabled", True) else None,
+        ml_conf=bt._check_ml_signal(i, signal) if bt.p.get("ml_enabled", False) else None,
+        tail_risk=bt._tail_risk_score(),
+    )
+
+
 class TestScoringParity:
-    """Parity — backtest._compute_entry_score and analytics.compute_entry_score
-    must use the same weights, same components, and same news-based confidence
-    adjustment. This guards against scoring-model divergence (C5/C6).
+    """Parity — the backtest and live paths must both call
+    analytics.compute_entry_score (raw-value seam, C4-2): same weights, same
+    components, same news-based confidence adjustment. Guards against
+    scoring-model divergence (C5/C6).
     """
 
     def _make_h1_ohlc(self, n=600):
@@ -383,6 +397,15 @@ class TestScoringParity:
             "spread_model": 0.0,
         }
 
+    def test_backtest_no_longer_reimplements_scoring(self):
+        """C4-2: the backtest must call analytics.compute_entry_score, not keep
+        a private scoring implementation."""
+        from pathlib import Path
+
+        bt = (Path(__file__).resolve().parent.parent / "bot" / "backtest.py").read_text(encoding="utf-8")
+        assert "def _compute_entry_score" not in bt
+        assert "compute_entry_score(" in bt
+
     def test_weights_match(self):
         """Both paths must use the same scoring weights from config."""
         params = self._scoring_params()
@@ -390,8 +413,7 @@ class TestScoringParity:
         bt._precompute()
         i = bt.n - 1
         signal = "buy"
-        entry_atr = bt.atr_series.iloc[i]
-        entry_score, score_details = bt._compute_entry_score(i, signal, entry_atr)
+        entry_score, score_details, _ = _bt_entry_score(bt, i, signal)
         # The backtest may compute extra components (exec, volume, etc.) for
         # internal use, but only the weighted components affect the score.
         # Verify the score is a weighted average of only the weighted components.
@@ -414,7 +436,7 @@ class TestScoringParity:
         entry_atr = float(bt.atr_series.iloc[i])
 
         # Backtest score with fallback weights
-        bt_score, bt_details = bt._compute_entry_score(i, signal, entry_atr)
+        bt_score, bt_details, _ = _bt_entry_score(bt, i, signal)
 
         # Live score with fallback weights
         spread = float(df["spread"].iloc[i]) * params["point"]
@@ -499,10 +521,9 @@ class TestScoringParity:
         assert passed_real is True
 
     def test_scoring_weights_parity_with_analytics(self):
-        """Live analytics.compute_entry_score and backtest._compute_entry_score
-        must use the same scoring_weights from config. The live path uses
-        cfg['scoring_weights'] directly; the backtest uses p['scoring_weights'].
-        Both must produce the same weighted average of the same components."""
+        """Live and backtest scoring go through the same analytics function;
+        both must use the same scoring_weights from config and produce the same
+        weighted average of the same components."""
         from backtest import Backtest
 
         params = self._scoring_params()
@@ -513,8 +534,8 @@ class TestScoringParity:
         signal = "buy"
         entry_atr = float(bt.atr_series.iloc[i])
 
-        # Backtest score
-        bt_score, bt_details = bt._compute_entry_score(i, signal, entry_atr)
+        # Backtest score (shared analytics function)
+        bt_score, bt_details, _ = _bt_entry_score(bt, i, signal)
 
         # Live score (passing spread explicitly to avoid MT5 call)
         spread = float(df["spread"].iloc[i]) * params["point"]
@@ -1002,6 +1023,27 @@ class TestChandelierExitParity:
         [t for t in results["trades"] if t.get("exit_reason") == "CHANDELIER"]
         # Not all backtests will have chandelier exits, but the logic must run
         assert isinstance(results["trades"], list)
+
+
+class TestNewsAdjustmentSingleSource:
+    """The news confidence adjustment was a byte-identical twin (filters.py vs
+    backtest._run_reference). Both must call analytics.apply_news_confidence_mult
+    — the inline copy is a build failure, not a lint nit."""
+
+    def test_both_paths_call_the_shared_function(self):
+        import re
+        from pathlib import Path
+
+        bot_dir = Path(__file__).resolve().parent.parent / "bot"
+        bt = (bot_dir / "backtest.py").read_text(encoding="utf-8")
+        fl = (bot_dir / "filters.py").read_text(encoding="utf-8")
+        assert "apply_news_confidence_mult" in bt
+        assert "apply_news_confidence_mult" in fl
+        # the old inline twin pattern must not reappear
+        assert "confidence_mult *= 0.50" not in bt
+        assert "confidence_mult *= 0.50" not in fl
+        assert re.search(r"min\(1\.5, confidence_mult \* 1\.10\)", bt) is None
+        assert re.search(r"min\(1\.5, confidence_mult \* 1\.10\)", fl) is None
 
 
 class TestNaNPolicyParity:

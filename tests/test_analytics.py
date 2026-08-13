@@ -177,6 +177,108 @@ class TestObvDivergence:
         assert _obv_divergence(df, "hold") is False
 
 
+class TestApplyNewsConfidenceMult:
+    def test_high_news_boosts(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.80) == pytest.approx(1.10)
+
+    def test_high_news_capped_at_1_5(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.4, 0.80) == pytest.approx(1.5)
+
+    def test_low_news_halves(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.20) == pytest.approx(0.5)
+
+    def test_neutral_news_unchanged(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(0.85, 0.5) == pytest.approx(0.85)
+
+    def test_none_news_unchanged(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(0.85, None) == pytest.approx(0.85)
+
+    def test_boundary_0_70_is_boost(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.70) == pytest.approx(1.10)
+
+    def test_boundary_0_30_is_half(self):
+        from analytics import apply_news_confidence_mult
+        assert apply_news_confidence_mult(1.0, 0.30) == pytest.approx(0.5)
+
+
+class TestComputeEntryScoreRawValues:
+    """compute_entry_score raw-value seam (C4-2): explicit ml_conf/spread/
+    news_val/tail_risk inputs must not touch MT5 or the live model path."""
+
+    def test_explicit_ml_conf_scored_capped(self):
+        from analytics import compute_entry_score
+        cfg = {
+            "symbol": "X.raw",
+            "scoring_weights": {"ml": 1.0},
+            "ml_enabled": True,
+            "ns_enabled": False,
+            "spf_enabled": False,
+        }
+        score, details, ml = compute_entry_score(cfg, "buy", 1.0, ml_conf=1.4)
+        assert details["ml"] == pytest.approx(1.0)
+        assert score == pytest.approx(1.0)
+        assert ml == 1.4
+
+    def test_zero_ml_conf_rejects(self):
+        from analytics import compute_entry_score
+        cfg = {
+            "symbol": "X.raw",
+            "scoring_weights": {"ml": 1.0},
+            "ml_enabled": True,
+            "ns_enabled": False,
+            "spf_enabled": False,
+        }
+        score, details, _ = compute_entry_score(cfg, "buy", 1.0, ml_conf=0.0)
+        assert details["ml"] == 0.0
+        assert score == pytest.approx(0.0)
+
+    def test_explicit_news_and_tail_risk_weighted(self):
+        from analytics import compute_entry_score
+        cfg = {
+            "symbol": "X.raw",
+            "scoring_weights": {"news": 0.5, "tail_risk": 0.5},
+            "ml_enabled": False,
+            "ns_enabled": True,
+            "spf_enabled": False,
+        }
+        score, details, _ = compute_entry_score(cfg, "buy", 1.0, news_val=0.8, tail_risk=0.4)
+        assert details["news"] == pytest.approx(0.8)
+        assert details["tail_risk"] == pytest.approx(0.4)
+        assert score == pytest.approx(0.6)
+
+    def test_explicit_spread_in_price_units(self):
+        from analytics import compute_entry_score
+        cfg = {
+            "symbol": "X.raw",
+            "scoring_weights": {"spread": 1.0},
+            "spf_enabled": True,
+            "spf_max_ratio": 0.5,
+            "ml_enabled": False,
+        }
+        score, details, _ = compute_entry_score(cfg, "buy", 10.0, spread=2.5)
+        assert details["spread"] == pytest.approx(1.0 - (2.5 / 10.0) / 0.5)
+        assert score == pytest.approx(details["spread"])
+
+    def test_string_weights_parsed(self):
+        from analytics import compute_entry_score
+        cfg = {
+            "symbol": "X.raw",
+            "scoring_weights": "ml:1.0",
+            "ml_enabled": False,
+            "ns_enabled": False,
+            "spf_enabled": False,
+        }
+        score, details, _ = compute_entry_score(cfg, "buy", 1.0)
+        assert details["ml"] == pytest.approx(0.60)  # fallback
+        assert score == pytest.approx(0.60)
+
+
 class TestComputeEntryScore:
     def test_ml_disabled_uses_fallback(self):
         from analytics import compute_entry_score

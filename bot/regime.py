@@ -23,9 +23,13 @@ def get_current_adx(cfg, closed=False):
     return calc_adx(df, cfg["adx_period"])
 
 
-def get_current_atr(cfg, closed=False):
+def get_current_atr(cfg, closed=False, market=None):
     needed = cfg["atr_period"] + 5 + (1 if closed else 0)
-    df = get_rates(cfg["symbol"], cfg["timeframe"], needed)
+    df = (
+        market.get_rates(cfg["symbol"], cfg["timeframe"], needed)
+        if market is not None
+        else get_rates(cfg["symbol"], cfg["timeframe"], needed)
+    )
     if df is None or len(df) < needed:
         return None
     if closed:

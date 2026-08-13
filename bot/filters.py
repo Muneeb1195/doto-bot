@@ -13,7 +13,7 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
 import numpy as np
 import pandas as pd
 import state as _st
-from analytics import compute_entry_score, volume_filter_pass
+from analytics import apply_news_confidence_mult, compute_entry_score, volume_filter_pass
 from ml_features import FEATURE_COLS, prepare_features
 from mt5_connect import get_rates, mt5_call
 from regime import get_current_atr
@@ -71,10 +71,7 @@ def check_ml_gate(cfg, signal, entry_atr):
         else:
             confidence_mult = cfg.get("scoring_low_conviction_mult", 0.50)
         news_val = score_details.get("news", 0.5) if score_details else 0.5
-        if news_val >= 0.70:
-            confidence_mult = min(1.5, confidence_mult * 1.10)
-        elif news_val <= 0.30:
-            confidence_mult *= 0.50
+        confidence_mult = apply_news_confidence_mult(confidence_mult, news_val)
         return True, confidence_mult, ml_conf
     else:
         ml_pass, ml_conf = check_ml_signal(cfg, signal)
@@ -440,7 +437,7 @@ def check_daily_loss(cfg):
     if mt5_loss is not None:
         if mt5_loss != cached_loss or cached_ts == 0:
             _st._daily_loss_mt5_cache = (today, mt5_loss, time.time())
-        journal_pnl = _st._daily_realized_pnl if _st._daily_realized_date == today else 0.0
+        journal_pnl = _st.daily_realized_pnl_for(today)
         if journal_pnl != 0 and mt5_loss != 0:
             drift_pct = abs(mt5_loss - journal_pnl) / max(abs(mt5_loss), 1)
             if drift_pct > 0.10:
@@ -450,7 +447,7 @@ def check_daily_loss(cfg):
                 )
         realized_loss = min(mt5_loss, journal_pnl)
     else:
-        journal_pnl = _st._daily_realized_pnl if _st._daily_realized_date == today else 0.0
+        journal_pnl = _st.daily_realized_pnl_for(today)
         realized_loss = journal_pnl
     if realized_loss >= 0:
         return True

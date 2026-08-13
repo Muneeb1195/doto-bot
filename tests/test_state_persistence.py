@@ -145,3 +145,154 @@ class TestLoadBotState:
         _st.load_bot_state()
         assert _st._tail_risk_triggered.get("SOLUSD.raw") is True
         assert _st._tail_risk_cooldown.get("SOLUSD.raw") == 100.0
+
+    def test_non_numeric_ticket_key_is_skipped(self, tmp_state_file):
+        # One corrupt key must neither abort the load nor wipe the valid
+        # tickets (previously the int() coercion raised and the whole load
+        # failed).
+        data = {
+            "scale_out_state": {"1001": {"step": 2}, "junk": {"step": 9}},
+            "chandelier_state": {"1002": {"ch_sl": 1990.0}},
+            "exec_bias": {},
+            "last_trade_time": {},
+            "tail_risk_triggered": {},
+            "tail_risk_cooldown": {},
+            "circuit_breaker_triggered": False,
+        }
+        tmp_state_file.write_text(json.dumps(data))
+        _st._scale_out_state.clear()
+        _st._chandelier_state.clear()
+        _st.load_bot_state()
+        assert _st._scale_out_state == {1001: {"step": 2}}  # valid ticket kept, junk dropped
+        assert _st._chandelier_state == {1002: {"ch_sl": 1990.0}}  # later fields still load
+
+    def test_entirely_corrupt_field_falls_back_to_default(self, tmp_state_file):
+        # exec_bias as a non-dict previously raised inside _coerce and aborted
+        # the whole load; now that field defaults and fields AFTER it load.
+        data = {
+            "scale_out_state": {"1001": {"step": 2}},
+            "chandelier_state": {},
+            "exec_bias": [1, 2, 3],
+            "last_trade_time": {},
+            "tail_risk_triggered": {},
+            "tail_risk_cooldown": {},
+            "circuit_breaker_triggered": True,
+        }
+        tmp_state_file.write_text(json.dumps(data))
+        _st._scale_out_state.clear()
+        _st._exec_bias.clear()
+        _st._circuit_breaker_triggered = False
+        _st.load_bot_state()
+        assert _st._scale_out_state == {1001: {"step": 2}}
+        assert _st._exec_bias == {}  # fell back to default
+        assert _st._circuit_breaker_triggered is True  # loaded after the bad field
+
+
+class TestSchemaTable:
+    """Every PERSISTED field round-trips save->load and appears in the payload
+    (the schema table is the single source — no hand-written mirrors to drift)."""
+
+    def test_every_persisted_key_in_payload(self, tmp_state_file):
+        _st.save_bot_state()
+        data = json.loads(tmp_state_file.read_text())
+        for key, gname, kind, _ in _st.PERSISTED:
+            assert key in data, f"PERSISTED field {key} ({gname}) missing from saved payload"
+
+    def test_every_persisted_key_roundtrips(self, tmp_state_file):
+        from datetime import date
+
+        reps = {
+            "_scale_out_state": {1001: {"step": 1, "entry_price": 2000.0}},
+            "_chandelier_state": {1002: {"ch_sl": 1990.0}},
+            "_exec_bias": {"XAU500.raw": {"bias": "bullish", "since": 1.0, "date": date(2024, 1, 15)}},
+            "_last_trade_time": {"trend:XAU500.raw": 123.0},
+            "_tail_risk_triggered": {"XAU500.raw": True},
+            "_tail_risk_cooldown": {"XAU500.raw": 999.0},
+            "_circuit_breaker_triggered": True,
+            "_peak_balance": 54321.0,
+            "_mr_consecutive_losses": {"XAU500.raw": 2},
+            "_mr_last_loss_time": {"XAU500.raw": 111.0},
+            "_dynamic_deviation": {"XAU500.raw": 80},
+            "_daily_loss_hit": True,
+            "_daily_realized_pnl": -4321.5,
+            "_daily_realized_date": date(2024, 3, 5),
+            "_pending_limits": {"XAU500.raw": {"ticket": 7}},
+            "_imported_external_ids": {"a", "b"},
+        }
+        for gname, value in reps.items():
+            if isinstance(value, (dict, set)):
+                target = getattr(_st, gname)
+                target.clear()
+                target.update(value)
+            else:
+                setattr(_st, gname, value)
+        _st.save_bot_state()
+        for gname in reps:
+            current = getattr(_st, gname)
+            if isinstance(current, (dict, set)):
+                current.clear()
+            else:
+                setattr(_st, gname, None if gname.endswith("_date") else 0)
+        _st.load_bot_state()
+        for gname, expected in reps.items():
+            assert getattr(_st, gname) == expected, f"{gname} roundtrip mismatch"
+
+
+class TestPrunePositionState:
+    def test_prunes_stale_and_keeps_active(self):
+        _st._scale_out_state[1] = {"step": 0}
+        _st._scale_out_state[2] = {"step": 0}
+        _st._chandelier_state[1] = {"ch_sl": 10.0}
+        _st._chandelier_state[3] = {"ch_sl": 20.0}
+        try:
+            changed = _st.prune_position_state({1})
+            scale = dict(_st._scale_out_state)
+            chandelier = dict(_st._chandelier_state)
+        finally:
+            _st._scale_out_state.clear()
+            _st._chandelier_state.clear()
+        assert changed is True
+        assert list(scale) == [1]
+        assert list(chandelier) == [1]
+
+    def test_no_change_returns_false(self):
+        _st._scale_out_state[1] = {"step": 0}
+        try:
+            assert _st.prune_position_state({1}) is False
+            assert _st.prune_position_state({1, 99}) is False  # extra tickets harmless
+        finally:
+            _st._scale_out_state.clear()
+
+    def test_empty_state_returns_false(self):
+        assert _st.prune_position_state({1, 2}) is False
+        assert _st.prune_position_state(set()) is False
+
+
+class TestDailyRollover:
+    def test_read_stale_date_is_zero_and_read_only(self):
+        from datetime import date
+        _st._daily_realized_pnl = -100.0
+        _st._daily_realized_date = date(2020, 1, 1)
+        assert _st.daily_realized_pnl_for(date(2020, 1, 2)) == 0.0
+        assert _st._daily_realized_pnl == -100.0  # filters must NOT zero the counter
+        assert _st._daily_realized_date == date(2020, 1, 1)
+
+    def test_read_same_date_returns_pnl(self):
+        from datetime import date
+        _st._daily_realized_pnl = -100.0
+        _st._daily_realized_date = date(2020, 1, 2)
+        assert _st.daily_realized_pnl_for(date(2020, 1, 2)) == -100.0
+
+    def test_roll_zeroes_on_new_day(self):
+        from datetime import date
+        _st._daily_realized_pnl = -100.0
+        _st._daily_realized_date = date(2020, 1, 1)
+        assert _st.roll_daily_realized_pnl(date(2020, 1, 2)) == 0.0
+        assert _st._daily_realized_pnl == 0.0
+        assert _st._daily_realized_date == date(2020, 1, 2)
+
+    def test_roll_same_date_keeps_pnl(self):
+        from datetime import date
+        _st._daily_realized_pnl = -100.0
+        _st._daily_realized_date = date(2020, 1, 2)
+        assert _st.roll_daily_realized_pnl(date(2020, 1, 2)) == -100.0

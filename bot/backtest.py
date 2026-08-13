@@ -14,15 +14,13 @@ except ImportError:  # Linux: no native package, use the socket/RPyC bridge
     from mt5_connect import mt5
 import numpy as np
 import pandas as pd
-from analytics import volume_filter_pass
+from analytics import apply_news_confidence_mult, compute_entry_score, volume_filter_pass
 from credentials import load_credentials
 from indicators import SLOPE_SCALE, calc_adx_series, calc_atr_series, calc_ma
 
 from config import validate_config as _validate_config
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
-
-import state as _st
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -1296,103 +1294,22 @@ class Backtest:
             return max(0.25, 1.0 / ratio)
         return 1.0
 
-    def _compute_entry_score(self, i, signal, atr_val, tail_risk_override=None):
+    def _tail_risk_score(self):
+        """Stateful drawdown score for the entry-scoring tail_risk component —
+        the raw-value INPUT to analytics.compute_entry_score (the score math
+        lives there; this is backtest-side state only). 1.0 when disabled."""
         p = self.p
-        df = self.df
-        scores = {}
-
-        # Aligned with analytics.compute_entry_score (the live 3-component model):
-        # ml (0.40), spread (0.30), news (0.30). Extra historical components
-        # (exec/volume/volatility/adx_slope/kama_slope) were never weighted by the
-        # default scoring_weights and are removed to guarantee bit-exact parity
-        # (agent audit: scoring divergence). tail_risk (stateful) is kept and
-        # injected by the fast path for drawdown-aware sizing.
-
-        # Spread score (price-units based, parity with live spf path).
-        if p.get("spf_enabled", True):
-            bar = df.iloc[i]
-            spread = bar.get("spread")
-            if spread is not None and spread > 0 and atr_val and atr_val > 0:
-                ratio = (spread * self.point) / atr_val
-                threshold = p.get("spf_max_ratio", 0.30)
-                scores["spread"] = max(0.0, 1.0 - ratio / max(threshold, 0.01))
-            else:
-                scores["spread"] = 0.5
-        else:
-            scores["spread"] = 0.5
-
-        # News sentiment component (A3 parity with live compute_entry_score).
-        # Always default to neutral 0.5 so the weighted denominator is symmetric
-        # with the live path (analytics.compute_entry_score sets news=0.5 even
-        # when ns_enabled=False). Only override when news data exists.
-        scores["news"] = 0.5
-        if p.get("ns_enabled", False):
-            ns_data = _st._ns_cache.get("data") if hasattr(_st, "_ns_cache") else None
-            sym = p.get("symbol", "")
-            if isinstance(ns_data, dict):
-                sym_news = ns_data.get("symbols", {}).get(sym, {})
-                if sym_news.get("count", 0) > 0:
-                    sc = sym_news.get("score", 0.0)
-                    news_score = (sc + 1.0) / 2.0
-                    if signal == "sell":
-                        news_score = 1.0 - news_score
-                    scores["news"] = news_score
-
-        # ML confidence score
-        if p.get("ml_enabled", False) and self.ml_model is not None:
-            ml_mult = self._check_ml_signal(i, signal)
-            # ml_mult is 0.0 (reject) or 0.5-2.0 (confidence ratio)
-            if ml_mult > 0:
-                scores["ml"] = min(1.0, ml_mult)
-            else:
-                scores["ml"] = 0.0
-        else:
-            scores["ml"] = p.get("scoring_ml_fallback", 0.60)
-
-        # Tail risk score
-        if p.get("tr_enabled", True):
-            current_equity = self.initial_balance + sum(t.get("pnl", 0) for t in self.trades if t.get("pnl"))
-            max_dd = p.get("tr_max_dd_pct", 8.0)
-            running_max = max(self.equity + [self.initial_balance]) if self.equity else self.initial_balance
-            if running_max > 0:
-                dd_pct = max(0, running_max - current_equity) / running_max * 100
-                if dd_pct >= max_dd:
-                    scores["tail_risk"] = 0.0
-                else:
-                    scores["tail_risk"] = 1.0 - (dd_pct / max_dd)
-            else:
-                scores["tail_risk"] = 0.5
-        else:
-            scores["tail_risk"] = 1.0
-
-        if tail_risk_override is not None:
-            # Bit-exact parity: the tail_risk component is stateful (depends on the
-            # live equity curve / drawdown at bar i). The reference loop evaluates
-            # it mid-run; the fast path's two-pass cannot, so the exact value is
-            # injected from the pass-1 equity curve instead.
-            scores["tail_risk"] = tail_risk_override
-
-        weights = p.get("scoring_weights") or {}
-        if isinstance(weights, str):
-            parsed = {}
-            for part in weights.split(","):
-                if ":" in part:
-                    k, v = part.split(":", 1)
-                    parsed[k.strip()] = float(v)
-            weights = parsed
-        if not weights:
-            weights = {"ml": 0.40, "spread": 0.30, "news": 0.30}
-
-        total = 0.0
-        wsum = 0.0
-        for key, w in weights.items():
-            if key in scores and scores[key] is not None:
-                total += scores[key] * w
-                wsum += w
-        if wsum == 0:
-            return 1.0, {}
-        composite = total / wsum
-        return composite, scores
+        if not p.get("tr_enabled", True):
+            return 1.0
+        current_equity = self.initial_balance + sum(t.get("pnl", 0) for t in self.trades if t.get("pnl"))
+        max_dd = p.get("tr_max_dd_pct", 8.0)
+        running_max = max(self.equity + [self.initial_balance]) if self.equity else self.initial_balance
+        if running_max > 0:
+            dd_pct = max(0, running_max - current_equity) / running_max * 100
+            if dd_pct >= max_dd:
+                return 0.0
+            return 1.0 - (dd_pct / max_dd)
+        return 0.5
 
     def run(self, fast=False):
         # Numba fast path now supports MTF (item #9): the MTF fused signal is a
@@ -1879,7 +1796,16 @@ class Backtest:
                         self.equity.append(self.initial_balance + cumulative_pnl)
                         continue
                 if p.get("scoring_enabled", True):
-                    entry_score, score_details = self._compute_entry_score(i, signal, entry_atr)
+                    # Raw-value seam: analytics owns the scoring math; the
+                    # backtest supplies per-bar inputs (ml mult, bar spread in
+                    # price units, stateful tail risk).
+                    entry_score, score_details, _ = compute_entry_score(
+                        p, signal, entry_atr,
+                        spread=(float(df.iloc[i].get("spread") or 0) * self.point)
+                        if p.get("spf_enabled", True) else None,
+                        ml_conf=ml_mult if p.get("ml_enabled", False) else None,
+                        tail_risk=self._tail_risk_score(),
+                    )
                     mr_min = 0.03 if entry_atr is None else 0.0
                     min_score = p.get("scoring_min_entry", 0.60) + mr_min
                     if entry_score < min_score:
@@ -1894,10 +1820,7 @@ class Backtest:
                     else:
                         confidence_mult = p.get("scoring_low_conviction_mult", 0.50)
                     news_val = score_details.get("news", 0.5) if score_details else 0.5
-                    if news_val >= 0.70:
-                        confidence_mult = min(1.5, confidence_mult * 1.10)
-                    elif news_val <= 0.30:
-                        confidence_mult *= 0.50
+                    confidence_mult = apply_news_confidence_mult(confidence_mult, news_val)
 
                 current_equity = self.initial_balance + cumulative_pnl
                 sl_price_dist = abs(bar["close"] - sl)
@@ -2229,9 +2152,9 @@ class Backtest:
 
         # Two-pass for bit-exact scoring parity:
         #  Pass 1: neutral scoring -> exact sig_out / entry_type from the core.
-        #  Pass 2: score_a/conf_mult_a derived via the EXACT reference
-        #          _compute_entry_score (using the core's own signals) so the
-        #          entry gate + confidence multiplier match _run_reference.
+        #  Pass 2: score_a/conf_mult_a derived via the EXACT reference scoring
+        #          (analytics.compute_entry_score, using the core's own signals)
+        #          so the entry gate + confidence multiplier match _run_reference.
         #
         # The scoring tail_risk component is STATEFUL (depends on the live equity
         # drawdown at each bar). A single neutral first pass cannot supply correct
@@ -2276,8 +2199,12 @@ class Backtest:
                     if run_max > 0:
                         dd_pct = max(0.0, (run_max - cur_eq) / run_max) * 100
                         tail_override = 0.0 if dd_pct >= tr_max_dd else 1.0 - (dd_pct / tr_max_dd)
-                comp, _ = self._compute_entry_score(
-                    i, signal, self.atr_series.iloc[i], tail_risk_override=tail_override
+                comp, _, _ = compute_entry_score(
+                    self.p, signal, self.atr_series.iloc[i],
+                    spread=(float(self.df.iloc[i].get("spread") or 0) * self.point)
+                    if self.p.get("spf_enabled", True) else None,
+                    ml_conf=self._check_ml_signal(i, signal) if self.p.get("ml_enabled", False) else None,
+                    tail_risk=tail_override if tail_override is not None else self._tail_risk_score(),
                 )
                 new_score[i] = comp
                 if comp >= sc_high:

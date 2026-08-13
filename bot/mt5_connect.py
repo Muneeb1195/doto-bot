@@ -148,6 +148,63 @@ def _recreate_instance():
         return True
 
 
+def mt5_order_send(req, _timeout=None):
+    """Send a trade request; single home for order_send (was duplicated in
+    execution.py + main.py).
+
+    The old frame-sensitivity warning ("must be called from the placing module's
+    frame or it returns None") predates the RPyC bridge and is folklore — the
+    `_MT5Proxy` resolves attributes at call time, so a shared helper is safe.
+    The REAL quirk is that MT5 mutates the request dict in place: callers must
+    build a fresh request dict per send (see execution.py `_place_trade_inner`).
+    """
+    return mt5.order_send(req)
+
+
+class Market:
+    """Live MT5 seam for position management (the exit tree).
+
+    execution.manage_positions routes every broker call through this adapter
+    (or a test fake) so the ~200-line exit surface — checks, close decision,
+    order send, post-close side effects — is testable through one interface
+    instead of module-level monkeypatching of mt5_call.
+    """
+
+    def symbol_info_tick(self, symbol):
+        return mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+
+    def symbol_info(self, symbol):
+        return mt5_call(mt5.symbol_info, symbol, _timeout=5)
+
+    def get_rates(self, symbol, timeframe, count):
+        return get_rates(symbol, timeframe, count)
+
+    def order_send(self, request, _timeout=10):
+        return mt5_order_send(request, _timeout=_timeout)
+
+    def get_deals(self, position):
+        return mt5_call(mt5.history_deals_get, position=position, _timeout=10)
+
+
+def realized_pnl(market, position_ticket):
+    """Realized P&L of a just-executed close, read from the position's last deal.
+
+    order_send returns a TradeResult, which carries no `profit` field — realized
+    P&L lives on the executed TradeDeal (the same source reconcile_journal uses
+    for MANUAL_CLOSE rows). Returns 0.0 if the deal is not yet visible.
+    """
+    try:
+        deals = market.get_deals(position_ticket)
+        if deals is not None and len(deals) > 0:
+            return float(getattr(deals[-1], "profit", 0.0) or 0.0)
+    except Exception:
+        logging.exception("realized_pnl lookup failed for ticket %s", position_ticket)
+    return 0.0
+
+
+LIVE_MARKET = Market()
+
+
 def mt5_call(func, *args, _timeout=None, **kwargs):
     name = getattr(func, "__name__", "")
     # The module-level `mt5` is a _MT5Proxy whose __getattr__ resolves on the

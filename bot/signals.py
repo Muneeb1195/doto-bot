@@ -412,12 +412,16 @@ def get_mean_reversion_signal(cfg):
 
 
 
-def check_mean_reversion_exit(cfg, position):
+def check_mean_reversion_exit(cfg, position, market=None):
     mr_tf_name = cfg.get("mr_timeframe", "M30")
     mr_tf = getattr(mt5, f"TIMEFRAME_{mr_tf_name}", mt5.TIMEFRAME_M30)
     rsi_period = cfg["mr_rsi_period"]
     needed = rsi_period + 10
-    df = get_rates(cfg["symbol"], mr_tf, needed)
+    df = (
+        market.get_rates(cfg["symbol"], mr_tf, needed)
+        if market is not None
+        else get_rates(cfg["symbol"], mr_tf, needed)
+    )
     if df is None or len(df) < needed:
         return False
     # Use calc_rsi (canonical Wilder) for BOTH prev and cur so the crossover

@@ -44,6 +44,22 @@ def closed_bars(df):
     return df.iloc[:-1]
 
 
+def apply_news_confidence_mult(confidence_mult, news_val):
+    """News-based confidence adjustment, shared by live filters and backtest
+    (single source of truth — prevention A1).
+
+    `news_val >= 0.70` -> `confidence_mult * 1.10` (capped 1.5);
+    `news_val <= 0.30` -> `confidence_mult * 0.50`; otherwise unchanged.
+    """
+    if news_val is None:
+        return confidence_mult
+    if news_val >= 0.70:
+        return min(1.5, confidence_mult * 1.10)
+    if news_val <= 0.30:
+        return confidence_mult * 0.50
+    return confidence_mult
+
+
 def fused_regime_score(df_closed, cfg):
     """Fused regime score (0-100) on the last CLOSED bar.
 
@@ -125,25 +141,37 @@ def _obv_divergence(df_closed, signal, lookback=20):
     return False
 
 
-def compute_entry_score(cfg, signal, atr, spread=None):
-    """Score an entry signal (higher = better). Accepts optional *spread* in
-    price units (e.g. 0.0001 for EURUSD). When None, fetches from MT5 live.
-    Passing spread explicitly makes the function testable without MT5."""
+def compute_entry_score(cfg, signal, atr, spread=None, ml_conf=None, news_val=None, tail_risk=None):
+    """Score an entry signal (higher = better) — the single scoring math for
+    both the live engine (filters.check_ml_gate) and the backtest (raw-value
+    seam, architecture plan C4-2).
+
+    Raw-value inputs let the backtest pass precomputed per-bar values instead
+    of reimplementing the scoring math; None resolves like the live path:
+      - spread:  price units (e.g. 0.0001 for EURUSD); None -> fetch live tick
+      - ml_conf: already-scored ML confidence (0 = reject, 0.5-2.0 ratio scored
+                 as min(1.0, x)); None -> resolve via filters.check_ml_signal
+      - news_val: sentiment score; None -> resolve from the news cache
+      - tail_risk: stateful drawdown score (backtest only); None -> omitted
+    Returns (score, scores, ml_conf).
+    """
     scores = {}
     symbol = cfg["symbol"]
-    _ml_conf = None
-    if cfg.get("ml_enabled", True):
+    if ml_conf is not None:
+        # Backtest path: caller supplies the already-scored confidence ratio.
+        scores["ml"] = min(1.0, max(0.0, ml_conf)) if ml_conf > 0 else 0.0
+    elif cfg.get("ml_enabled", True):
         from filters import check_ml_signal
 
-        ml_pass, _ml_conf = check_ml_signal(cfg, signal)
+        ml_pass, ml_conf = check_ml_signal(cfg, signal)
         if not ml_pass:
             scores["ml"] = 0.0
-        elif _ml_conf is not None and not np.isnan(_ml_conf):
+        elif ml_conf is not None and not np.isnan(ml_conf):
             model_entry = _ml_models.get(symbol)
             model_type = model_entry.get("metadata", {}).get("model_type", "ensemble") if model_entry else "ensemble"
             if model_type == "regressor":
                 max_r = cfg.get("ml_max_r", 2.0)
-                scores["ml"] = min(1.0, max(0.0, _ml_conf / max(max_r, 0.01)))
+                scores["ml"] = min(1.0, max(0.0, ml_conf / max(max_r, 0.01)))
             else:
                 opt_threshold = model_entry.get("metadata", {}).get("optimal_threshold") if model_entry else None
                 threshold = cfg["ml_threshold_overrides"].get(symbol)
@@ -152,11 +180,11 @@ def compute_entry_score(cfg, signal, atr, spread=None):
                 if (
                     opt_threshold is not None
                     and threshold == opt_threshold
-                    and _ml_conf < threshold
-                    and _ml_conf >= cfg.get("ml_confidence", 0.55)
+                    and ml_conf < threshold
+                    and ml_conf >= cfg.get("ml_confidence", 0.55)
                 ):
                     threshold = cfg.get("ml_confidence", 0.55)
-                scores["ml"] = min(1.0, _ml_conf / max(threshold, 0.01))
+                scores["ml"] = min(1.0, ml_conf / max(threshold, 0.01))
         else:
             scores["ml"] = cfg.get("scoring_ml_fallback", 0.60)
     else:
@@ -177,18 +205,31 @@ def compute_entry_score(cfg, signal, atr, spread=None):
             scores["spread"] = 0.5
     else:
         scores["spread"] = 0.5
-    scores["news"] = 0.5
-    if cfg.get("ns_enabled", True):
-        ns_data = _st._ns_cache.get("data")
-        if isinstance(ns_data, dict):
-            sym_news = ns_data.get("symbols", {}).get(symbol, {})
-            if sym_news.get("count", 0) > 0:
-                score = sym_news.get("score", 0.0)
-                news_score = (score + 1.0) / 2.0
-                if signal == "sell":
-                    news_score = 1.0 - news_score
-                scores["news"] = news_score
+    if news_val is not None:
+        scores["news"] = news_val
+    else:
+        scores["news"] = 0.5
+        if cfg.get("ns_enabled", True):
+            ns_data = _st._ns_cache.get("data")
+            if isinstance(ns_data, dict):
+                sym_news = ns_data.get("symbols", {}).get(symbol, {})
+                if sym_news.get("count", 0) > 0:
+                    score = sym_news.get("score", 0.0)
+                    news_score = (score + 1.0) / 2.0
+                    if signal == "sell":
+                        news_score = 1.0 - news_score
+                    scores["news"] = news_score
+    if tail_risk is not None:
+        scores["tail_risk"] = tail_risk
     weights = cfg.get("scoring_weights") or {"ml": 0.40, "spread": 0.30, "news": 0.30}
+    if isinstance(weights, str):
+        # Backtest params may carry scoring_weights as a raw INI string.
+        parsed = {}
+        for part in weights.split(","):
+            if ":" in part:
+                k, v = part.split(":", 1)
+                parsed[k.strip()] = float(v)
+        weights = parsed
     total = 0.0
     wsum = 0.0
     for key, w in weights.items():
@@ -196,5 +237,5 @@ def compute_entry_score(cfg, signal, atr, spread=None):
             total += scores[key] * w
             wsum += w
     if wsum == 0:
-        return 1.0, {}, _ml_conf
-    return total / wsum, scores, _ml_conf
+        return 1.0, {}, ml_conf
+    return total / wsum, scores, ml_conf

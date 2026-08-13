@@ -37,7 +37,6 @@ import configparser
 import logging
 import sys
 from collections import defaultdict
-from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -51,7 +50,7 @@ from indicators import calc_atr_series, calc_ma  # noqa: E402
 from mt5_connect import ensure_mt5_connected, fetch_rates_paged, get_rates, mt5  # noqa: E402
 from signals import RegimeGate, check_htf_trend  # noqa: E402
 
-from config import apply_symbol_overrides, apply_symbol_strategy, load_config  # noqa: E402
+from config import load_config, symbol_cfg  # noqa: E402
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s:%(message)s")
 log = logging.getLogger("diagnose")
@@ -105,10 +104,7 @@ def _precompute_mtf_series(df, df_m15, sym_cfg):
 
 
 def evaluate_symbol(symbol, cfg, years):
-    sym_cfg = deepcopy(cfg)
-    sym_cfg["symbol"] = symbol
-    apply_symbol_strategy(sym_cfg, symbol)
-    apply_symbol_overrides(sym_cfg, symbol)
+    sym_cfg = symbol_cfg(cfg, symbol)
 
     # Warmup must cover the H4 EMA(period) (~4 H1 bars per H4 bar) so the MTF
     # path has a valid H4 bias early in the window.

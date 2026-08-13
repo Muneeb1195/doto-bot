@@ -109,12 +109,23 @@ def patch_mt5_module(mt5_sim):
     # through the simulator instead of into a dead MagicMock.
     import bot.mt5_connect as _mt5c
     _mt5c.mt5 = mt5_sim
+    # Consumers import the BARE module (tests add bot/ to sys.path), a distinct
+    # object from bot.mt5_connect. Patch its `mt5` too so
+    # mt5_connect.mt5_order_send (the single order-send source) routes through
+    # the simulator instead of the dead MagicMock.
+    import mt5_connect as _mt5c_bare
+    _mt5c_bare.mt5 = mt5_sim
     try:
         yield
     finally:
+        # Drop the re-imported bare modules and restore the pre-test originals
+        # so later test files don't inherit a sim-tainted module. Restore is
+        # unconditional: a module may have been re-imported during the test
+        # (e.g. execution now imports signals at module level), and leaving
+        # that fresh sim-bound copy in sys.modules would break subsequent
+        # tests that patch the original object.
         for name, mod in saved.items():
-            if name not in sys.modules:
-                sys.modules[name] = mod
+            sys.modules[name] = mod
         sys.modules["MetaTrader5"] = MagicMock()
 
 
@@ -153,7 +164,7 @@ def _close_via_order_send(mt5_sim, cfg, pos, reason="REVERSAL"):
     """Helper: send a close deal for a position (mirrors main.py inline logic)."""
     from execution import mt5_order_send
     from journal import journal_close
-    from mt5_connect import get_deviation, mt5_call
+    from mt5_connect import LIVE_MARKET, get_deviation, mt5_call, realized_pnl
     close_type = mt5_sim.ORDER_TYPE_SELL if pos.type == mt5_sim.ORDER_TYPE_BUY else mt5_sim.ORDER_TYPE_BUY
     tick = mt5_call(mt5_sim.symbol_info_tick, pos.symbol)
     if tick is None:
@@ -169,7 +180,7 @@ def _close_via_order_send(mt5_sim, cfg, pos, reason="REVERSAL"):
     }
     result = mt5_order_send(close_req)
     if result is not None and result.retcode == mt5_sim.TRADE_RETCODE_DONE:
-        close_pnl = result.profit if hasattr(result, "profit") and result.profit else 0.0
+        close_pnl = realized_pnl(LIVE_MARKET, pos.ticket)
         sp = sinfo.point if (sinfo and sinfo.point) else 0.001
         pips = abs(pos.price_open - price) / sp
         journal_close(pos.ticket, price, close_pnl, pips, reason)

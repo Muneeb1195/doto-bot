@@ -459,6 +459,39 @@ class TestApplySymbolStrategy:
         assert ss.get("US30.raw", {}).get("trading_enabled") is False
 
 
+class TestSymbolCfg:
+    def test_returns_fresh_dict_with_symbol(self, config_module):
+        cfg = config_module.load_config()
+        sym = config_module.symbol_cfg(cfg, "XAU500.raw")
+        assert sym is not cfg
+        assert sym["symbol"] == "XAU500.raw"
+        assert sym["ema_fast"] == 8  # XAU500 override applied
+
+    def test_does_not_mutate_global(self, config_module):
+        cfg = config_module.load_config()
+        config_module.symbol_cfg(cfg, "XAU500.raw")
+        assert cfg["ema_fast"] == 50  # global untouched
+
+    def test_no_cross_symbol_contamination(self, config_module):
+        cfg = config_module.load_config()
+        a = config_module.symbol_cfg(cfg, "XAU500.raw")
+        b = config_module.symbol_cfg(cfg, "BTCUSD.raw")
+        assert a["ema_fast"] == 8
+        assert b["ema_fast"] == 3
+        assert a["ema_fast"] == 8  # still XAU500's value after BTCUSD pass
+
+    def test_inherits_global_scale_out(self, config_module):
+        cfg = config_module.load_config()
+        sym = config_module.symbol_cfg(cfg, "XAU500.raw")
+        assert sym["scale_out_close_fractions"] == [0.30, 0.30]
+
+    def test_unknown_symbol_gets_globals(self, config_module):
+        cfg = config_module.load_config()
+        sym = config_module.symbol_cfg(cfg, "UNKNOWN.raw")
+        assert sym["ema_fast"] == 50
+        assert sym["symbol"] == "UNKNOWN.raw"
+
+
 class TestApplySymbolOverrides:
     def test_scale_out_overrides(self, config_module):
         cfg = config_module.load_config()
