@@ -271,7 +271,7 @@ Because the box has no git and is updated by manual scp, the live copy can lag
 
 ## Scoring Parity (2026-07-22)
 - **`analytics.compute_entry_score()`** — single source of truth for entry scoring. Uses 3-component model: ML (40%), spread (30%), news (30%). Weights from `cfg["scoring_weights"]`.
-- **`backtest.py:_compute_entry_score()`** — backtest scoring model. Now uses the same 3-component weights from config. Previously skipped components not in `scores` dict (e.g., news when `ns_enabled=False`), causing score divergence. Fixed: weighting loop now uses `scores.get(key, 0.5)` to include all weighted components with default 0.5.
+- **`analytics.compute_entry_score()`** — single scoring math for live + backtest (raw-value seam, C4-2). Backtest calls it with per-bar inputs (`ml_conf`, bar spread in price units, `tail_risk`); `_compute_entry_score` is deleted. Weighting loop uses only components present in `scores` (missing weighted keys are renormalized out); the news-based confidence adjustment is `analytics.apply_news_confidence_mult`.
 - **`filters.py:check_ml_gate()`** — live ML gate. Applies news-based confidence adjustment: `news_val >= 0.70` → `confidence_mult * 1.10` (capped 1.5); `news_val <= 0.30` → `confidence_mult * 0.50`. Backtest's `_run_reference()` now applies the same adjustment.
 - **`mr_min` parity**: Both paths use `mr_min = 0.03 if entry_atr is None else 0.0` (previously backtest used `entry_type == "mean_reversion"`).
 - **Parity tests** in `tests/test_parity.py::TestScoringParity` guard against future divergence.

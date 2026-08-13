@@ -217,7 +217,7 @@ def _reconcile_external_deals(force=False):
         # on startup, so same-day restarts no longer re-count the same deals
         # (agent audit C4 — fixed).
         today = datetime.now().date()
-        _reset_daily_pnl_if_new_day()
+        _st.roll_daily_realized_pnl(today)
         for a in appended:
             try:
                 closed_today = datetime.strptime(a.get("exit_time", ""), "%Y-%m-%d %H:%M:%S").date() == today
@@ -268,15 +268,9 @@ def journal_open(ticket, sym, side, vol, entry, sl, tp, atr):
     _clear_cache()
 
 
-def _reset_daily_pnl_if_new_day():
-    today = datetime.now().date()
-    if _st._daily_realized_date != today:
-        _st._daily_realized_pnl = 0.0
-        _st._daily_realized_date = today
-
-
 def journal_close(ticket, exit_price, pnl, pips, event="CLOSE"):
-    _reset_daily_pnl_if_new_day()
+    # Roll the daily-loss counter over at midnight (state owns the rule).
+    _st.roll_daily_realized_pnl(datetime.now().date())
     exit_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Copy entry-side fields from the OPEN row for a self-documenting close row
     entry_price = entry_time = volume = side = ""

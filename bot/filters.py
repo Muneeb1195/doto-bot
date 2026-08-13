@@ -437,7 +437,7 @@ def check_daily_loss(cfg):
     if mt5_loss is not None:
         if mt5_loss != cached_loss or cached_ts == 0:
             _st._daily_loss_mt5_cache = (today, mt5_loss, time.time())
-        journal_pnl = _st._daily_realized_pnl if _st._daily_realized_date == today else 0.0
+        journal_pnl = _st.daily_realized_pnl_for(today)
         if journal_pnl != 0 and mt5_loss != 0:
             drift_pct = abs(mt5_loss - journal_pnl) / max(abs(mt5_loss), 1)
             if drift_pct > 0.10:
@@ -447,7 +447,7 @@ def check_daily_loss(cfg):
                 )
         realized_loss = min(mt5_loss, journal_pnl)
     else:
-        journal_pnl = _st._daily_realized_pnl if _st._daily_realized_date == today else 0.0
+        journal_pnl = _st.daily_realized_pnl_for(today)
         realized_loss = journal_pnl
     if realized_loss >= 0:
         return True

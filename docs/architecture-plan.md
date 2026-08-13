@@ -17,15 +17,20 @@ backtest trade streams, and — for anything touching `filters.py`/`execution.py
   news-based confidence adjustment is a byte-identical twin at `backtest.py:1896`
   and `filters.py:73`; both call the shared function; njit mirror stays as-is.
 
-## Phase B — medium (one-table medicine)
+## Phase B — medium (one-table medicine) — DONE 2026-08-13
 
-- **C3 — State schema table.** A `PERSISTED` field table drives `save_bot_state`/
-  `load_bot_state`/`reset_all` (no more hand-written mirrors); typed accessors for
-  position-management state + the daily-loss trio (one rollover rule); watchdog
-  globals move to main.py. Live `bot_state.json` must round-trip byte-identically.
-- **C4-2 — Raw-value entry score.** Widen `compute_entry_score` to accept
-  `ml_conf=None, news_val=None` so backtest passes its precomputed arrays and
-  `_compute_entry_score` is deleted (parity test becomes a call-site assertion).
+- **C3 — State schema table.** ✅ A `PERSISTED` field table drives
+  `save_bot_state`/`load_bot_state`/`reset_all` (no more hand-written mirrors);
+  `daily_realized_pnl_for` (read-only) + `roll_daily_realized_pnl` (journal-owned
+  mutation) are the single homes for the daily-loss boundary rule — filters must
+  NOT zero the counter (asserted by test_loss_resets_on_new_day). Watchdog
+  globals stay in state.py (deferred — not part of this phase). Live
+  `bot_state.json` round-trips byte-identically (schema round-trip test).
+- **C4-2 — Raw-value entry score.** ✅ `compute_entry_score` now takes
+  `ml_conf=None, news_val=None, tail_risk=None`; backtest supplies per-bar raw
+  inputs (ml mult, bar spread in price units, stateful `_tail_risk_score`);
+  `_compute_entry_score` is DELETED. Parity test is a call-site assertion;
+  fast/reference PNL+EQ MATCH verified via tools/parity_check.py.
 
 ## Phase C — the big one
 

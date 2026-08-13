@@ -134,103 +134,127 @@ _WATCHDOG_MAX_FAILURES = 3
 def reset_all():
     """Reset all mutable state to defaults.  Called after every test via conftest.py
     autouse fixture so tests can run in any order without cross-contamination."""
-    _scale_out_state.clear()
-    _chandelier_state.clear()
-    _last_trade_time.clear()
-    _exec_bias.clear()
+    for key, gname, kind, default in PERSISTED:
+        if kind in _MUTABLE_KINDS:
+            globals()[gname].clear()
+        else:
+            globals()[gname] = default
+    # Runtime-only state (never persisted):
     _filter_stats.clear()
-    _tail_risk_triggered.clear()
-    _tail_risk_cooldown.clear()
-    global _circuit_breaker_triggered
-    _circuit_breaker_triggered = False
-    _mr_consecutive_losses.clear()
-    _mr_last_loss_time.clear()
     _exec_quality.clear()
-    _dynamic_deviation.clear()
-    global _last_corr_time
-    _last_corr_time = 0
     _corr_cache.clear()
     _rate_cache.clear()
-    global _last_symbol_reselect_time
-    _last_symbol_reselect_time = 0
     _symbol_online.clear()
-    global _shutdown_requested, _last_cycle_time, _cycle_consecutive_failures
-    _shutdown_requested = False
-    _last_cycle_time = 0.0
-    _cycle_consecutive_failures = 0
     _ns_cache.clear()
     _ns_cache.update({"data": None, "mtime": 0})
-    global _last_daily_summary_day, _daily_realized_pnl, _daily_realized_date
-    _last_daily_summary_day = None
-    _daily_realized_pnl = 0.0
-    _daily_realized_date = None
-    global _daily_loss_hit
-    _daily_loss_hit = False
-    global _daily_loss_mt5_cache
-    _daily_loss_mt5_cache = (None, None, 0)
-    global _peak_balance
-    _peak_balance = 0.0
     _ml_confidence_history.clear()
     _ml_confidence_baseline.clear()
     _ml_drift_warned.clear()
-    _imported_external_ids.clear()
-    _pending_limits.clear()
     _regime_gate_state.clear()
     _ml_models.clear()
     _ml_pool_models.clear()
     _ml_meta_models.clear()
-    global _WATCHDOG_FAILURES, _WATCHDOG_LAST_KILL
+    global _last_corr_time, _last_symbol_reselect_time, _shutdown_requested
+    global _last_cycle_time, _cycle_consecutive_failures, _last_daily_summary_day
+    global _daily_loss_mt5_cache, _WATCHDOG_FAILURES, _WATCHDOG_LAST_KILL
+    _last_corr_time = 0
+    _last_symbol_reselect_time = 0
+    _shutdown_requested = False
+    _last_cycle_time = 0.0
+    _cycle_consecutive_failures = 0
+    _last_daily_summary_day = None
+    _daily_loss_mt5_cache = (None, None, 0)
     _WATCHDOG_FAILURES = 0
     _WATCHDOG_LAST_KILL = 0.0
 
 
-def save_bot_state():
-    try:
-        exec_bias_ser = {}
-        for sym, eb in _exec_bias.items():
+PERSISTED = [
+    # (state_key, global_name, kind, default) — save/load/reset are all generated
+    # from this table so the three hand-written mirrors cannot drift out of
+    # lock-step (architecture plan C3). kind:
+    #   int_keys_dict — dict keyed by int ticket; JSON stores string keys
+    #   dict          — plain dict
+    #   exec_bias     — dict whose values may carry a `date` field (isoformat)
+    #   ids           — set of strings (JSON list)
+    #   bool/float/date — scalars
+    ("scale_out_state", "_scale_out_state", "int_keys_dict", {}),
+    ("chandelier_state", "_chandelier_state", "int_keys_dict", {}),
+    ("exec_bias", "_exec_bias", "exec_bias", {}),
+    ("last_trade_time", "_last_trade_time", "dict", {}),
+    ("tail_risk_triggered", "_tail_risk_triggered", "dict", {}),
+    ("tail_risk_cooldown", "_tail_risk_cooldown", "dict", {}),
+    ("circuit_breaker_triggered", "_circuit_breaker_triggered", "bool", False),
+    ("peak_balance", "_peak_balance", "float", 0.0),
+    ("mr_consecutive_losses", "_mr_consecutive_losses", "dict", {}),
+    ("mr_last_loss_time", "_mr_last_loss_time", "dict", {}),
+    ("dynamic_deviation", "_dynamic_deviation", "dict", {}),
+    ("daily_loss_hit", "_daily_loss_hit", "bool", False),
+    ("daily_realized_pnl", "_daily_realized_pnl", "float", 0.0),
+    ("daily_realized_date", "_daily_realized_date", "date", None),
+    ("pending_limits", "_pending_limits", "dict", {}),
+    ("imported_external_ids", "_imported_external_ids", "ids", set()),
+]
+
+_MUTABLE_KINDS = {"int_keys_dict", "dict", "exec_bias", "ids"}
+
+
+def _serialize(kind, value):
+    """JSON-safe form for save_bot_state (inverse of _coerce)."""
+    if kind == "int_keys_dict":
+        return {str(k): v for k, v in value.items()}
+    if kind == "exec_bias":
+        out = {}
+        for sym, eb in value.items():
             eb2 = dict(eb)
             if "date" in eb2 and isinstance(eb2["date"], date):
                 eb2["date"] = eb2["date"].isoformat()
-            exec_bias_ser[sym] = eb2
-        state_data = {
-            "scale_out_state": {str(k): v for k, v in _scale_out_state.items()},
-            "chandelier_state": {str(k): v for k, v in _chandelier_state.items()},
-            "exec_bias": exec_bias_ser,
-            "last_trade_time": _last_trade_time,
-            "tail_risk_triggered": _tail_risk_triggered,
-            "tail_risk_cooldown": _tail_risk_cooldown,
-            "circuit_breaker_triggered": _circuit_breaker_triggered,
-            "peak_balance": _peak_balance,
-            "mr_consecutive_losses": _mr_consecutive_losses,
-            "mr_last_loss_time": _mr_last_loss_time,
-            "dynamic_deviation": _dynamic_deviation,
-            "daily_loss_hit": _daily_loss_hit,
-            "daily_realized_pnl": _daily_realized_pnl,
-            "daily_realized_date": _daily_realized_date.isoformat() if _daily_realized_date else None,
-            "pending_limits": _pending_limits,
-            "imported_external_ids": sorted(_imported_external_ids),
-        }
-        _INVARIANT_KEYS = {
-            "scale_out_state",
-            "chandelier_state",
-            "exec_bias",
-            "last_trade_time",
-            "tail_risk_triggered",
-            "tail_risk_cooldown",
-            "circuit_breaker_triggered",
-            "peak_balance",
-            "mr_consecutive_losses",
-            "mr_last_loss_time",
-            "dynamic_deviation",
-            "daily_loss_hit",
-            "daily_realized_pnl",
-            "daily_realized_date",
-            "pending_limits",
-            "imported_external_ids",
-        }
-        missing = _INVARIANT_KEYS - set(state_data)
-        if missing:
-            logging.warning(f"save_bot_state: missing keys {missing}")
+            out[sym] = eb2
+        return out
+    if kind == "ids":
+        return sorted(value)
+    if kind == "date":
+        return value.isoformat() if value else None
+    return value
+
+
+def _coerce(kind, raw, default):
+    """Restore a JSON value to its in-memory form (inverse of _serialize).
+
+    Tolerant of legacy/corrupt files: wrong types fall back to the default so
+    the live bot_state.json always loads (defensive load is part of the seam).
+    """
+    if kind == "int_keys_dict":
+        return {int(k): v for k, v in raw.items()} if isinstance(raw, dict) else default
+    if kind == "dict":
+        return raw if isinstance(raw, dict) else default
+    if kind == "exec_bias":
+        out = {}
+        for sym, eb in (raw or {}).items():
+            eb2 = dict(eb) if isinstance(eb, dict) else {}
+            if "date" in eb2 and isinstance(eb2["date"], str):
+                with contextlib.suppress(ValueError, TypeError):
+                    eb2["date"] = date.fromisoformat(eb2["date"])
+            out[sym] = eb2
+        return out if isinstance(raw, dict) else default
+    if kind == "ids":
+        return set(raw) if isinstance(raw, (list, tuple, set)) else default
+    if kind == "bool":
+        return raw if isinstance(raw, bool) else default
+    if kind == "float":
+        return float(raw) if isinstance(raw, (int, float)) else default
+    if kind == "date":
+        if isinstance(raw, str):
+            try:
+                return date.fromisoformat(raw)
+            except (ValueError, TypeError):
+                return None
+        return None
+    return default
+
+
+def save_bot_state():
+    try:
+        state_data = {key: _serialize(kind, globals()[gname]) for key, gname, kind, _ in PERSISTED}
         STATE_FILE.parent.mkdir(exist_ok=True)
         tmp = STATE_FILE.with_suffix(".tmp")
         with open(tmp, "w") as f:
@@ -253,58 +277,41 @@ def load_bot_state():
             return
         if "scale_out_state" not in state_data:
             logging.warning("load_bot_state: state_data missing 'scale_out_state' — empty state?")
-        global _scale_out_state, _chandelier_state, _exec_bias, _last_trade_time
-        global _tail_risk_triggered, _tail_risk_cooldown, _circuit_breaker_triggered, _peak_balance
-        global _mr_consecutive_losses, _mr_last_loss_time, _dynamic_deviation, _daily_loss_hit
-        global _daily_realized_pnl, _daily_realized_date, _pending_limits, _imported_external_ids
-        _scale_out_state.clear()
-        _scale_out_state.update({int(k): v for k, v in state_data.get("scale_out_state", {}).items()})
-        _chandelier_state.clear()
-        _chandelier_state.update({int(k): v for k, v in state_data.get("chandelier_state", {}).items()})
-        _exec_bias.clear()
-        for sym, eb in state_data.get("exec_bias", {}).items():
-            if "date" in eb and isinstance(eb["date"], str):
-                with contextlib.suppress(ValueError, TypeError):
-                    eb["date"] = date.fromisoformat(eb["date"])
-            _exec_bias[sym] = eb
-        _last_trade_time.clear()
-        _last_trade_time.update(state_data.get("last_trade_time", {}))
-        raw_tr = state_data.get("tail_risk_triggered", {})
-        _tail_risk_triggered.clear()
-        _tail_risk_triggered.update(raw_tr if isinstance(raw_tr, dict) else {})
-        raw_cd = state_data.get("tail_risk_cooldown", {})
-        _tail_risk_cooldown.clear()
-        _tail_risk_cooldown.update(raw_cd if isinstance(raw_cd, dict) else {})
-        _circuit_breaker_triggered = state_data.get("circuit_breaker_triggered", False)
-        _peak_balance = state_data.get("peak_balance", 0.0)
-        _mr_consecutive_losses.clear()
-        _mr_consecutive_losses.update(state_data.get("mr_consecutive_losses", {}))
-        _mr_last_loss_time.clear()
-        _mr_last_loss_time.update(state_data.get("mr_last_loss_time", {}))
-        _dynamic_deviation.clear()
-        _dynamic_deviation.update(state_data.get("dynamic_deviation", {}))
-        _daily_loss_hit = state_data.get("daily_loss_hit", False)
-        raw_pnl = state_data.get("daily_realized_pnl", 0.0)
-        _daily_realized_pnl = float(raw_pnl) if isinstance(raw_pnl, (int, float)) else 0.0
-        raw_date = state_data.get("daily_realized_date", None)
-        if isinstance(raw_date, str):
-            try:
-                _daily_realized_date = date.fromisoformat(raw_date)
-            except (ValueError, TypeError):
-                _daily_realized_date = None
-        else:
-            _daily_realized_date = None
-        raw_pl = state_data.get("pending_limits", {})
-        _pending_limits.clear()
-        _pending_limits.update(raw_pl if isinstance(raw_pl, dict) else {})
-        raw_ids = state_data.get("imported_external_ids", [])
-        _imported_external_ids.clear()
-        _imported_external_ids.update(raw_ids if isinstance(raw_ids, (list, tuple, set)) else [])
+        for key, gname, kind, default in PERSISTED:
+            value = _coerce(kind, state_data.get(key), default)
+            if kind in _MUTABLE_KINDS:
+                target = globals()[gname]
+                target.clear()
+                target.update(value)
+            else:
+                globals()[gname] = value
         logging.info(
             f"Bot state loaded: {len(_scale_out_state)} scale-out, {len(_chandelier_state)} chandelier entries"
         )
     except Exception as e:
         logging.warning(f"load_bot_state failed: {e}")
+
+
+def daily_realized_pnl_for(today):
+    """Daily realized PnL for `today`, read-only: a stale counter date (new day
+    not yet rolled by a journal write) reads as 0.0.
+
+    Single home for the read rule — previously inlined in filters.py
+    check_daily_loss (twice). The rollover MUTATION is the journal writer's
+    job: state.roll_daily_realized_pnl. Filters must not zero the counter.
+    """
+    return _daily_realized_pnl if _daily_realized_date == today else 0.0
+
+
+def roll_daily_realized_pnl(today):
+    """Roll the daily-loss counter over at midnight: zero it and stamp `today`
+    when the date changed, then return it. Owned by the journal writer
+    (journal_close / external-deal backfill)."""
+    global _daily_realized_pnl, _daily_realized_date
+    if _daily_realized_date != today:
+        _daily_realized_pnl = 0.0
+        _daily_realized_date = today
+    return _daily_realized_pnl
 
 
 def load_news_sentiment():
