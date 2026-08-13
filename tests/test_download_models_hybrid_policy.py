@@ -127,7 +127,6 @@ class TestFailedReleaseCountsOnce:
         dm._apply_strategy_params(LOGGER, "optimize-B")
 
         # Strike 2: trading_enabled=false, params untouched (no score bump).
-        (tmp_path / "settings.ini").write_text("")  # placeholder not needed
         fake = sys.modules["auto_optimizer"]
         trading = [c for c in fake.calls if c[0] == "trading"]
         assert ("trading", "EURUSD.raw", False) in trading
