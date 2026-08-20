@@ -7,10 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
+from _mt5 import mt5
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR / "bot"))

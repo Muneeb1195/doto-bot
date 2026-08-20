@@ -4,10 +4,7 @@ import json
 import logging
 import os
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
+from _mt5 import mt5
 from mt5_connect import mt5_call
 from state import DASHBOARD_STATE, _filter_stats
 

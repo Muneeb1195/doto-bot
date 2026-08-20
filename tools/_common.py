@@ -17,67 +17,37 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bot"))
 
-from analytics import volume_filter_pass  # noqa: E402
+from analytics import ma_cross_direction, mr_entry_decision, volume_filter_pass  # noqa: E402
 from indicators import calc_atr, calc_ma, calc_rsi  # noqa: E402
 
 
 def _mtf_signal_local(close_a, atr_a, f_a, s_a, h4_a, m15f_a, m15s_a, i):
-    """Per-bar mirror of backtest._get_mtf_signal / live get_mtf_fused_signal.
-
-    H4 EMA(period) bias with a 0.5*ATR neutral band, H1 fast/slow crossover
-    must agree with the H4 direction, and M15 crossover provides entry timing
-    ("crossover" entry) when it agrees; otherwise a "pullback" entry. With no
-    M15 series (None), falls back to the pullback entry — the same degraded
-    path the backtest and live take when M15 data is unavailable.
-
-    ``i`` is a closed H1 bar index into precomputed aligned arrays (see
-    diagnose_entry_rate._precompute_mtf_series). Returns (signal, atr,
-    entry_type) or (None, None, None).
-    """
+    """Per-bar mirror delegated to analytics.mtf_fused_decision."""
     h4_ema = h4_a[i]
     h1_close = close_a[i]
     cur_atr = atr_a[i]
     if np.isnan(h4_ema) or np.isnan(h1_close) or np.isnan(cur_atr) or cur_atr <= 0 or i < 2:
         return None, None, None
+    from analytics import ma_cross_direction, mtf_fused_decision
 
-    # H4 bias with 0.5*ATR neutral band
-    bias = h1_close - float(h4_ema)
-    neutral_band = cur_atr * 0.5
-    if abs(bias) <= neutral_band:
-        return None, None, None
-    h4_direction = 1 if bias > 0 else -1
-
-    # H1 crossover must agree with H4 bias
     h1_cf, h1_cs = f_a[i], s_a[i]
     h1_pf, h1_ps = f_a[i - 1], s_a[i - 1]
     if any(np.isnan(x) for x in (h1_cf, h1_cs, h1_pf, h1_ps)):
         return None, None, None
-    h1_cross = 0
-    if h1_pf <= h1_ps and h1_cf > h1_cs:
-        h1_cross = 1
-    elif h1_pf >= h1_ps and h1_cf < h1_cs:
-        h1_cross = -1
-    if h1_cross != h4_direction:
-        return None, None, None
-
-    direction = "buy" if h1_cross > 0 else "sell"
-
-    # M15 crossover check for entry timing
+    h1_cross = ma_cross_direction(h1_cf, h1_cs, h1_pf, h1_ps)
+    # M15 cross (None means no data → pullback fallback)
+    m15_cross = None
     if m15f_a is not None and m15s_a is not None and i > 0:
         m15_cf, m15_cs = m15f_a[i], m15s_a[i]
         m15_pf, m15_ps = m15f_a[i - 1], m15s_a[i - 1]
         if not any(np.isnan(x) for x in (m15_cf, m15_cs, m15_pf, m15_ps)):
-            m15_cross = 0
-            if m15_pf <= m15_ps and m15_cf > m15_cs:
-                m15_cross = 1
-            elif m15_pf >= m15_ps and m15_cf < m15_cs:
-                m15_cross = -1
-            if m15_cross == h1_cross:
-                return direction, cur_atr, "crossover"
-            elif m15_cross != 0:
-                return None, None, None
-
-    return direction, cur_atr, "pullback"
+            m15_cross = ma_cross_direction(m15_cf, m15_cs, m15_pf, m15_ps)
+    h4_bias = h1_close - float(h4_ema)
+    neutral_band = cur_atr * 0.5
+    direction, entry_type, _agree = mtf_fused_decision(h4_bias, neutral_band, h1_cross, m15_cross)
+    if direction is None:
+        return None, None, None
+    return direction, cur_atr, entry_type
 
 
 def _crossover_local(win, sym_cfg):
@@ -87,14 +57,12 @@ def _crossover_local(win, sym_cfg):
     atr = calc_atr(win, sym_cfg["atr_period"])
     cf, cs = fast.iloc[-2], slow.iloc[-2]
     pf, ps = fast.iloc[-3], slow.iloc[-3]
-    signal = None
-    if pf <= ps and cf > cs:
-        signal = "buy"
-    elif pf >= ps and cf < cs:
-        signal = "sell"
-    if signal is None:
-        return None, None
-    return signal, atr
+    d = ma_cross_direction(cf, cs, pf, ps)
+    if d == 1:
+        return "buy", atr
+    if d == -1:
+        return "sell", atr
+    return None, None
 
 
 def _mr_local(win, sym_cfg):
@@ -122,10 +90,9 @@ def _mr_local(win, sym_cfg):
         return None, None
     htf_val = htf_ma.iloc[-2]
     dev = sym_cfg.get("mr_htf_deviation", 0.0)
-    if cur_rsi < oversold and cur_price > htf_val * (1.0 - dev):
-        return "buy", atr
-    if cur_rsi > overbought and cur_price < htf_val * (1.0 + dev):
-        return "sell", atr
+    sig = mr_entry_decision(cur_rsi, cur_price, htf_val, oversold, overbought, dev)
+    if sig is not None:
+        return sig, atr
     return None, None
 
 

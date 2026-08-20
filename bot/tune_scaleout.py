@@ -7,11 +7,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import pandas as pd
+from _mt5 import mt5
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -37,8 +34,8 @@ BASE = {
     "atr_sl_mult": 1.0,
     "rr": 2.0,
     "adx_enabled": True,
-    "adx_trend": 25,
-    "adx_range": 20,
+    "adx_trend_threshold": 25,
+    "adx_range_threshold": 20,
     "stops_level": 50,
     "ml_confidence": 0.40,
     "ml_threshold_overrides": {},

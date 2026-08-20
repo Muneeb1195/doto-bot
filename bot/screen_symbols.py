@@ -9,11 +9,8 @@ import csv
 import logging
 from datetime import datetime, timedelta
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import pandas as pd
+from _mt5 import mt5
 from backtest import Backtest
 from credentials import load_credentials
 

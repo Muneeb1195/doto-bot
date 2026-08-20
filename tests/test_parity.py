@@ -14,7 +14,19 @@ import pytest
 
 sys.path.insert(0, "bot")
 
-from analytics import compute_entry_score, fused_regime_score, volume_filter_pass
+from analytics import (
+    compute_entry_score,
+    fused_regime_score,
+    htf_trend_decision,
+    ma_cross_direction,
+    mr_entry_decision,
+    mr_exit_decision,
+    mtf_fused_decision,
+    pb_structure_pass,
+    pb_volume_pass,
+    pullback_decision,
+    volume_filter_pass,
+)
 from backtest import Backtest
 from indicators import (
     calc_adx,
@@ -1089,3 +1101,204 @@ class TestNaNPolicyParity:
         filled = feat.fillna(0).values
         assert np.isnan(filled).sum() == 0
         assert np.allclose(filled, np.nan_to_num(feat.values, nan=0.0))
+
+
+def _historical_ma_cross(cf, cs, pf, ps):
+    if pf <= ps and cf > cs:
+        return 1
+    if pf >= ps and cf < cs:
+        return -1
+    return 0
+
+
+class TestEntryDecisionParity:
+    """The extracted analytics predicates must match the historical live and
+    backtest formulas exactly (prevention A1 for item 5 unification)."""
+
+    @pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
+    def test_ma_cross_direction_matches_inline(self, seed):
+        rng = np.random.RandomState(seed)
+        for _ in range(200):
+            cf, cs, pf, ps = rng.randn(4)
+            assert ma_cross_direction(cf, cs, pf, ps) == _historical_ma_cross(cf, cs, pf, ps)
+
+    def test_ma_cross_boundary_equality(self):
+        # The <= / >= comparisons at exact equality must not flip
+        assert ma_cross_direction(1.0, 1.0, 1.0, 1.0) == 0
+        assert ma_cross_direction(1.1, 1.0, 1.0, 1.0) == 1
+        assert ma_cross_direction(0.9, 1.0, 1.0, 1.0) == -1
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_pb_volume_pass_matches_historical_windows(self, seed):
+        rng = np.random.RandomState(seed)
+        vol = rng.randint(100, 5000, 200)
+        period, threshold = 20, 0.8
+        for idx in range(period, 200):
+            # historical live (pandas rolling at trigger_idx)
+            rolling = pd.Series(vol).rolling(window=period).mean().iloc[idx]
+            # historical backtest (slice mean)
+            slice_mean = vol[idx - period + 1 : idx + 1].mean()
+            live_pass = not pd.isna(rolling) and rolling > 0 and vol[idx] < rolling * threshold
+            bt_pass = slice_mean > 0 and vol[idx] < slice_mean * threshold
+            assert pb_volume_pass(vol, idx, period, threshold) == bt_pass
+            assert pb_volume_pass(vol, idx, period, threshold) == live_pass
+        # insufficient history -> pass
+        assert pb_volume_pass(vol, 5, period, threshold) is True
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_pb_structure_pass_matches_historical(self, seed):
+        rng = np.random.RandomState(seed)
+        low = 100.0 + np.cumsum(rng.randn(200))
+        high = low + rng.uniform(0.1, 0.8, 200)
+        lookback = 5
+        for idx in range(lookback, 200):
+            historical_buy = low[idx] > low[idx - lookback : idx].min()
+            historical_sell = high[idx] < high[idx - lookback : idx].max()
+            assert pb_structure_pass(low, idx, lookback, "buy") == historical_buy
+            assert pb_structure_pass(high, idx, lookback, "sell") == historical_sell
+        # insufficient history -> pass
+        assert pb_structure_pass(low, 2, lookback, "buy") is True
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_htf_trend_decision_matches_3state(self, seed):
+        rng = np.random.RandomState(seed)
+        for _ in range(500):
+            price, ma, slope = rng.randn(3) * 10
+            sig = "buy" if rng.rand() < 0.5 else "sell"
+            if sig == "buy":
+                price_ok, slope_ok = price >= ma, slope >= 0
+            else:
+                price_ok, slope_ok = price <= ma, slope <= 0
+            decision, mult = htf_trend_decision(price, ma, slope, sig, misalign_mult=0.5)
+            if price_ok and slope_ok:
+                assert (decision, mult) == ("allow", 1.0)
+            elif (not price_ok) and (not slope_ok):
+                assert (decision, mult) == ("block", 0.0)
+            else:
+                assert (decision, mult) == ("soft", 0.5)
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_mr_entry_decision_matches_historical(self, seed):
+        rng = np.random.RandomState(seed)
+        for _ in range(500):
+            rsi = rng.uniform(0, 100)
+            price = rng.uniform(50, 150)
+            htf = rng.choice([None, 100.0])
+            os, ob, dev = 30.0, 70.0, 0.02
+            if rsi < os and (htf is None or price > htf * (1.0 - dev)):
+                expected = "buy"
+            elif rsi > ob and (htf is None or price < htf * (1.0 + dev)):
+                expected = "sell"
+            else:
+                expected = None
+            assert mr_entry_decision(rsi, price, htf, os, ob, dev) == expected
+
+    def test_mr_exit_decision_matches_historical(self):
+        cases = [(49, 51, True, True), (49, 51, False, False), (51, 49, False, True),
+                 (51, 49, True, False), (49, 49, True, False), (50, 50, False, False)]
+        for prev, cur, long, expected in cases:
+            assert mr_exit_decision(prev, cur, long) is expected
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_mtf_fused_decision_matches_historical_flow(self, seed):
+        rng = np.random.RandomState(seed)
+        for _ in range(500):
+            h4_bias = rng.randn() * 3
+            neutral_band = abs(rng.randn() * 0.5)
+            h1_cross = rng.choice([-1, 0, 1])
+            m15_cross = rng.choice([-1, 0, 1])
+            if rng.rand() < 0.3:
+                m15_cross = None
+            if abs(h4_bias) <= neutral_band:
+                expected = (None, None, 0.0)
+            else:
+                h4_dir = 1 if h4_bias > 0 else -1
+                if h1_cross != h4_dir:
+                    expected = (None, None, 0.0)
+                else:
+                    direction = "buy" if h1_cross > 0 else "sell"
+                    if m15_cross is not None:
+                        if m15_cross == h1_cross:
+                            expected = (direction, "crossover", 1.0)
+                        elif m15_cross != 0:
+                            expected = (None, None, 0.0)
+                        else:
+                            expected = (direction, "pullback", 0.67)
+                    else:
+                        expected = (direction, "pullback", 0.67)
+            assert mtf_fused_decision(h4_bias, neutral_band, h1_cross, m15_cross) == expected
+
+    @pytest.mark.parametrize("seed", [1, 2, 3])
+    def test_pullback_decision_matches_historical_flow(self, seed):
+        rng = np.random.RandomState(seed)
+        n = 60
+        close = 100.0 + np.cumsum(rng.randn(n) * 0.3)
+        high = close + rng.uniform(0.1, 0.6, n)
+        low = close - rng.uniform(0.1, 0.6, n)
+        vol = rng.randint(500, 4000, n)
+        atr = 0.5
+        for _ in range(300):
+            tf, ts = rng.uniform(99, 101, 2)
+            tp = rng.uniform(99, 101)
+            confirm = rng.uniform(99, 101)
+            idx = rng.randint(20, n - 1)
+            def vol_ok():
+                return pb_volume_pass(vol, idx, 20, 0.8)
+            for direction in ("buy", "sell"):
+                if direction == "buy":
+                    def struct_ok():
+                        return pb_structure_pass(low, idx, 5, "buy")
+                    fast_gt = tf > ts
+                    dist_ok = atr * 0.1 <= abs(tp - tf) <= atr * 2.0
+                    confirm_ok = confirm > high[idx]
+                    expected = "buy" if (fast_gt and dist_ok and vol_ok() and struct_ok() and confirm_ok) else None
+                else:
+                    def struct_ok():
+                        return pb_structure_pass(high, idx, 5, "sell")
+                    fast_lt = tf < ts
+                    dist_ok = atr * 0.1 <= abs(tp - tf) <= atr * 2.0
+                    confirm_ok = confirm < low[idx]
+                    expected = "sell" if (fast_lt and dist_ok and vol_ok() and struct_ok() and confirm_ok) else None
+                got = pullback_decision(
+                    tf, ts, tp, high[idx], low[idx], confirm, atr, 2.0, 0.1,
+                    vol_ok, struct_ok, direction,
+                )
+                assert got == expected, f"direction={direction} expected={expected} got={got}"
+
+
+class TestEntryDecisionDelegation:
+    """Source-level guard (prevention A1): signals.py and backtest.py must BOTH
+    delegate the entry-decision math to analytics; the historical inline twins
+    must not reappear."""
+
+    def _read(self, name):
+        from pathlib import Path
+        return (Path(__file__).resolve().parent.parent / "bot" / name).read_text(encoding="utf-8")
+
+    def test_both_delegate_to_shared_predicates(self):
+        for name in ("signals.py", "backtest.py"):
+            src = self._read(name)
+            for fn in ("ma_cross_direction", "pullback_decision", "htf_trend_decision",
+                       "mr_entry_decision", "mr_exit_decision", "mtf_fused_decision",
+                       "pb_volume_pass", "pb_structure_pass"):
+                assert fn in src, f"{name} does not call analytics.{fn}"
+
+    def test_no_inline_crossover_twin(self):
+        for name in ("signals.py", "backtest.py"):
+            src = self._read(name)
+            assert "prev_fast <= prev_slow and current_fast > current_slow" not in src, name
+            assert "prev_fast >= prev_slow and current_fast < current_slow" not in src, name
+            assert "prev_fast <= prev_slow and cur_fast > cur_slow" not in src, name
+            assert "prev_fast >= prev_slow and cur_fast < cur_slow" not in src, name
+
+    def test_no_inline_mr_entry_twin(self):
+        for name in ("signals.py", "backtest.py"):
+            src = self._read(name)
+            assert "cur_price > htf_ema200_val * (1.0 -" not in src, name
+            assert "cur_price > htf_ema200 * (1.0 -" not in src, name
+
+    def test_no_inline_htf_twin(self):
+        for name in ("signals.py", "backtest.py"):
+            src = self._read(name)
+            assert "price_ok = htf_price >= htf_ma_val" not in src, name
+            assert "price_ok = htf_price >= htf_ma_val" not in src, name

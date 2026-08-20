@@ -20,7 +20,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from backtest import Backtest  # noqa: E402
 
-from config import validate_config as _validate_config  # noqa: E402
+from config import apply_params_overrides, validate_config as _validate_config  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -60,7 +60,7 @@ def fetch_data(symbol, years=5.1, csv_mode=False):
         return _load_csv_data(symbol)
     import time
 
-    import MetaTrader5 as mt5
+    from _mt5 import mt5
 
     mt5.symbol_select(symbol, True)
     end = datetime.now()
@@ -100,7 +100,7 @@ def fetch_m1_data(symbol, years=5.1, csv_mode=False):
 
         return load_csv_data_train(symbol, tf_name="M1")
 
-    import MetaTrader5 as mt5
+    from _mt5 import mt5
     from mt5_connect import fetch_rates_paged
 
     end = datetime.now()
@@ -125,7 +125,7 @@ def fetch_m15_data(symbol, years=5.1, csv_mode=False):
         from train_model import load_csv_data_train
 
         return load_csv_data_train(symbol, tf_name="M15")
-    import MetaTrader5 as mt5
+    from _mt5 import mt5
     from mt5_connect import fetch_rates_paged
 
     end = datetime.now()
@@ -281,19 +281,14 @@ def build_params(
         if scoring_min_entry is not None
         else float(settings.get("SCORING", "min_entry_score", fallback=0.60)),
     }
-    sym_section = f"STRATEGY:{symbol}"
-    override_map = {
-        "kelly_fraction": ("dr_kelly_fraction", float),
-        "risk_percent": ("risk_percent", float),
-        "max_positions_per_symbol": ("max_positions_per_symbol", int),
-        "min_entry_score": ("scoring_min_entry", float),
-        "htf_misalign_size_mult": ("htf_misalign_size_mult", float),
-        "mtf_enabled": ("mtf_enabled", lambda v: v.lower() == "true"),
+    # The optimizer sweeps these itself (ema/sl/rr/adx/score grid) — never let
+    # settings.ini clobber them. Everything else maps through the same
+    # KEY_MAP + SYMBOL_STRATEGY_MAP the live engine uses (prevention A1).
+    _SWEPT = {
+        "ema_fast_period", "ema_slow_period", "atr_sl_multiplier",
+        "risk_reward_ratio", "adx_trend_threshold", "scoring_min_entry", "ma_type",
     }
-    if settings.has_section(sym_section):
-        for ini_key, (cfg_key, converter) in override_map.items():
-            if settings.has_option(sym_section, ini_key):
-                p[cfg_key] = converter(settings.get(sym_section, ini_key))
+    apply_params_overrides(settings, symbol, p, exclude=_SWEPT)
     if settings.has_section("ML_SIGNAL") and settings.has_option("ML_SIGNAL", "threshold_overrides"):
         overrides = {}
         for pair in settings.get("ML_SIGNAL", "threshold_overrides").split(","):

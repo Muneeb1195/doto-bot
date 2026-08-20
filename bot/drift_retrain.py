@@ -4,15 +4,11 @@ from pathlib import Path
 
 import joblib
 import lightgbm as lgb
-
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st
 import xgboost as xgb
+from _mt5 import mt5
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from ml_features import FEATURE_COLS, compute_feature_stats, prepare_features, triple_barrier_labels

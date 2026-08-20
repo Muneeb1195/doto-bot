@@ -85,17 +85,15 @@ if getattr(sys, "_base_executable", sys.executable) != sys.executable:
 
 os.environ["JOBLIB_PARALLEL_BACKEND"] = "threading"
 
-try:
-    import MetaTrader5 as mt5  # noqa: E402
-except ImportError:  # Linux: no native package, use the mt5linux RPyC bridge
-    from mt5_connect import mt5  # noqa: E402
 import state as _st  # noqa: E402
-from analytics import fused_regime_score  # noqa: E402
+from _mt5 import mt5  # noqa: E402
 from correlation import compute_correlation_matrix, get_correlation_reduction  # noqa: E402
 from discord_alerts import bot_start, daily_summary  # noqa: E402
 from drift_detector import consume_warmstart_queue  # noqa: E402
 from drift_retrain import warmstart_model as _warmstart_model  # noqa: E402
+from entry_policy import evaluate_entry  # noqa: E402
 from execution import (  # noqa: E402
+    build_close_request,
     check_limit_orders,
     manage_positions,
     place_limit_order,
@@ -105,8 +103,6 @@ from execution import (  # noqa: E402
 from filters import (  # noqa: E402
     check_capital_eligibility,
     check_daily_loss,
-    check_execution_sanity,
-    check_ml_gate,
     check_tail_risk,
     load_ml_models,
 )
@@ -115,22 +111,12 @@ from mt5_connect import (  # noqa: E402
     LIVE_MARKET,
     can_trade_symbol,
     ensure_mt5_connected,
-    get_filling_mode,
-    get_rates,
     market_open,
     mt5_call,
     mt5_order_send,
     realized_pnl,
 )
-from regime import get_current_atr  # noqa: E402
 from risk import calc_kelly_mult, calc_volatility_mult  # noqa: E402
-from signals import (  # noqa: E402
-    _get_regime_gate,
-    check_htf_trend,
-    get_mean_reversion_signal,
-    get_mtf_fused_signal,
-    get_signal,
-)
 from state import (  # noqa: E402
     LOG_DIR,
     TRADE_CSV,
@@ -443,18 +429,16 @@ def main():
                             continue
                         sinfo_cb = mt5_call(mt5.symbol_info, sym, _timeout=5)
                         close_price = tick.bid if pos.type == 0 else tick.ask
-                        close_req = {
-                            "action": mt5.TRADE_ACTION_DEAL,
-                            "symbol": sym,
-                            "volume": pos.volume,
-                            "type": mt5.ORDER_TYPE_SELL if pos.type == 0 else mt5.ORDER_TYPE_BUY,
-                            "position": pos.ticket,
-                            "price": close_price,
-                            "deviation": 100,
-                            "magic": cfg.get("magic", 20240706),
-                            "type_time": mt5.ORDER_TIME_GTC,
-                            "type_filling": get_filling_mode(sym),
-                        }
+                        close_req = build_close_request(
+                            sym,
+                            pos.ticket,
+                            pos.volume,
+                            mt5.ORDER_TYPE_SELL if pos.type == 0 else mt5.ORDER_TYPE_BUY,
+                            close_price,
+                            comment="TrendBot-CircuitBreaker",
+                            magic=cfg.get("magic", 20240706),
+                            deviation=100,
+                        )
                         result_cb = mt5_order_send(close_req, _timeout=10)
                         if result_cb is not None and result_cb.retcode == mt5.TRADE_RETCODE_DONE:
                             pnl_cb = realized_pnl(LIVE_MARKET, pos.ticket)
@@ -619,63 +603,32 @@ def main():
                         _filter_stats[symbol]["no_signal"] += 1
                         continue
 
-                    # === Gate 1 — Fused Regime ===
-                    # Computed on the last CLOSED bar via the shared analytics
-                    # module (single source of truth with the backtest). This is
-                    # what keeps the gate from flickering intrabar and matches
-                    # backtest bar i as closed (agent audit M1).
-                    gate = _get_regime_gate(symbol, sym_cfg)
-                    G1_BARS = 100
-                    df_g1 = get_rates(symbol, sym_cfg["timeframe"], G1_BARS)
-                    fused_score = fused_regime_score(
-                        df_g1.iloc[:-1] if df_g1 is not None and len(df_g1) > 1 else df_g1, sym_cfg
-                    )
-                    gate_open = gate.update(fused_score)
+                    # Deep module owns G1→G2→HTF→G3→G4→MR-cooldown; main does
+                    # only I/O and risk guards. Gate hysteresis lives in
+                    # entry_policy.evaluate_entry (single update per cycle).
+                    outcome = evaluate_entry(sym_cfg, market=LIVE_MARKET, positions_sym=positions_sym)
+                    regimes[symbol] = outcome.regime
+                    signal_entry = outcome.signal_entry
+                    entry_atr = outcome.entry_atr
+                    atr = outcome.atr
+                    trend_signal = outcome.trend_signal
+                    mr_signal = outcome.mr_signal
+                    entry_type = outcome.entry_type
+                    mtf_confidence = outcome.mtf_confidence
+                    gate_open = outcome.gate_open
+                    htf_size_mult = outcome.htf_size_mult
+                    confidence_mult = outcome.confidence_mult
+                    ml_conf = outcome.ml_conf
                     logging.debug(
-                        f"[{symbol}] Fused gate score={fused_score:.1f} open={gate_open} "
-                        f"(bars={len(df_g1) if df_g1 is not None else 0})"
+                        f"[{symbol}] gate_open={gate_open} regime={outcome.regime} "
+                        f"signal={signal_entry} atr={entry_atr} block={outcome.block_reason}"
                     )
 
-                    trend_signal = None
-                    mr_signal = None
-                    trend_atr = None
-                    mr_atr = None
-                    entry_type = None
-                    mtf_confidence = None
-
-                    # === Gate 2 — MTF Signal ===
-                    if gate_open:
-                        # Trend-favorable regime — use MTF or single-TF crossover
-                        if sym_cfg.get("mtf_enabled", False):
-                            trend_signal, trend_atr, entry_type, mtf_confidence = get_mtf_fused_signal(sym_cfg)
-                        else:
-                            trend_signal, trend_atr, entry_type = get_signal(sym_cfg)
-                    else:
-                        # Chop regime — use MR or pullback
-                        if sym_cfg["mr_enabled"] and len(positions_sym) == 0:
-                            mr_signal, mr_atr = get_mean_reversion_signal(sym_cfg)
-                        if mr_signal is None and sym_cfg.get("mtf_enabled", False):
-                            trend_signal, trend_atr, entry_type, mtf_confidence = get_mtf_fused_signal(sym_cfg)
-                        elif mr_signal is None:
-                            trend_signal, trend_atr, entry_type = get_signal(sym_cfg)
-
-                    atr = trend_atr or mr_atr or get_current_atr(sym_cfg)
-
-                    signal_entry = mr_signal if (mr_signal is not None and not gate_open) else trend_signal
-                    entry_atr = mr_atr if (mr_signal is not None and not gate_open) else trend_atr
-                    if entry_atr is None:
-                        entry_atr = atr
-                    regime = "ranging" if not gate_open else "trending"
-                    regimes[symbol] = regime
-
-                    # Position management: TP restore, breakeven, chandelier,
-                    # scale-out, and the close decision tree live in
-                    # execution.manage_positions (deep module — the exit tree
-                    # and all post-close side effects are tested through the
-                    # injected Market seam).
+                    # Position management runs even when entry is blocked — exits are
+                    # independent of entry gates.
                     all_positions = manage_positions(
                         sym_cfg, symbol, all_positions,
-                        atr=atr, trend_signal=trend_signal, regime=regime,
+                        atr=atr, trend_signal=trend_signal, regime=outcome.regime,
                     )
 
                     # Re-filter from updated in-memory list after close
@@ -715,62 +668,40 @@ def main():
                             logging.info(f"[{symbol}] Circuit breaker active — skipping")
                             continue
 
-                    if signal_entry is None:
-                        if not gate_open:
+                    if outcome.blocked:
+                        reason = outcome.block_reason
+                        if reason == "regime_gate":
                             _filter_stats[symbol]["regime_gate"] += 1
-                        logging.debug(f"[{symbol}] No signal generated — skipping")
-                        _filter_stats[symbol]["no_signal"] += 1
+                            _filter_stats[symbol]["no_signal"] += 1
+                            logging.debug(f"[{symbol}] No signal — regime gate closed")
+                        elif reason == "no_signal":
+                            _filter_stats[symbol]["no_signal"] += 1
+                            logging.debug(f"[{symbol}] No signal / ATR unavailable — skipping")
+                        elif reason == "htf_block":
+                            _filter_stats[symbol]["htf_trend"] += 1
+                            logging.debug(f"[{symbol}] HTF clear counter-trend — blocking")
+                        elif reason == "ml_gate":
+                            _filter_stats[symbol]["ml_gate"] += 1
+                            logging.info(f"[{symbol}] ML gate failed — skipping")
+                        elif reason == "sanity":
+                            _filter_stats[symbol]["sanity"] += 1
+                            logging.info(f"[{symbol}] Execution sanity failed — skipping")
+                        elif reason == "mr_cooldown":
+                            _filter_stats[symbol]["no_signal"] += 1
+                            logging.debug(f"[{symbol}] MR consec losses cooldown — skipping")
+                        else:
+                            _filter_stats[symbol]["no_signal"] += 1
                         continue
 
-                    if entry_atr is None or entry_atr == 0:
-                        logging.debug(f"[{symbol}] ATR unavailable — skipping")
-                        _filter_stats[symbol]["no_signal"] += 1
-                        continue
+                    # Soft HTF (neutral) still counts but does not block — it only
+                    # scales size via htf_size_mult already in outcome.
+                    if htf_size_mult != 1.0:
+                        _filter_stats[symbol]["htf_trend"] = _filter_stats[symbol].get("htf_trend", 0) + 1
+                        logging.debug(f"[{symbol}] HTF neutral — reduced size")
 
                     _filter_stats[symbol]["signals"] += 1
 
-                    htf_size_mult = 1.0
-                    if not sym_cfg.get("mtf_enabled", False) or (
-                        sym_cfg.get("mtf_enabled", False) and entry_type == "pullback"
-                    ):
-                        htf_decision, htf_size_mult = check_htf_trend(sym_cfg, signal_entry)
-                        if htf_decision == "block":
-                            logging.debug(f"[{symbol}] HTF clear counter-trend — blocking")
-                            _filter_stats[symbol]["htf_trend"] += 1
-                            continue
-                        if htf_decision == "soft":
-                            logging.debug(f"[{symbol}] HTF neutral — reduced size")
-                            _filter_stats[symbol]["htf_trend"] = _filter_stats[symbol].get("htf_trend", 0) + 1
-
-                    # === Gate 3 — ML Validation ===
-                    ml_passed, confidence_mult, ml_conf = check_ml_gate(sym_cfg, signal_entry, entry_atr)
-                    if not ml_passed:
-                        logging.info(f"[{symbol}] ML gate failed — skipping")
-                        _filter_stats[symbol]["ml_gate"] += 1
-                        continue
-
-                    # === Gate 4 — Execution Sanity (volume + spread + tape) ===
-                    if not check_execution_sanity(sym_cfg, signal_entry):
-                        logging.info(f"[{symbol}] Execution sanity failed — skipping")
-                        _filter_stats[symbol]["sanity"] += 1
-                        continue
-
                     is_mr_entry = mr_signal is not None and not gate_open
-                    # MR cooldown (A3): skip MR entries after >=2 consecutive losses within
-                    # the configured window. Bars -> seconds on the H1 timeframe (1 bar = 1h),
-                    # parity with backtest._get_mean_reversion_signal's bar-based cooldown.
-                    mr_cd_enabled = sym_cfg.get("mr_cooldown_enabled", True)
-                    mr_cd_window = sym_cfg.get("mr_cooldown_bars", 2) * 3600
-                    if (
-                        is_mr_entry
-                        and signal_entry is not None
-                        and mr_cd_enabled
-                        and _st._mr_consecutive_losses.get(symbol, 0) >= 2
-                        and time.time() - _st._mr_last_loss_time.get(symbol, 0) < mr_cd_window
-                    ):
-                        logging.debug(f"[{symbol}] MR consec losses cooldown — skipping")
-                        _filter_stats[symbol]["no_signal"] += 1
-                        continue
 
                     # Position sizing
                     kelly_mult = _apply_corr_ml_sizing(

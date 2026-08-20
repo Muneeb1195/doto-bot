@@ -55,6 +55,7 @@ SYMBOL_STRATEGY_MAP = {
     "mtf_enabled": lambda v: v.lower() == "true" if isinstance(v, str) else bool(v),
     "scoring_min_entry": float,
     "trading_enabled": lambda v: v.lower() == "true" if isinstance(v, str) else bool(v),
+    "htf_misalign_size_mult": float,
 }
 
 KEY_MAP = {
@@ -74,6 +75,7 @@ KEY_MAP = {
     "volatility_min_ratio": "volatility_min_ratio",
     "deviation": "deviation",
     "scoring_min_entry": "scoring_min_entry",
+    "htf_misalign_size_mult": "htf_misalign_size_mult",
 }
 
 
@@ -480,6 +482,32 @@ def apply_symbol_strategy(cfg, symbol):
     for ini_key, value in overrides.items():
         cfg_key = KEY_MAP.get(ini_key, ini_key)
         cfg[cfg_key] = value
+
+
+def apply_params_overrides(settings, symbol, params, exclude=()):
+    """Apply [STRATEGY:<symbol>] overrides from a raw INI parser onto a params dict.
+
+    Single source of truth for the per-symbol ini_key -> params-key mapping and
+    type conversion (KEY_MAP + SYMBOL_STRATEGY_MAP), shared with the live engine
+    (apply_symbol_strategy) so the optimizer and tuning/screening tools apply the
+    identical overrides live trading does (prevention A1). `exclude` names the
+    ini keys that a caller sweeps itself and must not be clobbered (e.g. the
+    optimizer's ema/sl/rr/adx/score grid).
+    """
+    section = f"STRATEGY:{symbol}"
+    if not settings.has_section(section):
+        return params
+    for ini_key, conv in SYMBOL_STRATEGY_MAP.items():
+        if ini_key in exclude or not settings.has_option(section, ini_key):
+            continue
+        cfg_key = KEY_MAP.get(ini_key, ini_key)
+        try:
+            params[cfg_key] = conv(settings.get(section, ini_key))
+        except (ValueError, TypeError):
+            logging.getLogger(__name__).warning(
+                "Failed to apply %s/%s override for %s", section, ini_key, symbol, exc_info=True
+            )
+    return params
 
 
 def apply_symbol_overrides(cfg, symbol):

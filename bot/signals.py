@@ -2,13 +2,20 @@
 
 import logging
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import pandas as pd
 import state as _st
-from analytics import closed_bars
+from _mt5 import mt5
+from analytics import (
+    closed_bars,
+    htf_trend_decision,
+    ma_cross_direction,
+    mr_entry_decision,
+    mr_exit_decision,
+    mtf_fused_decision,
+    pb_structure_pass,
+    pb_volume_pass,
+    pullback_decision,
+)
 from indicators import calc_atr, calc_efficiency_ratio, calc_fused_regime_score, calc_ma, calc_ma_slope, calc_rsi
 from mt5_connect import get_rates
 from regime import get_current_adx
@@ -62,12 +69,7 @@ def _pb_volume_pass(df, trigger_idx, cfg):
     threshold = cfg.get("pb_volume_threshold", 0.8)
     if len(df) < period + 2:
         return True
-    vol = df["tick_volume"].values
-    trigger_vol = vol[trigger_idx]
-    vol_sma = pd.Series(vol).rolling(window=period).mean().iloc[trigger_idx]
-    if pd.isna(vol_sma) or vol_sma <= 0:
-        return True
-    return trigger_vol < vol_sma * threshold
+    return pb_volume_pass(df["tick_volume"].values, len(df) + trigger_idx, period, threshold)
 
 
 def _pb_structure_pass(df, trigger_idx, direction, cfg):
@@ -75,11 +77,10 @@ def _pb_structure_pass(df, trigger_idx, direction, cfg):
     if len(df) < lookback + 2:
         return True
     if direction == "buy":
-        prior_min = df["low"].iloc[trigger_idx - lookback : trigger_idx].min()
-        return df["low"].iloc[trigger_idx] > prior_min
-    else:
-        prior_max = df["high"].iloc[trigger_idx - lookback : trigger_idx].max()
-        return df["high"].iloc[trigger_idx] < prior_max
+        low = df["low"].values
+        return pb_structure_pass(low, len(df) + trigger_idx, lookback, "buy")
+    high = df["high"].values
+    return pb_structure_pass(high, len(df) + trigger_idx, lookback, "sell")
 
 
 def get_trend_pullback_signal(df, cfg):
@@ -105,38 +106,24 @@ def get_trend_pullback_signal(df, cfg):
     if pd.isna(trigger_fast) or pd.isna(trigger_slow):
         return None, atr, None
 
-    pullback_dist = atr * cfg["pb_atr_mult"]
-    min_pb_dist = atr * cfg.get("pb_atr_min_dist", 0.1)
-
-    signal = None
-
     if trigger_fast > trigger_slow:
-        dist_to_ema = abs(trigger_price - trigger_fast)
-        if min_pb_dist <= dist_to_ema <= pullback_dist:
-            if not _pb_volume_pass(df, trigger_idx, cfg):
-                return None, atr, None
-            if not _pb_structure_pass(df, trigger_idx, "buy", cfg):
-                return None, atr, None
-            if confirm_close <= trigger_high:
-                return None, atr, None
-            # HTF trend gate is applied by the caller (main.py / backtest)
-            # via check_htf_trend() — checking it here would double-gate the
-            # signal and lose the "soft" size reduction (agent audit M5).
-            signal = "buy"
-
+        signal = pullback_decision(
+            trigger_fast, trigger_slow, trigger_price, trigger_high, trigger_low,
+            confirm_close, atr, cfg["pb_atr_mult"], cfg.get("pb_atr_min_dist", 0.1),
+            lambda: _pb_volume_pass(df, trigger_idx, cfg),
+            lambda: _pb_structure_pass(df, trigger_idx, "buy", cfg),
+            "buy",
+        )
     elif trigger_fast < trigger_slow:
-        dist_to_ema = abs(trigger_price - trigger_fast)
-        if min_pb_dist <= dist_to_ema <= pullback_dist:
-            if not _pb_volume_pass(df, trigger_idx, cfg):
-                return None, atr, None
-            if not _pb_structure_pass(df, trigger_idx, "sell", cfg):
-                return None, atr, None
-            if confirm_close >= trigger_low:
-                return None, atr, None
-            # HTF trend gate is applied by the caller (main.py / backtest)
-            # via check_htf_trend() — checking it here would double-gate the
-            # signal and lose the "soft" size reduction (agent audit M5).
-            signal = "sell"
+        signal = pullback_decision(
+            trigger_fast, trigger_slow, trigger_price, trigger_high, trigger_low,
+            confirm_close, atr, cfg["pb_atr_mult"], cfg.get("pb_atr_min_dist", 0.1),
+            lambda: _pb_volume_pass(df, trigger_idx, cfg),
+            lambda: _pb_structure_pass(df, trigger_idx, "sell", cfg),
+            "sell",
+        )
+    else:
+        signal = None
 
     if signal:
         return signal, atr, "pullback"
@@ -175,25 +162,20 @@ def check_htf_trend(cfg, signal):
     slope = htf_ma.iloc[-2] - htf_ma.iloc[-(slope_window + 1)] if len(htf_ma) > slope_window + 1 else 0.0
     if pd.isna(slope):
         slope = 0.0
-    if signal == "buy":
-        price_ok = htf_price >= htf_ma_val
-        slope_ok = slope >= 0
-    else:  # sell
-        price_ok = htf_price <= htf_ma_val
-        slope_ok = slope <= 0
-    if price_ok and slope_ok:
-        return "allow", 1.0
-    if (not price_ok) and (not slope_ok):
+    decision, size_mult = htf_trend_decision(
+        htf_price, htf_ma_val, slope, signal, cfg.get("htf_misalign_size_mult", 0.5)
+    )
+    if decision == "block":
         logging.info(
             f"[{symbol}] HTF clear counter-trend — blocking {signal} "
             f"(price={htf_price:.2f}, ma={htf_ma_val:.2f}, slope={slope:.4f})"
         )
-        return "block", 0.0
-    logging.info(
-        f"[{symbol}] HTF neutral (one condition off) — {signal} at reduced size "
-        f"(price={htf_price:.2f}, ma={htf_ma_val:.2f}, slope={slope:.4f})"
-    )
-    return "soft", cfg.get("htf_misalign_size_mult", 0.5)
+    elif decision == "soft":
+        logging.info(
+            f"[{symbol}] HTF neutral (one condition off) — {signal} at reduced size "
+            f"(price={htf_price:.2f}, ma={htf_ma_val:.2f}, slope={slope:.4f})"
+        )
+    return decision, size_mult
 
 
 def get_signal(cfg):
@@ -227,9 +209,10 @@ def get_signal(cfg):
             f"(prev: {prev_fast:.2f}/{prev_slow:.2f}) atr={atr:.4f}"
         )
     signal = None
-    if prev_fast <= prev_slow and current_fast > current_slow:
+    cross_dir = ma_cross_direction(current_fast, current_slow, prev_fast, prev_slow)
+    if cross_dir > 0:
         signal = "buy"
-    elif prev_fast >= prev_slow and current_fast < current_slow:
+    elif cross_dir < 0:
         signal = "sell"
     if signal:
         # Compute the fused regime score for logging only — Gate 1 in main.py
@@ -295,10 +278,6 @@ def get_mtf_fused_signal(cfg):
     h4_bias_val = h4_close[-2] - float(h4_ema.iloc[-2])
     h4_atr = calc_atr(h4_df, cfg["atr_period"])
     neutral_band = (h4_atr * 0.5) if h4_atr and h4_atr > 0 else 0.0
-    if abs(h4_bias_val) <= neutral_band:
-        logging.info(f"[{symbol}] MTF H4 neutral (within {neutral_band:.2f} of EMA) — no signal")
-        return None, atr, None, None
-    h4_direction = 1 if h4_bias_val > 0 else -1  # bullish/bearish
 
     # --- H1 MA crossover ---
     h1_ma_fast = calc_ma(closed_bars(h1_df), fast, ma_type)
@@ -313,19 +292,17 @@ def get_mtf_fused_signal(cfg):
     if any(pd.isna(x) for x in (h1_cur_fast, h1_cur_slow, h1_prev_fast, h1_prev_slow)):
         return None, atr, None, None
 
-    h1_cross = 0
-    if h1_prev_fast <= h1_prev_slow and h1_cur_fast > h1_cur_slow:
-        h1_cross = 1
-    elif h1_prev_fast >= h1_prev_slow and h1_cur_fast < h1_cur_slow:
-        h1_cross = -1
+    h1_cross = ma_cross_direction(h1_cur_fast, h1_cur_slow, h1_prev_fast, h1_prev_slow)
 
-    if h1_cross != h4_direction:
-        logging.info(f"[{symbol}] MTF H4 bias={h4_direction:+d} blocks H1 cross={h1_cross:+d}")
+    # Phase 1 — H4 bias + H1 cross (m15 not fetched yet; None means "no m15 data")
+    direction, entry_type, agreement = mtf_fused_decision(h4_bias_val, neutral_band, h1_cross, None)
+    if direction is None:
+        if abs(h4_bias_val) <= neutral_band:
+            logging.info(f"[{symbol}] MTF H4 neutral (within {neutral_band:.2f} of EMA) — no signal")
+        else:
+            h4_dir = 1 if h4_bias_val > 0 else -1
+            logging.info(f"[{symbol}] MTF H4 bias={h4_dir:+d} blocks H1 cross={h1_cross:+d}")
         return None, atr, None, None
-
-    direction = "buy" if h1_cross > 0 else "sell"
-    agreement = 0.67  # H4 bias + H1 cross agree
-    entry_type = "pullback"
 
     # --- M15 entry trigger ---
     m15_needed = m15_slow + cfg["atr_period"] + 50
@@ -339,15 +316,9 @@ def get_mtf_fused_signal(cfg):
             m15_pf = m15_ma_fast.iloc[-3]
             m15_ps = m15_ma_slow.iloc[-3]
             if not any(pd.isna(x) for x in (m15_cf, m15_cs, m15_pf, m15_ps)):
-                m15_cross = 0
-                if m15_pf <= m15_ps and m15_cf > m15_cs:
-                    m15_cross = 1
-                elif m15_pf >= m15_ps and m15_cf < m15_cs:
-                    m15_cross = -1
-                if m15_cross == h1_cross:
-                    agreement = 1.0
-                    entry_type = "crossover"
-                elif m15_cross != 0:
+                m15_cross = ma_cross_direction(m15_cf, m15_cs, m15_pf, m15_ps)
+                direction, entry_type, agreement = mtf_fused_decision(h4_bias_val, neutral_band, h1_cross, m15_cross)
+                if direction is None:
                     logging.info(f"[{symbol}] MTF M15 cross opposes H1 — no entry")
                     return None, atr, None, None
 
@@ -392,12 +363,7 @@ def get_mean_reversion_signal(cfg):
     oversold = cfg["mr_rsi_oversold"]
     overbought = cfg["mr_rsi_overbought"]
     mr_htf_deviation = cfg.get("mr_htf_deviation", 0.0)
-    signal = None
-    if cur_rsi < oversold:
-        if cur_price > htf_ema200_val * (1.0 - mr_htf_deviation):
-            signal = "buy"
-    elif cur_rsi > overbought and cur_price < htf_ema200_val * (1.0 + mr_htf_deviation):
-        signal = "sell"
+    signal = mr_entry_decision(cur_rsi, cur_price, htf_ema200_val, oversold, overbought, mr_htf_deviation)
     if signal:
         logging.info(
             f"[{sym}] MR {signal} signal (RSI={cur_rsi:.1f}, price={cur_price:.2f}, HTF_MA={htf_ema200_val:.2f})"
@@ -439,6 +405,4 @@ def check_mean_reversion_exit(cfg, position, market=None):
         return False
     prev_rsi_val = calc_rsi(prev_df, rsi_period)
     is_long = position.type == mt5.ORDER_TYPE_BUY
-    if is_long and prev_rsi_val < 50 and cur_rsi >= 50:
-        return True
-    return bool(not is_long and prev_rsi_val > 50 and cur_rsi <= 50)
+    return mr_exit_decision(prev_rsi_val, cur_rsi, is_long)

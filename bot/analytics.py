@@ -10,13 +10,10 @@ forming-bar semantics was the root cause of repeated intrabar-flicker and
 lookahead regressions.
 """
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st
+from _mt5 import mt5
 from indicators import (
     calc_adx,
     calc_atr,
@@ -58,6 +55,178 @@ def apply_news_confidence_mult(confidence_mult, news_val):
     if news_val <= 0.30:
         return confidence_mult * 0.50
     return confidence_mult
+
+
+def compute_sl_tp_points(atr, sl_mult, tp_mult, point, stops_level):
+    """SL/TP distance in broker points, with the stops floor enforced.
+
+    Single source for the sl_points/tp_points math used by live entry
+    (execution._place_trade_inner / place_limit_order) and the backtest
+    reference loop's trend path. Callers guarantee `point > 0`. The backtest
+    MR path derives TP from ATR directly (not from sl_points) and is
+    intentionally NOT routed here.
+    """
+    sl_points = max(int(atr * sl_mult / point), stops_level)
+    tp_points = int(sl_points * tp_mult)
+    return sl_points, tp_points
+
+
+def ma_cross_direction(cf, cs, pf, ps):
+    """MA crossover direction: +1 bullish, -1 bearish, 0 no cross.
+
+    Shared by live get_signal / get_mtf_fused_signal and the backtest
+    _get_mtf_signal / reference crossover path (prevention A1).
+    """
+    if pf <= ps and cf > cs:
+        return 1
+    if pf >= ps and cf < cs:
+        return -1
+    return 0
+
+
+def pb_volume_pass(vol, trigger_idx, period, threshold):
+    """True if volume at trigger_idx is BELOW `threshold * SMA(period)`.
+
+    Low-volume pullback filter. `trigger_idx` is a positive index into `vol`;
+    the SMA window is `[trigger_idx - period + 1, trigger_idx]` (the same
+    window pandas rolling(window=period) exposes at that index). Insufficient
+    history or non-positive SMA -> pass.
+    """
+    if trigger_idx < period:
+        return True
+    vol_sma = float(np.mean(vol[trigger_idx - period + 1 : trigger_idx + 1]))
+    if vol_sma <= 0:
+        return True
+    return vol[trigger_idx] < vol_sma * threshold
+
+
+def pb_structure_pass(low_high, trigger_idx, lookback, direction):
+    """True if the trigger bar makes a higher-low (buy) / lower-high (sell).
+
+    `low_high` is the low array for "buy" or the high array for "sell".
+    """
+    start = trigger_idx - lookback
+    if start < 0:
+        return True
+    if direction == "buy":
+        return low_high[trigger_idx] > np.min(low_high[start:trigger_idx])
+    return low_high[trigger_idx] < np.max(low_high[start:trigger_idx])
+
+
+def pullback_decision(trigger_fast, trigger_slow, trigger_price, trigger_high, trigger_low,
+                      confirm_close, atr, pb_atr_mult, pb_atr_min_dist, vol_pass_fn, structure_pass_fn, direction):
+    """Pullback entry decision for one direction: "buy" / "sell" / None.
+
+    Core of live get_trend_pullback_signal and the backtest _get_pullback_signal.
+    `vol_pass_fn` / `structure_pass_fn` are zero-arg callables the caller wires
+    to pb_volume_pass / pb_structure_pass (they need array context). They are
+    invoked LAZILY, only after the distance check passes, preserving the
+    historical access order. The HTF trend block is a caller-level gate (live
+    applies it in main.py, the backtest in _get_pullback_signal) and is
+    intentionally NOT part of this decision.
+    """
+    if atr is None or atr <= 0:
+        return None
+    pullback_dist = atr * pb_atr_mult
+    min_pb_dist = atr * pb_atr_min_dist
+    if direction == "buy":
+        if not (trigger_fast > trigger_slow):
+            return None
+        dist = abs(trigger_price - trigger_fast)
+        if not (min_pb_dist <= dist <= pullback_dist):
+            return None
+        if not vol_pass_fn():
+            return None
+        if not structure_pass_fn():
+            return None
+        if confirm_close <= trigger_high:
+            return None
+        return "buy"
+    if not (trigger_fast < trigger_slow):
+        return None
+    dist = abs(trigger_price - trigger_fast)
+    if not (min_pb_dist <= dist <= pullback_dist):
+        return None
+    if not vol_pass_fn():
+        return None
+    if not structure_pass_fn():
+        return None
+    if confirm_close >= trigger_low:
+        return None
+    return "sell"
+
+
+def htf_trend_decision(htf_price, htf_ma_val, slope, signal, misalign_mult=0.5):
+    """3-state HTF trend alignment: ("allow", 1.0) / ("soft", misalign_mult) /
+    ("block", 0.0).
+
+    Core of live signals.check_htf_trend and the backtest _check_htf_trend.
+    """
+    if signal == "buy":
+        price_ok = htf_price >= htf_ma_val
+        slope_ok = slope >= 0
+    else:
+        price_ok = htf_price <= htf_ma_val
+        slope_ok = slope <= 0
+    if price_ok and slope_ok:
+        return "allow", 1.0
+    if (not price_ok) and (not slope_ok):
+        return "block", 0.0
+    return "soft", misalign_mult
+
+
+def mr_entry_decision(cur_rsi, cur_price, htf_ema, oversold, overbought, dev=0.0):
+    """Mean-reversion entry decision: "buy" / "sell" / None.
+
+    Core of live get_mean_reversion_signal and the backtest
+    _get_mean_reversion_signal. A None htf_ema (unavailable) passes the
+    deviation check (backtest semantics; live never passes None here).
+    """
+    if cur_rsi < oversold:
+        if htf_ema is None or cur_price > htf_ema * (1.0 - dev):
+            return "buy"
+    elif cur_rsi > overbought and (htf_ema is None or cur_price < htf_ema * (1.0 + dev)):
+        return "sell"
+    return None
+
+
+def mr_exit_decision(prev_rsi, cur_rsi, is_long):
+    """Mean-reversion exit decision (RSI mid-line crossover): bool.
+
+    Core of live check_mean_reversion_exit and the backtest
+    _check_mean_reversion_exit.
+    """
+    if is_long and prev_rsi < 50 and cur_rsi >= 50:
+        return True
+    return bool(not is_long and prev_rsi > 50 and cur_rsi <= 50)
+
+
+def mtf_fused_decision(h4_bias, neutral_band, h1_cross, m15_cross):
+    """MTF bias+cross decision: (direction, entry_type, agreement).
+
+    h4_bias: last closed H4 price minus its EMA. neutral_band: 0.5*ATR band
+    (live derives it from H4 ATR, the backtest from the H1 ATR series — the
+    band VALUE is computed by the caller). h1_cross / m15_cross are +/-1/0
+    from ma_cross_direction; m15_cross None means no usable M15 data (falls
+    back to H4+H1 pullback agreement 0.67).
+
+    Core of live get_mtf_fused_signal and the backtest _get_mtf_signal. The
+    live caller additionally re-runs the pullback decision on H1 data for the
+    pullback branch; the backtest enters directionally — a documented
+    orchestration divergence, not a shared-math one.
+    """
+    if abs(h4_bias) <= neutral_band:
+        return None, None, 0.0
+    h4_direction = 1 if h4_bias > 0 else -1
+    if h1_cross != h4_direction:
+        return None, None, 0.0
+    direction = "buy" if h1_cross > 0 else "sell"
+    if m15_cross is not None:
+        if m15_cross == h1_cross:
+            return direction, "crossover", 1.0
+        if m15_cross != 0:
+            return None, None, 0.0
+    return direction, "pullback", 0.67
 
 
 def fused_regime_score(df_closed, cfg):

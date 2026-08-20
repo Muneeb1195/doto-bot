@@ -1,11 +1,8 @@
 from datetime import datetime
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
+from _mt5 import mt5
 from mt5_connect import mt5_call
 
 

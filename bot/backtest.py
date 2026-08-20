@@ -7,14 +7,23 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import joblib
-
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
-from analytics import apply_news_confidence_mult, compute_entry_score, volume_filter_pass
+from _mt5 import mt5
+from analytics import (
+    apply_news_confidence_mult,
+    compute_entry_score,
+    compute_sl_tp_points,
+    htf_trend_decision,
+    ma_cross_direction,
+    mr_entry_decision,
+    mr_exit_decision,
+    mtf_fused_decision,
+    pb_structure_pass,
+    pb_volume_pass,
+    pullback_decision,
+    volume_filter_pass,
+)
 from credentials import load_credentials
 from indicators import SLOPE_SCALE, calc_adx_series, calc_atr_series, calc_ma
 
@@ -990,43 +999,27 @@ class Backtest:
         if pd.isna(trigger_fast) or pd.isna(trigger_slow):
             return None, None
 
-        pb_dist = cur_atr * p.get("pb_atr_mult", 2.0)
-        min_pb = cur_atr * p.get("pb_atr_min_dist", 0.1)
-
-        signal = None
         if trigger_fast > trigger_slow:
-            dist = abs(trigger_price - trigger_fast)
-            if not (min_pb <= dist <= pb_dist):
-                return None, None
-            # Volume filter
-            if not self._pb_volume_check(trigger_idx):
-                return None, None
-            # Structure filter
-            if not self._pb_structure_check(trigger_idx, "buy"):
-                return None, None
-            # Confirmation bar
-            if confirm_close <= trigger_high:
-                return None, None
-            # HTF trend
-            htf_dec, _ = self._check_htf_trend(i, "buy")
-            if htf_dec == "block":
-                return None, None
-            signal = "buy"
+            signal = pullback_decision(
+                trigger_fast, trigger_slow, trigger_price, trigger_high, trigger_low,
+                confirm_close, cur_atr, p.get("pb_atr_mult", 2.0), p.get("pb_atr_min_dist", 0.1),
+                lambda: self._pb_volume_check(trigger_idx),
+                lambda: self._pb_structure_check(trigger_idx, "buy"), "buy",
+            )
         elif trigger_fast < trigger_slow:
-            dist = abs(trigger_price - trigger_fast)
-            if not (min_pb <= dist <= pb_dist):
-                return None, None
-            if not self._pb_volume_check(trigger_idx):
-                return None, None
-            if not self._pb_structure_check(trigger_idx, "sell"):
-                return None, None
-            if confirm_close >= trigger_low:
-                return None, None
-            htf_dec, _ = self._check_htf_trend(i, "sell")
+            signal = pullback_decision(
+                trigger_fast, trigger_slow, trigger_price, trigger_high, trigger_low,
+                confirm_close, cur_atr, p.get("pb_atr_mult", 2.0), p.get("pb_atr_min_dist", 0.1),
+                lambda: self._pb_volume_check(trigger_idx),
+                lambda: self._pb_structure_check(trigger_idx, "sell"), "sell",
+            )
+        else:
+            signal = None
+        if signal:
+            # HTF trend block gate (caller-applied, same as live main.py).
+            htf_dec, _ = self._check_htf_trend(i, signal)
             if htf_dec == "block":
                 return None, None
-            signal = "sell"
-        if signal:
             return signal, cur_atr
         return None, None
 
@@ -1036,25 +1029,12 @@ class Backtest:
             return True
         period = p.get("pb_volume_sma_period", 20)
         threshold = p.get("pb_volume_threshold", 0.8)
-        if trigger_idx < period:
-            return True
-        vol_series = self.df["tick_volume"].iloc[trigger_idx - period + 1 : trigger_idx + 1]
-        vol_sma = vol_series.mean()
-        if vol_sma <= 0:
-            return True
-        return self.df["tick_volume"].iloc[trigger_idx] < vol_sma * threshold
+        return pb_volume_pass(self.df["tick_volume"].values, trigger_idx, period, threshold)
 
     def _pb_structure_check(self, trigger_idx, direction):
         lookback = self.p.get("pb_structure_lookback", 5)
-        start = trigger_idx - lookback
-        if start < 0:
-            return True
-        if direction == "buy":
-            prior_min = self.df["low"].iloc[start:trigger_idx].min()
-            return self.df["low"].iloc[trigger_idx] > prior_min
-        else:
-            prior_max = self.df["high"].iloc[start:trigger_idx].max()
-            return self.df["high"].iloc[trigger_idx] < prior_max
+        low_high = self.df["low"].values if direction == "buy" else self.df["high"].values
+        return pb_structure_pass(low_high, trigger_idx, lookback, direction)
 
     def _rsi_series(self, close, period):
         """Vectorized Wilder RSI over a full close Series (used for the MR M30 TF).
@@ -1131,13 +1111,7 @@ class Backtest:
             htf_ema200 = self.htf_ema_aligned.iloc[i]
         else:
             htf_ema200 = None
-        signal = None
-        dev = p.get("mr_htf_deviation", 0.0)
-        if cur_rsi < oversold:
-            if htf_ema200 is None or cur_price > htf_ema200 * (1.0 - dev):
-                signal = "buy"
-        elif cur_rsi > overbought and (htf_ema200 is None or cur_price < htf_ema200 * (1.0 + dev)):
-            signal = "sell"
+        signal = mr_entry_decision(cur_rsi, cur_price, htf_ema200, oversold, overbought, p.get("mr_htf_deviation", 0.0))
         atr = self.atr_series.iloc[i]
         return signal, atr
 
@@ -1162,28 +1136,18 @@ class Backtest:
         # H4 bias with 0.5*ATR neutral band
         bias = h1_close - float(h4_ema)
         neutral_band = cur_atr * 0.5
-        if abs(bias) <= neutral_band:
-            return None, None, 0.0
-        h4_direction = 1 if bias > 0 else -1
 
-        # H1 crossover must agree with H4 bias
+        # H1 crossover
         h1_cf = self.ema_fast.iloc[i]
         h1_cs = self.ema_slow.iloc[i]
         h1_pf = self.ema_fast.iloc[i - 1]
         h1_ps = self.ema_slow.iloc[i - 1]
         if any(pd.isna(x) for x in (h1_cf, h1_cs, h1_pf, h1_ps)):
             return None, None, 0.0
-        h1_cross = 0
-        if h1_pf <= h1_ps and h1_cf > h1_cs:
-            h1_cross = 1
-        elif h1_pf >= h1_ps and h1_cf < h1_cs:
-            h1_cross = -1
-        if h1_cross != h4_direction:
-            return None, None, 0.0
-
-        direction = "buy" if h1_cross > 0 else "sell"
+        h1_cross = ma_cross_direction(h1_cf, h1_cs, h1_pf, h1_ps)
 
         # M15 crossover check for entry timing
+        m15_cross = None
         if self.mtf_m15_fast is not None and i > 0:
             try:
                 m15_cf = self.mtf_m15_fast.iloc[i]
@@ -1191,19 +1155,11 @@ class Backtest:
                 m15_pf = self.mtf_m15_fast.iloc[i - 1]
                 m15_ps = self.mtf_m15_slow.iloc[i - 1]
                 if not any(pd.isna(x) for x in (m15_cf, m15_cs, m15_pf, m15_ps)):
-                    m15_cross = 0
-                    if m15_pf <= m15_ps and m15_cf > m15_cs:
-                        m15_cross = 1
-                    elif m15_pf >= m15_ps and m15_cf < m15_cs:
-                        m15_cross = -1
-                    if m15_cross == h1_cross:
-                        return direction, "crossover", 1.0
-                    elif m15_cross != 0:
-                        return None, None, 0.0
+                    m15_cross = ma_cross_direction(m15_cf, m15_cs, m15_pf, m15_ps)
             except (IndexError, KeyError):
                 pass
 
-        return direction, "pullback", 0.67
+        return mtf_fused_decision(bias, neutral_band, h1_cross, m15_cross)
 
     def _check_htf_trend(self, i, signal):
         """Parity with live signals.check_htf_trend: 3-state HTF decision.
@@ -1219,17 +1175,7 @@ class Backtest:
             return "soft", p.get("htf_misalign_size_mult", 0.5)
         htf_price = self.htf_close_aligned.iloc[i] if self.htf_close_aligned is not None else self.df["close"].iloc[i]
         slope = self.htf_slope_aligned.iloc[i] if self.htf_slope_aligned is not None else 0.0
-        if signal == "buy":
-            price_ok = htf_price >= htf_ma_val
-            slope_ok = slope >= 0
-        else:
-            price_ok = htf_price <= htf_ma_val
-            slope_ok = slope <= 0
-        if price_ok and slope_ok:
-            return "allow", 1.0
-        if (not price_ok) and (not slope_ok):
-            return "block", 0.0
-        return "soft", p.get("htf_misalign_size_mult", 0.5)
+        return htf_trend_decision(htf_price, htf_ma_val, slope, signal, p.get("htf_misalign_size_mult", 0.5))
 
     def _check_mean_reversion_exit(self, i, pos):
         p = self.p
@@ -1251,9 +1197,7 @@ class Backtest:
         prev_rsi = _rsi_at(i - 1)
         cur_rsi = _rsi_at(i)
         is_long = pos["type"] == "buy"
-        if is_long and prev_rsi < 50 and cur_rsi >= 50:
-            return True
-        return bool(not is_long and prev_rsi > 50 and cur_rsi <= 50)
+        return mr_exit_decision(prev_rsi, cur_rsi, is_long)
 
     def _calc_kelly_mult(self):
         p = self.p
@@ -1443,8 +1387,9 @@ class Backtest:
                 prev_fast = self.ema_fast.iloc[i - 1]
                 prev_slow = self.ema_slow.iloc[i - 1]
 
-                buy_signal = prev_fast <= prev_slow and cur_fast > cur_slow
-                sell_signal = prev_fast >= prev_slow and cur_fast < cur_slow
+                cross_dir = ma_cross_direction(cur_fast, cur_slow, prev_fast, prev_slow)
+                buy_signal = cross_dir > 0
+                sell_signal = cross_dir < 0
 
                 signal = None
                 entry_type = None
@@ -1495,10 +1440,9 @@ class Backtest:
                 else:
                     atr_sl_mult = p.get("atr_sl_mult", 1.0)
                     rr = p.get("rr", 2.0)
-                    sl_points = max(
-                        int(entry_atr * atr_sl_mult / max(self.point, 1e-10)), int(self.p.get("stops_level", 50))
+                    sl_points, tp_points = compute_sl_tp_points(
+                        entry_atr, atr_sl_mult, rr, max(self.point, 1e-10), int(self.p.get("stops_level", 50))
                     )
-                    tp_points = int(sl_points * rr)
                 if signal == "buy":
                     sl = bar["close"] - sl_points * self.point
                     tp = bar["close"] + tp_points * self.point

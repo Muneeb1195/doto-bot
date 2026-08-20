@@ -22,6 +22,7 @@ from mt5_connect import (
     mt5_order_send,
     realized_pnl,
 )
+from exit_decision import decide_exit, max_hold_triggered
 from regime import get_current_atr
 from risk import calc_position_size
 from signals import check_mean_reversion_exit
@@ -55,6 +56,29 @@ def _min_stop_points(sinfo, tick=None):
             logging.warning("Failed to compute spread in points", exc_info=True)
             spread_pts = 0
     return max(int(sinfo.trade_stops_level), spread_pts + 10)
+
+
+def build_close_request(symbol, ticket, volume, close_type, price, comment, magic, deviation):
+    """Build the standard TRADE_ACTION_DEAL close request.
+
+    Every close path (scale-out, chandelier, exit-tree close, naked close,
+    circuit breaker) shares this shape; only the deviation source and the
+    comment string vary between call sites. Kept here so the MT5 request
+    contract cannot drift apart.
+    """
+    return {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": volume,
+        "type": close_type,
+        "position": ticket,
+        "price": price,
+        "deviation": deviation,
+        "magic": magic,
+        "comment": comment,
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": get_filling_mode(symbol),
+    }
 
 
 def _init_scale_out_state(cfg, price, signal, sl_points, sinfo, is_mr=False, volume=0.0, atr_entry=None):
@@ -218,16 +242,12 @@ def check_scale_out(cfg, position, market=None):
 
 def check_max_hold(cfg, position):
     """Check if position exceeded max hold hours. Returns True to signal close."""
-    max_hours = cfg.get("max_hold_hours", 72)
-    if max_hours <= 0:
-        return False
-    now = datetime.now()
-    open_time = datetime.fromtimestamp(getattr(position, "time", 0))
-    elapsed_hours = (now - open_time).total_seconds() / 3600
-    if elapsed_hours < max_hours:
-        return False
-    logging.info(f"[{position.symbol}] Max hold {elapsed_hours:.1f}h > {max_hours}h — closing")
-    return True
+    hit = max_hold_triggered(position, cfg)
+    if hit:
+        open_time = datetime.fromtimestamp(getattr(position, "time", 0))
+        elapsed = (datetime.now() - open_time).total_seconds() / 3600
+        logging.info(f"[{position.symbol}] Max hold {elapsed:.1f}h > {cfg.get('max_hold_hours', 72)}h — closing")
+    return hit
 
 
 def check_breakeven(cfg, position, atr, market=None):
@@ -456,40 +476,26 @@ def manage_positions(
 
     for pos in positions_sym:
         pos_type = "buy" if pos.type == mt5.ORDER_TYPE_BUY else "sell"
-        should_close = False
-        close_reason = ""
-        if check_max_hold(sym_cfg, pos):
-            should_close = True
-            close_reason = "MAX_HOLD"
+        # Pure decision — no broker I/O inside decide_exit. Precompute hits
+        # so decide_exit stays side-effect free (interface is the test surface).
+        max_hold_hit = check_max_hold(sym_cfg, pos)
         is_mr_pos = (getattr(pos, "magic", None) == sym_cfg.get("mr_magic", 20240707)) or (
             hasattr(pos, "comment") and pos.comment == "TrendBot-MR"
         )
-        if (
-            not should_close
-            and (is_mr_pos or (regime == "ranging" and sym_cfg["mr_enabled"]))
-            and check_mean_reversion_exit(sym_cfg, pos, market=market)
-        ):
-            should_close = True
-            close_reason = "MR_EXIT"
-        if (
-            not should_close
-            and trend_signal is not None
-            and (
-                (pos_type == "buy" and trend_signal == "sell")
-                or (pos_type == "sell" and trend_signal == "buy")
+        mr_exit_hit = False
+        if not max_hold_hit and (is_mr_pos or (regime == "ranging" and sym_cfg["mr_enabled"])):
+            mr_exit_hit = check_mean_reversion_exit(sym_cfg, pos, market=market)
+        cur_atr = None
+        if not max_hold_hit and not mr_exit_hit and trend_signal is not None:
+            counter = (pos_type == "buy" and trend_signal == "sell") or (
+                pos_type == "sell" and trend_signal == "buy"
             )
-        ):
-            cur_atr = get_current_atr(sym_cfg, market=market)
-            in_sub_profit = False
-            if cur_atr and cur_atr > 0:
-                in_sub_profit = (
-                    pos_type == "buy" and pos.price_current > pos.price_open + cur_atr * 0.25
-                ) or (pos_type == "sell" and pos.price_current < pos.price_open - cur_atr * 0.25)
-            if not in_sub_profit:
-                should_close = True
-                close_reason = "REVERSAL"
-        if not should_close:
+            if counter:
+                cur_atr = get_current_atr(sym_cfg, market=market)
+        intent = decide_exit(pos, sym_cfg, trend_signal, regime, max_hold_hit, mr_exit_hit, cur_atr)
+        if not intent.should_close or intent.reason is None:
             continue
+        close_reason: str = intent.reason
         close_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
         tick = market.symbol_info_tick(symbol)
         if tick is None:
@@ -497,19 +503,16 @@ def manage_positions(
             time.sleep(2)
             break
         price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
-        close_req = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": pos.volume,
-            "type": close_type,
-            "position": pos.ticket,
-            "price": price,
-            "deviation": get_deviation(sym_cfg, symbol),
-            "magic": sym_cfg.get("magic", 20240706),
-            "comment": f"TrendBot-{close_reason}",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": get_filling_mode(symbol),
-        }
+        close_req = build_close_request(
+            symbol,
+            pos.ticket,
+            pos.volume,
+            close_type,
+            price,
+            comment=f"TrendBot-{close_reason}",
+            magic=sym_cfg.get("magic", 20240706),
+            deviation=get_deviation(sym_cfg, symbol),
+        )
         result = market.order_send(close_req)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             logging.info(f"[{symbol}] Close ({close_reason}) failed: {getattr(result, 'retcode', 'None')}")
@@ -561,7 +564,14 @@ def manage_positions(
     return all_positions
 
 
-def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
+def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False, market=None):
+    """Core entry — now Market-seamed but backward-compatible with legacy tests.
+
+    When ``market`` is supplied (e.g. ``LIVE_MARKET`` from ``main.py``) all
+    MT5 I/O routes through the adapter so ``FakeMarket`` can cover the entry
+    path in tests. When ``None`` (legacy tests monkeypatch ``execution.mt5_call``)
+    the old ``mt5_call``/``mt5_order_send`` path is used unchanged.
+    """
     symbol = cfg["symbol"]
     sl_mult_key = "mr_sl_atr_mult" if is_mr else "atr_sl_mult"
     tp_mult_key = "mr_tp_atr_mult" if is_mr else "rr"
@@ -570,11 +580,15 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     # Distinct magic number for MR trades so detection never relies on the
     # comment string (which the broker may truncate). Trend uses cfg["magic"].
     magic = cfg.get("mr_magic", 20240707) if is_mr else cfg.get("magic", 20240706)
-    tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    if market is not None:
+        tick = market.symbol_info_tick(symbol)
+        sinfo = market.symbol_info(symbol)
+    else:
+        tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+        sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
     if tick is None:
         logging.warning(f"[{symbol}] order aborted: no market tick")
         return False
-    sinfo = mt5_call(mt5.symbol_info, symbol, _timeout=5)
     if sinfo is None:
         logging.warning(f"[{symbol}] order aborted: no symbol_info")
         return False
@@ -613,7 +627,10 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     req = request.copy()
     req["sl"] = sl
     req["tp"] = tp
-    result = mt5_order_send(req, _timeout=10)
+    if market is not None:
+        result = market.order_send(req)
+    else:
+        result = mt5_order_send(req, _timeout=10)
     if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
         _update_dynamic_deviation(symbol, True, cfg)
         log_execution_quality(cfg, symbol, price, result.price, rejected=False)
@@ -643,7 +660,7 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     # transient retcode like TRADE_RETCODE_REQUOTE while the deal completes).
     # Check positions before retrying to avoid double-placing.
     try:
-        existing = mt5_call(mt5.positions_get, symbol=symbol, _timeout=5)
+        existing = (market.positions_get(symbol) if market is not None else mt5_call(mt5.positions_get, symbol=symbol, _timeout=5))
         if existing:
             logging.info(f"[{symbol}] position already open ({len(existing)}) after transient retcode — skip retry")
             ticket = existing[0].ticket
@@ -663,7 +680,10 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     retry_req = request.copy()
     retry_req["sl"] = 0.0
     retry_req["tp"] = 0.0
-    result = mt5_order_send(retry_req, _timeout=10)
+    if market is not None:
+        result = market.order_send(retry_req)
+    else:
+        result = mt5_order_send(retry_req, _timeout=10)
     if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
         logging.warning(
             f"[{symbol}] order_send (no SL/TP) failed: retcode={getattr(result, 'retcode', 'None')} "
@@ -687,7 +707,10 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
             else fill_price - sl_points * stretch * tp_mult_val * sinfo.point
         )
         modify_req = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket, "sl": sl2, "tp": tp2}
-        mod_result = mt5_order_send(modify_req, _timeout=10)
+        if market is not None:
+            mod_result = market.order_send(modify_req)
+        else:
+            mod_result = mt5_order_send(modify_req, _timeout=10)
         if mod_result is not None and mod_result.retcode == mt5.TRADE_RETCODE_DONE:
             if cfg["trade_journal"]:
                 journal_open(ticket, symbol, signal, volume, fill_price, sl2, tp2, atr)
@@ -704,7 +727,7 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
     if cfg["trade_journal"]:
         journal_open(ticket, symbol, signal, volume, fill_price, 0.0, 0.0, atr)
     close_type = mt5.ORDER_TYPE_SELL if order_type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-    close_tick = mt5_call(mt5.symbol_info_tick, symbol, _timeout=5)
+    close_tick = (market.symbol_info_tick(symbol) if market is not None else mt5_call(mt5.symbol_info_tick, symbol, _timeout=5))
     if close_tick is None:
         return False
     close_price = close_tick.bid if order_type == mt5.ORDER_TYPE_BUY else close_tick.ask
@@ -756,7 +779,10 @@ def _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=False):
             "sl": em_sl,
             "tp": 0.0,
         }
-        em_result = mt5_order_send(em_req, _timeout=5)
+        if market is not None:
+            em_result = market.order_send(em_req)
+        else:
+            em_result = mt5_order_send(em_req, _timeout=5)
         if em_result and em_result.retcode == mt5.TRADE_RETCODE_DONE:
             logging.warning(f"[{symbol}] Emergency SL {em_sl:.5f} set on naked position")
             if cfg["trade_journal"]:
@@ -908,26 +934,26 @@ def check_limit_orders(cfg):
     return filled
 
 
-def place_trade(cfg, signal, atr, regime_mult=1.0):
+def place_trade(cfg, signal, atr, regime_mult=1.0, market=None):
     symbol = cfg["symbol"]
     now = time.time()
     if now - _last_trade_time.get(f"trend:{symbol}", 0) < 120:
         return False
     # Throttle is set only AFTER a successful fill (agent audit M3): setting it
     # before sending would block re-entry for 120s even when the order fails.
-    ok = _place_trade_inner(cfg, signal, atr, regime_mult, is_mr=False)
+    ok = _place_trade_inner(cfg, signal, atr, regime_mult, is_mr=False, market=market)
     if ok:
         _last_trade_time[f"trend:{symbol}"] = now
     return ok
 
 
-def place_mean_reversion_trade(cfg, signal, atr, kelly_mult=1.0):
+def place_mean_reversion_trade(cfg, signal, atr, kelly_mult=1.0, market=None):
     symbol = cfg["symbol"]
     now = time.time()
     if now - _last_trade_time.get(f"mr:{symbol}", 0) < 120:
         return False
     volume_mult = cfg["mr_position_size_mult"] * kelly_mult
-    ok = _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=True)
+    ok = _place_trade_inner(cfg, signal, atr, volume_mult, is_mr=True, market=market)
     if ok:
         _last_trade_time[f"mr:{symbol}"] = now
     return ok

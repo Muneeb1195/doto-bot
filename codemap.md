@@ -1,0 +1,35 @@
+# doto-mt5-bot/
+
+## Responsibility
+Day-trading MT5 bot (8-symbol portfolio H4/H1/M15, PKR `Rs.` account) — autonomous 10 s loop on a headless Arch/Wine home-server (`192.168.1.15`, MT5 build 6101, `trade_stops_level 0` → `spread+10 pts` floor). The repo is the **seed** for CI-owned optimization/ML; the live box (`scp` deploy, no `.git`) applies CI results via `scripts/download_models.py`. CI never runs on the box; the box never trains locally.
+
+## Design
+- **Layout (7 folders, 60 tracked files via `.slim/codemap.json`):**
+  - `bot/ (42 py)` — engine (see `bot/codemap.md`).
+  - `services/ (1 py)` — detached news sentiment (`services/codemap.md`).
+  - `dashboard/ (api.py + templates/index.html)` — read-only FastAPI `:8501` (`dashboard/codemap.md`, `dashboard/templates/codemap.md`).
+  - `scripts/ (6 py + 2 sh + deploy-linux.sh)` — ops pipeline (`scripts/codemap.md`).
+  - `tools/ (3 py + _common)` — dev parity/diagnosis (`tools/codemap.md`).
+  - `config/ (settings.ini + credentials.ini git-ignored)` — declarative source (`config/codemap.md`).
+  - `.github/workflows/ (ci.yml + train.yml + optimize.yml)` — PR lint/typecheck/secret-scan+pytest; train/optimize dispatched monthly by box (never cron), shards fetch `data/history/*_M1.csv` assets.
+  - Root `pyproject.toml (py312, ruff E/F/W/I/ARG/SIM, mypy bot/ ignore_missing, pytest -p no:xdist)` + `requirements.txt` + `AGENTS.md` (this file).
+
+- **Module-level singleton monolith** (`bot/state.py` global registry `PERSISTED` atomic `.tmp+fsync+replace`, `deepcopy(cfg)` per-symbol). `bot/analytics.py` shared kernel prevents live/backtest drift (A1), guarded by `tests/test_parity.py` (A2) + `tools/parity_check/trace_parity` (reference vs `backtest_njit._simulate_core @njit`). MT5 edge `bot/mt5_connect.Market/_MT5Proxy` RPyC `:18812` `mt5server.exe` + `fetch_rates_paged chunk 80000` + `_rate_cache TTL 5 s` + `_dynamic_deviation 0.9×/1.5×` + `realized_pnl deals[-1].profit`. **Deepened modules:** `bot/exit_decision.py:ExitIntent` pure exit tree, `bot/entry_policy.py:EntryOutcome` 4-gate pipeline (ADR-001 defers full registry scoping).
+
+- **4-gate entry pipeline** (`bot/main.py` per-symbol): Gate1 fused regime `analytics.fused_regime_score (ADX45/ER35/slope20)` + `signals.RegimeGate hysteresis ±buffer/2` → Gate2 MTF `signals.get_mtf_fused_signal (H4 EMA100 bias + H1 cross agreement + M15 crossover/pb fallback)` or single-TF `get_signal` MA `kama|vidya` dispatch or MR `get_mean_reversion_signal (RSI+M30 + H4 EMA200 dev, cooldown ≥2 losses)` → `check_htf_trend 3-state` → Gate3 ML `filters.check_ml_gate→analytics.compute_entry_score (ML40/spread30/news30 + news 0.7→1.10× cap1.5 /0.3→0.5×)` (pool fallback) → Gate4 `check_execution_sanity (volume OBV + spread/ATR≤0.30 + M1 tape)`. Sizing `risk.calc_kelly_mult (quarter-Kelly *fraction 0.50, DD halving) × calc_volatility_mult × correlation reduction 50% × conf × mtf 0.5-1`. Exits own `execution.manage_positions (TP restore → breakeven ATR1.0 72 h → chandelier HH/LL±ATR2.5/1.5 + two-stage 3.5→1.5 at 3R + adapt 0.20/5 → scale-out RR0.50/0.75 + BE lock → max-hold/MR/ reversal guard)`.
+
+- **ML/timeframes** `bot/ml_features.FEATURE_COLS 44 + of_* via attach_orderflow_features before window slicing` (M1 live, all TF before optimize), `train_model.EnsembleModel(xgb,lgb,tft LSTM+attention seq20) isotonic` + `tft_model/calibrate_models/drift_detector→drift_retrain warmstart`, pools `commodity/index/crypto/forex (5 sym each)`. H4 resampled from H1 (cheap deep), M1 2.7 M + M15 178 k paged; `ALL → [PORTFOLIO] symbols` self-sync.
+
+- **File contracts**: `data/bot_state.json` (cooldown expiry epoch), `dashboard_state.json` (5000 eq), `news_sentiment.json` (window 6 h polled 900 s deduped Marketaux→RSS), `logs/trades.csv` (append+fsync, Kelly 30 s cache) + `bot.log midnight UTC`, `models/model_*.pkl/.calib.npz` (accumulates stale, never pruned), `.last_{train,optimize}_tag` + `.symbol_streaks.json ({sym:strike,_last_opt_tag})` hybrid gate-failure 1st tighten+0.15 cap0.90 /2nd pause. `data/history/*.csv` M1 via `data-*` release (2 GB, not git-lfs), H1/M15 in git, prune 2.
+
+- **Deployment** `scripts/deploy-linux.sh` idempotent phases Wine+Xvfb+MT5+RPyC+venv+systemd units `xvfb-mt5/mt5/mt5server/doto-bot/dashboard/news/backup/download/orchestrate timers` (headless linger, `DISPLAY :99`); `service-ctl.sh` health 5 probes + `redeploy.sh Bot state loaded`; drift `check_deploy_drift` codeload SHA256 (settings.ini excluded); box `scp` deploy never overwrites `config/settings.ini` live-mutated file.
+
+## Flow
+MT5 Wine —RPyC :18812→ `mt5_connect` → `bot/main 10 s cycle` (watchdog 180 s, sd_notify): `ensure_mt5_connected` → `load_news_sentiment (mtime cache services/news_sentiment.json)` + `consume_warmstart` → `positions_get → reconcile_journal/external→prune` + corr hourly + portfolio risk cap → `check_limit_orders → init scale/chandelier` → per-symbol Gate1→Gate2→`manage_positions` exit tree → `block_entries` guards (positions_valid/daily CB tail) → HTF/ML/sanity/MR-cooldown → Kelly×vol×corr×conf×mtf sizing → `place_limit_order (GTC)` or `_place_trade_inner (DEAL, spread+10 pts floor, dedup, naked→SLTP→close/emergency)` + Discord/journal/state → `write_dashboard_state` → `dashboard :8501` polls (10 s, Basic+no-store, tail 256 KB) and `services/news_sentiment 900 s` writes. Offline: `scripts/export_mt5_data 5.1y H1/M15/M1` → `push_data data-* release` → box `download_models --dispatch` `gh workflow run train.yml 45m → optimize.yml 8h` → fetch/flatten models + `strategy-params/failed-params` → `apply (passed reset / failed hybrid keyed to tag) → write_settings → restart`. Dev `tools/diagnose_entry_rate` replays gates on H1+M15 history; `parity_check/trace_parity` synthetic assert JIT==ref.
+
+## Integration
+- **Runtime:** home-server systemd `doto-bot/dashboard/news/backup/download/orchestrate/mt5/*` (`deploy-linux.sh`); dev/CI `python 3.12` + `pytest 349 tests` + `ruff/mypy/shellcheck/gitleaks`, `pre-commit`; GitHub `ci/train/optimize.yml` via `GITHUB_TOKEN` env `~/.config/doto-orchestrate.env` (not `credentials.ini`).
+- **External:** MT5 `mt5linux 0.1.10` RPyC + Wine `terminal64.exe (servers.dat dotoglobal)`; `api.marketaux.com`+RSS→`data/news_sentiment.json`; Discord webhook embeds; browser `:8501`; `api.github.com`+`gh`+`codeload` for releases; `SYMBOL_POINTS` broker tick.
+- **Parity:** `analytics` + `diagnose_entry_rate` + `Backtest` fast/ref twins + `overfit_stats DSR≥0.95/PBO≤0.50` + `validate_entry_config` preflight + `backup 04:00 7d` + `mc_ruin/mc_validation/scenario_analysis`.
+ - **Codemap:** per-folder `codemap.md` (bot/services/dashboard+templates/scripts/tools/config + this atlas) indexed by `.slim/codemap.json` (`include bot/services/dashboard/scripts/tools/config/.github pyproject/requirements`, `exclude tests/__pycache__/.venv*/docs/*.md/models/data/logs/backups/.dashboard_public/scripts/_archive`, 62 files incl. `exit_decision`+`entry_policy`, 8 folder hashes, 5.1y M1 not hashed). ADRs `docs/adr/ADR-001*` document deferred registry scoping. Run `node codemap.mjs update --root ./` after edits; drift checked by `check_deploy_drift`.
+

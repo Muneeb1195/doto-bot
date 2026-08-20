@@ -5,13 +5,10 @@ import csv
 import logging
 import time
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st
+from _mt5 import mt5
 from mt5_connect import get_rates, mt5_call
 from state import TRADE_CSV
 
@@ -190,6 +187,20 @@ def get_recent_trade_stats(cfg):
         return None, None, None
 
 
+def drawdown_pct(equity, update_peak=False):
+    """Drawdown percent below the running equity peak.
+
+    Single source for the peak-relative drawdown math shared by the tail-risk
+    check (filters.check_tail_risk, which tracks the peak) and Kelly sizing
+    (calc_kelly_mult, which only reads it). With `update_peak=True` the running
+    peak in state is raised when `equity` sets a new high.
+    """
+    if update_peak and equity > _st._peak_balance:
+        _st._peak_balance = equity
+    peak = max(_st._peak_balance, 1)
+    return ((peak - equity) / peak) * 100
+
+
 def calc_kelly_mult(cfg):
     if not cfg["dr_enabled"]:
         return 1.0
@@ -209,9 +220,7 @@ def calc_kelly_mult(cfg):
                 bal = getattr(acc, "balance", None)
                 prof = getattr(acc, "profit", None)
                 if isinstance(bal, (int, float)) and isinstance(prof, (int, float)):
-                    equity = bal + prof
-                    peak = max(_st._peak_balance, 1)
-                    dd_pct = ((peak - equity) / peak) * 100
+                    dd_pct = drawdown_pct(bal + prof)
                     if dd_pct >= dd_reduce_pct:
                         kelly *= 0.5
                         logging.info(f"Kelly reduced by 50% due to drawdown {dd_pct:.1f}% >= {dd_reduce_pct}%")

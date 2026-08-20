@@ -7,11 +7,8 @@ import os
 import time
 from datetime import datetime
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import state as _st
+from _mt5 import mt5
 from mt5_connect import mt5_call
 from state import TRADE_HEADERS
 

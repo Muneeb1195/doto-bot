@@ -815,7 +815,7 @@ def main():
         creds = load_credentials()
         mt5_path = creds["path"]
         timeout_ms = creds["timeout"]
-        import MetaTrader5 as mt5
+        from _mt5 import mt5
 
         ok = mt5.initialize()
         if not ok:
@@ -963,7 +963,7 @@ def main():
             all_best.append(best)
 
     if not args.csv:
-        import MetaTrader5 as mt5  # noqa: I001  (lazy: unavailable in --csv/CI mode)
+        from _mt5 import mt5  # noqa: I001  (lazy: unavailable in --csv/CI mode)
 
         mt5.shutdown()
 

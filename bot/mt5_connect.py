@@ -185,6 +185,12 @@ class Market:
     def get_deals(self, position):
         return mt5_call(mt5.history_deals_get, position=position, _timeout=10)
 
+    def positions_get(self, **kwargs):
+        return mt5_call(mt5.positions_get, _timeout=10, **kwargs)
+
+    def orders_get(self, **kwargs):
+        return mt5_call(mt5.orders_get, _timeout=5, **kwargs)
+
 
 def realized_pnl(market, position_ticket):
     """Realized P&L of a just-executed close, read from the position's last deal.

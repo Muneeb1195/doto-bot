@@ -270,6 +270,11 @@ Because the box has no git and is updated by manual scp, the live copy can lag
 - **`SYMBOL_PROFILE` trimmed** in both `optimize_params.py` and `parallel_optimize.py`: removed 6 dead symbols with no model and no pool membership (`AUS200`, `BCHJPY`, `ADBE`, `AMGN`, `AVGO`, `AUDPLN`, `UK100`). Kept the portfolio symbols + pool members that have trained models (ETHUSD, LTCUSD, ADAUSD, AVXUSD, forex/index/commodity pool symbols, etc.) so explicit per-symbol optimization still works.
 - **Net effect**: the GitHub `optimize.yml` matrix optimizes exactly the portfolio symbols; non-portfolio pool members (e.g. ADAUSD) are only optimized if explicitly passed via `--symbols`.
 
+## Codemap (2026-08-20)
+
+Per-folder architectural atlases indexed by `.slim/codemap.json` (60 tracked files, `include bot/services/dashboard/scripts/tools/config/.github pyproject/requirements`, `exclude tests/__pycache__/.venv*/docs/*.md/models/data/logs/backups/.dashboard_public/scripts/_archive`):
+`bot/codemap.md` · `services/codemap.md` · `dashboard/codemap.md` + `dashboard/templates/codemap.md` · `scripts/codemap.md` · `tools/codemap.md` · `config/codemap.md` + root `codemap.md` (system atlas). Run `node codemap.mjs update --root ./` after edits; `node codemap.mjs verify` checks folder hashes.
+
 ## Scoring Parity (2026-07-22)
 - **`analytics.compute_entry_score()`** — single source of truth for entry scoring. Uses 3-component model: ML (40%), spread (30%), news (30%). Weights from `cfg["scoring_weights"]`.
 - **`analytics.compute_entry_score()`** — single scoring math for live + backtest (raw-value seam, C4-2). Backtest calls it with per-bar inputs (`ml_conf`, bar spread in price units, `tail_risk`); `_compute_entry_score` is deleted. Weighting loop uses only components present in `scores` (missing weighted keys are renormalized out); the news-based confidence adjustment is `analytics.apply_news_confidence_mult`.

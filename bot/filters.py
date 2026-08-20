@@ -5,18 +5,15 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import joblib
-
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
 import pandas as pd
 import state as _st
+from _mt5 import mt5
 from analytics import apply_news_confidence_mult, compute_entry_score, volume_filter_pass
 from ml_features import FEATURE_COLS, prepare_features
 from mt5_connect import get_rates, mt5_call
 from regime import get_current_atr
+from risk import drawdown_pct
 from state import (
     ASSET_CLASS_MAP,
     BASE_DIR,
@@ -333,10 +330,7 @@ def check_tail_risk(cfg):
     acc = mt5_call(mt5.account_info, _timeout=5)
     if acc is not None:
         equity = acc.balance + acc.profit
-        if equity > _st._peak_balance:
-            _st._peak_balance = equity
-        peak = max(_st._peak_balance, 1)
-        dd_pct = ((peak - equity) / peak) * 100
+        dd_pct = drawdown_pct(equity, update_peak=True)
         # NOTE: the circuit-breaker (15%) check MUST come before the tail-risk
         # (8%) early-return, otherwise the 15% permanent halt is unreachable
         # (agent audit C2).

@@ -1,10 +1,7 @@
 """ADX fetching and 5-state regime detection."""
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:  # Linux: no native package, use the socket/RPyC bridge
-    from mt5_connect import mt5
 import numpy as np
+from _mt5 import mt5
 from indicators import calc_adx, calc_adx_series
 from mt5_connect import get_rates
 
