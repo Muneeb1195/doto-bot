@@ -6,7 +6,7 @@ from _mt5 import mt5
 from mt5_connect import mt5_call
 
 
-def fetch_returns_for_symbols(symbols, lookback_hours=24, tf=None):
+def fetch_returns_for_symbols(symbols, lookback_hours=72, tf=None):
     datetime.now()
     if tf is None:
         tf = mt5.TIMEFRAME_H1
@@ -21,7 +21,7 @@ def fetch_returns_for_symbols(symbols, lookback_hours=24, tf=None):
     return rates_dict
 
 
-def compute_correlation_matrix(symbols, lookback_hours=24):
+def compute_correlation_matrix(symbols, lookback_hours=72):
     returns_dict = fetch_returns_for_symbols(symbols, lookback_hours)
     if len(returns_dict) < 2:
         return {}

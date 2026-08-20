@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import state as _st
 from analytics import fused_regime_score
-from filters import check_execution_sanity, check_ml_gate
+from filters import check_ml_gate, check_spread_filter, check_tape_reading, check_volume_filter
 from mt5_connect import get_rates
 from regime import get_current_atr
 from signals import _get_regime_gate, check_htf_trend, get_mean_reversion_signal, get_mtf_fused_signal, get_signal
@@ -191,7 +191,7 @@ def evaluate_entry(sym_cfg, market=None, positions_sym=None) -> EntryOutcome:
             trend_signal=trend_signal,
             mr_signal=mr_signal,
             blocked=True,
-            block_reason="no_signal",
+            block_reason="atr_unavail",
             htf_size_mult=1.0,
             confidence_mult=None,
             ml_conf=None,
@@ -242,8 +242,8 @@ def evaluate_entry(sym_cfg, market=None, positions_sym=None) -> EntryOutcome:
             ml_conf=ml_conf,
         )
 
-    # --- Gate 4 sanity ---
-    if not check_execution_sanity(sym_cfg, signal_entry):
+    # --- Gate 4 sanity — split so dashboard can attribute volume/spread/tape ---
+    if not check_volume_filter(sym_cfg, signal_entry):
         return EntryOutcome(
             signal_entry=signal_entry,
             entry_atr=entry_atr,
@@ -256,7 +256,43 @@ def evaluate_entry(sym_cfg, market=None, positions_sym=None) -> EntryOutcome:
             trend_signal=trend_signal,
             mr_signal=mr_signal,
             blocked=True,
-            block_reason="sanity",
+            block_reason="sanity_volume",
+            htf_size_mult=htf_size_mult,
+            confidence_mult=confidence_mult,
+            ml_conf=ml_conf,
+        )
+    if not check_spread_filter(sym_cfg):
+        return EntryOutcome(
+            signal_entry=signal_entry,
+            entry_atr=entry_atr,
+            atr=atr,
+            entry_type=entry_type,
+            mtf_confidence=mtf_confidence,
+            gate_open=gate_open,
+            regime=regime,
+            fused_score=fused_score,
+            trend_signal=trend_signal,
+            mr_signal=mr_signal,
+            blocked=True,
+            block_reason="sanity_spread",
+            htf_size_mult=htf_size_mult,
+            confidence_mult=confidence_mult,
+            ml_conf=ml_conf,
+        )
+    if not check_tape_reading(sym_cfg, signal_entry):
+        return EntryOutcome(
+            signal_entry=signal_entry,
+            entry_atr=entry_atr,
+            atr=atr,
+            entry_type=entry_type,
+            mtf_confidence=mtf_confidence,
+            gate_open=gate_open,
+            regime=regime,
+            fused_score=fused_score,
+            trend_signal=trend_signal,
+            mr_signal=mr_signal,
+            blocked=True,
+            block_reason="sanity_tape",
             htf_size_mult=htf_size_mult,
             confidence_mult=confidence_mult,
             ml_conf=ml_conf,

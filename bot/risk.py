@@ -87,11 +87,12 @@ def get_recent_trade_stats(cfg):
         return None, None, None
     symbol = cfg["symbol"]
     lookback = int(cfg["dr_lookback"])
+    cache_key = None
     try:
         st = TRADE_CSV.stat()
         # Bucket time into _TRADE_STATS_TTL-second windows so the cache
         # invalidates shortly after new trades are journaled.
-        cache_key = (st.st_mtime, st.st_size, lookback, int(time.time() // _TRADE_STATS_TTL))
+        cache_key = (symbol, st.st_mtime, st.st_size, lookback, int(time.time() // _TRADE_STATS_TTL))
         if _TRADE_STATS_CACHE is not None and cache_key == _TRADE_STATS_CACHE_KEY:
             return _TRADE_STATS_CACHE
     except Exception:
@@ -181,6 +182,7 @@ def get_recent_trade_stats(cfg):
         else:
             result = stats_from(cur)
         _TRADE_STATS_CACHE = result
+        _TRADE_STATS_CACHE_KEY = cache_key
         return result
     except Exception:
         logging.warning("get_recent_trade_stats failed", exc_info=True)

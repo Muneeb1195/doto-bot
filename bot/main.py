@@ -462,7 +462,7 @@ def main():
             if cfg["corr_enabled"]:
                 now = time.time()
                 if now - _st._last_corr_time > 3600:
-                    _st._corr_cache = compute_correlation_matrix(cfg["symbols"], cfg.get("corr_lookback_hours", 24))
+                    _st._corr_cache = compute_correlation_matrix(cfg["symbols"], cfg.get("corr_lookback_hours", 72))
                     _st._last_corr_time = now
 
             # Portfolio risk budget: compute open position risk
@@ -487,6 +487,15 @@ def main():
                             else 0.0
                         )
                         total_risk_pkr += p_risk
+                # include pending limits in budget so GTC orders can't overshoot cap
+                for _pend_sym, _pend in _st._pending_limits.items():
+                    try:
+                        _pend_cfg = symbol_cfg(cfg, _pend_sym)
+                        _k = float(_pend.get("kelly_mult", 1.0))
+                        _r = float(_pend.get("regime_mult", 1.0))
+                        total_risk_pkr += balance_pkr * (_pend_cfg.get("risk_percent", 1.0) / 100) * _k * _r
+                    except Exception:
+                        continue
                 # Hard portfolio-risk guard: if TOTAL open risk (including any
                 # manual/external positions the bot didn't size) exceeds the cap,
                 # block new entries. A single 0.28-lot external BTCUSD position
@@ -590,12 +599,18 @@ def main():
                     if symbol not in _filter_stats:
                         _filter_stats[symbol] = {
                             "htf_trend": 0,
+                            "htf_soft": 0,
                             "tail_risk": 0,
                             "no_signal": 0,
+                            "atr_unavail": 0,
                             "signals": 0,
                             "regime_gate": 0,
                             "ml_gate": 0,
                             "sanity": 0,
+                            "sanity_volume": 0,
+                            "sanity_spread": 0,
+                            "sanity_tape": 0,
+                            "mr_cooldown": 0,
                         }
 
                     if symbol in _st._pending_limits:
@@ -672,22 +687,35 @@ def main():
                         reason = outcome.block_reason
                         if reason == "regime_gate":
                             _filter_stats[symbol]["regime_gate"] += 1
-                            _filter_stats[symbol]["no_signal"] += 1
                             logging.debug(f"[{symbol}] No signal — regime gate closed")
                         elif reason == "no_signal":
                             _filter_stats[symbol]["no_signal"] += 1
-                            logging.debug(f"[{symbol}] No signal / ATR unavailable — skipping")
+                            logging.debug(f"[{symbol}] No signal — skipping")
+                        elif reason == "atr_unavail":
+                            _filter_stats[symbol]["atr_unavail"] = _filter_stats[symbol].get("atr_unavail", 0) + 1
+                            logging.debug(f"[{symbol}] ATR unavailable — skipping")
                         elif reason == "htf_block":
                             _filter_stats[symbol]["htf_trend"] += 1
                             logging.debug(f"[{symbol}] HTF clear counter-trend — blocking")
                         elif reason == "ml_gate":
                             _filter_stats[symbol]["ml_gate"] += 1
                             logging.info(f"[{symbol}] ML gate failed — skipping")
-                        elif reason == "sanity":
+                        elif reason in ("sanity", "sanity_volume", "sanity_spread", "sanity_tape"):
+                            # keep legacy `sanity` for dashboard compat, plus fine-grained
                             _filter_stats[symbol]["sanity"] += 1
-                            logging.info(f"[{symbol}] Execution sanity failed — skipping")
+                            if reason == "sanity_volume":
+                                _filter_stats[symbol]["sanity_volume"] = _filter_stats[symbol].get("sanity_volume", 0) + 1
+                                logging.info(f"[{symbol}] Execution sanity volume failed — skipping")
+                            elif reason == "sanity_spread":
+                                _filter_stats[symbol]["sanity_spread"] = _filter_stats[symbol].get("sanity_spread", 0) + 1
+                                logging.info(f"[{symbol}] Execution sanity spread failed — skipping")
+                            elif reason == "sanity_tape":
+                                _filter_stats[symbol]["sanity_tape"] = _filter_stats[symbol].get("sanity_tape", 0) + 1
+                                logging.info(f"[{symbol}] Execution sanity tape failed — skipping")
+                            else:
+                                logging.info(f"[{symbol}] Execution sanity failed — skipping")
                         elif reason == "mr_cooldown":
-                            _filter_stats[symbol]["no_signal"] += 1
+                            _filter_stats[symbol]["mr_cooldown"] = _filter_stats[symbol].get("mr_cooldown", 0) + 1
                             logging.debug(f"[{symbol}] MR consec losses cooldown — skipping")
                         else:
                             _filter_stats[symbol]["no_signal"] += 1
@@ -696,7 +724,7 @@ def main():
                     # Soft HTF (neutral) still counts but does not block — it only
                     # scales size via htf_size_mult already in outcome.
                     if htf_size_mult != 1.0:
-                        _filter_stats[symbol]["htf_trend"] = _filter_stats[symbol].get("htf_trend", 0) + 1
+                        _filter_stats[symbol]["htf_soft"] = _filter_stats[symbol].get("htf_soft", 0) + 1
                         logging.debug(f"[{symbol}] HTF neutral — reduced size")
 
                     _filter_stats[symbol]["signals"] += 1
@@ -717,6 +745,12 @@ def main():
                     if sym_cfg.get("mtf_enabled", False) and mtf_confidence is not None:
                         kelly_mult *= max(0.5, mtf_confidence)
 
+                    # clamp before budget so budget can override floor (Keel: fixed% with
+                    # half-Kelly ceiling, budget is the hard portfolio cap)
+                    min_mult = sym_cfg.get("dr_min_mult", 0.25)
+                    max_mult = sym_cfg.get("dr_max_mult", 1.5)
+                    kelly_mult = max(min_mult, min(max_mult, kelly_mult))
+
                     if portfolio_risk_budget_active:
                         base_rsk = sym_cfg["risk_percent"]
                         new_risk_pkr = balance_pkr * (base_rsk / 100) * kelly_mult
@@ -724,10 +758,8 @@ def main():
                         budget_pkr = balance_pkr * (portfolio_risk_pct / 100)
                         if total_if_added > budget_pkr:
                             kelly_mult *= budget_pkr / max(total_if_added, 1)
-
-                    min_mult = sym_cfg.get("dr_min_mult", 0.25)
-                    max_mult = sym_cfg.get("dr_max_mult", 1.5)
-                    kelly_mult = max(min_mult, min(max_mult, kelly_mult))
+                            # allow budget to go below min_mult, only cap the top
+                            kelly_mult = min(kelly_mult, max_mult)
 
                     if is_mr_entry:
                         place_mean_reversion_trade(sym_cfg, signal_entry, entry_atr, kelly_mult)
